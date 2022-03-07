@@ -1,4 +1,5 @@
-get_russia_gas_exports <- function(use_cache=T){
+get_entsog <- function(use_cache=T){
+
   f <- file.path("cache/russia_gas_exports.RDS")
   dir.create("cache", F)
 
@@ -38,6 +39,17 @@ get_russia_gas_exports <- function(use_cache=T){
     flows_russia_exports,
     flows_russia_imports
   )
+
+  flows_russia <- flows_russia %>%
+    filter(unit=="kWh/d") %>%
+    left_join(operators %>% distinct(operatorKey, operatorCountryLabel)) %>%
+    group_by(date=as.Date(date), country=operatorCountryLabel) %>%
+    summarise(value=sum(value, na.rm=T)/1000) %>%
+    mutate(unit="MWh/day",
+           commodity="Natural Gas",
+           source="ENTSOG")
+    ungroup()
+
   saveRDS(flows_russia, f)
   return(flows_russia)
 }
