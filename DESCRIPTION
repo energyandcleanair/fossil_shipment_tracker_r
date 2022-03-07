@@ -20,6 +20,7 @@ Imports:
     rclipboard,
     magrittr,
     gsubfn,
+    mongolite,
     comtradr,
     entsog,
     eurostat,
