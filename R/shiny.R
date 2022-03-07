@@ -12,14 +12,14 @@ deployShinyApp <- function() {
   #   "energyandcleanair/rcrea")
   # remotes::install_github(urls, force=T, upgrade="never")
 
-  try(dotenv::load_dot_env())
+  # try(dotenv::load_dot_env())
   try(readRenviron(".Renviron"))
 
   rsconnect::setAccountInfo(name=Sys.getenv("SHINYAPP_ACCOUNT"),
                             token=Sys.getenv("SHINYAPP_TOKEN"),
                             secret=Sys.getenv("SHINYAPP_SECRET"))
   # # Deploy production
-  rsconnect::deployApp(".",
+  rsconnect::deployApp("inst/shiny",
                        appName="russia_counter",
                        account = Sys.getenv("SHINYAPP_ACCOUNT"),
                        forceUpdate = T)
