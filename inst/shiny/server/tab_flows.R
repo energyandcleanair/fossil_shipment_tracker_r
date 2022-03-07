@@ -58,7 +58,7 @@
 # Downloadable csv of selected dataset
 output$download_csv <- downloadHandler(
   filename = function() {
-    sprintf("flows_%s_%s.csv", input$source, input$commodity)
+    sprintf("flows_%s.csv", input$source)
   },
   content = function(file) {
     write.csv(flows(), file, row.names = FALSE)
@@ -96,61 +96,6 @@ flows <- reactive({
   db.download_flows(source=input$source)
 })
 
-# power_raw <- reactive({
-#
-#   # To trigger refresh
-#   # input$power_refresh
-#   country <- input$country
-#   year_from <- input$year_from
-#   year_to <- input$year_to
-#   req(country, year_from, year_to)
-#
-#   # Get data
-#   print("Getting power data")
-#   power <- creapower::get_generation(
-#     date_from=sprintf("%s-01-01", year_from),
-#     date_to=sprintf("%s-12-31", year_to),
-#     iso2 = country,
-#     homogenise = T,
-#     freq = "day"
-#   )
-#   print("Done")
-#   return(power)
-# })
-#
-#
-# power <- reactive({
-#
-#   power_raw <- power_raw()
-#   frequency <- input$frequency
-#   sources <- input$sources
-#   req(power_raw, frequency, sources)
-#
-#   print("Processing power data")
-#   power <- power_raw %>%
-#     filter(source %in% sources) %>%
-#     mutate(date=lubridate::floor_date(date, unit=frequency)) %>%
-#     group_by(across(c(-output_mw))) %>%
-#     summarise_at("output_mw", mean) %>%
-#     ungroup()
-#   print("Done")
-#
-#   return(power)
-#
-# })
-#
-#
-# caption <- reactive({
-#   power <- power_raw()
-#   req(power)
-#
-#   ds <- unique(power$data_source)
-#   ref <- paste0("Source: ", data_source_reference(ds),". ")
-#   update <- paste0("Last updated on ", strftime(max(lubridate::date(power$date) + lubridate::hours(power$duration_hours), na.rm=T), "%d %B %Y."))
-#   return(paste0(ref, update))
-# })
-#
-#
 output$plot <- renderPlotly({
 
   # chart_type <- input$chart_type
