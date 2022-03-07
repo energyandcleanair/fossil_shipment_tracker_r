@@ -24,4 +24,4 @@ deployShinyApp <- function() {
                        account = Sys.getenv("SHINYAPP_ACCOUNT"),
                        forceUpdate = T)
 
-}
+  }
