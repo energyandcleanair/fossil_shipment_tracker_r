@@ -6,11 +6,11 @@ deployShinyApp <- function() {
   if(!require(devtools)) install.packages('devtools')
 
   # # Basically telling ShinyApps where to get creahia
-  # urls <- c(
-  #   # "trafficonese/leaflet.extras2",
-  #   "energyandcleanair/creahelpers",
-  #   "energyandcleanair/rcrea")
-  # remotes::install_github(urls, force=T, upgrade="never")
+  urls <- c(
+    # "trafficonese/leaflet.extras2",
+    "energyandcleanair/russiacounter",
+    "energyandcleanair/rcrea")
+  remotes::install_github(urls, force=T, upgrade="never")
 
   # try(dotenv::load_dot_env())
   try(readRenviron(".Renviron"))
