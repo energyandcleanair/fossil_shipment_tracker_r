@@ -18,7 +18,6 @@ Imports:
     jsonlite,
     shinyURL,
     rclipboard,
-    rio,
     magrittr,
     gsubfn,
     comtradr,
