@@ -11,9 +11,7 @@ library(tidyverse)
 library(readxls)
 
 source('russia.R')
-MJ_per_kWh <- 3.6
-# gcv_kWh_per_m3 <- 11.259
-gcv_MJ_per_m3 <- 11.259 * 3.6 #40
+
 
 entso <- get_russia_exports(use_cache=T) %>%
   filter(unit=="kWh/d") %>%

@@ -1,0 +1,10 @@
+name: power
+title:
+username:
+account: crea
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4949022
+bundleId: 5200856
+url: https://crea.shinyapps.io/power/
+when: 1635825801.48856

@@ -1,4 +1,4 @@
-get_iea <- function(years){
+iea.get_flows <- function(years){
   readxl::read_xls("data/iea/Export_GTF_IEA_202112.xls") %>%
     filter(Exit=="Russia" | Entry=="Russia") %>%
     tidyr::pivot_longer(cols=-c(Borderpoint, Exit, `...3`, Entry,	`MAXFLOW (Mm3/h)`),
