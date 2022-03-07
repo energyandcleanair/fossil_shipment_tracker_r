@@ -6,8 +6,6 @@ library(dplyr)
 library(shinyURL)
 library(rclipboard)
 
-library(creapower)
-
 #####################
 # Global variables
 #####################

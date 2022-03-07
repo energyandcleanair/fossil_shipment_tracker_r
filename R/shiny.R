@@ -8,7 +8,7 @@ deployShinyApp <- function() {
   # # Basically telling ShinyApps where to get creahia
   urls <- c(
     # "trafficonese/leaflet.extras2",
-    "energyandcleanair/russiacounter",
+    "energyandcleanair/202203_russian_gas",
     "energyandcleanair/rcrea")
   remotes::install_github(urls, force=T, upgrade="never")
 
