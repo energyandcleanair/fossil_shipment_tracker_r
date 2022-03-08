@@ -41,6 +41,8 @@ importFrom(dplyr,"%>%")
 
 importFrom(lubridate,"hour<-")
 importFrom(lubridate,day)
+importFrom(lubridate,days)
+importFrom(lubridate,days_in_month)
 importFrom(lubridate,hour)
 importFrom(lubridate,month)
 importFrom(lubridate,year)

@@ -68,40 +68,37 @@
 # # Output Elements --------------------------------------
 output$counter <- renderUI({
 
-  req(counter_natural_gas_eur())
-  ng_eur <- scales::comma(counter_natural_gas_eur()/1e6, suffix="M")
-  total_eur <- scales::comma(counter_natural_gas_eur()/1e6, suffix="M")
+  req(counter_data())
+  data <- counter_data()
+  data$total <- sum(unlist(data))
+  labels <- lapply(data, label_number_si(accuracy=0.1))
+  # names(labels) <- paste0("#", names(labels))
 
-  parameters <- list(ng_eur = ng_eur,
-                     total_eur=total_eur)
-
-
-
-  x <- gsubfn::gsubfn("\\w+", parameters, '
+  x <- gsubfn::gsubfn("\\w+", labels, '
   <div class="container">
 
     <h1>Fossil energy bought to Russia</h1>
-    <div class="subtitle">Since 24 February 2022</div>
+    <div class="subtitle">By European Union since 24 February 2022</div>
     <div class="row">
       <div class="col-xs-7">
         <div class="big-box">
-          <span class="currency">EUR</span>total_eur
+          <span class="currency">EUR</span>total
         </div>
       </div>
       <div class="col-xs-5">
-        <div class="col-xs-12"><div class="small-box">
-        <div class="title">Fossil Gas (pipeline)</div>
-        <span class="currency">EUR</span>ng_eur</div></div>
-        <div class="col-xs-12"><div class="small-box">
-        <div class="title">LNG</div>
-        <span class="currency">EUR</span>-</div></div>
-        <div class="col-xs-12"><div class="small-box">
-        <div class="title">Coal</div>
-        <span class="currency">EUR</span>-</div></div>
-        <div class="col-xs-12"><div class="small-box">
-        <div class="title">Oil</div>
-        <span class="currency">EUR</span>-</div></div>
-          </div>
+         <div class="small-box">
+          <div class="title">Oil</div>
+          <span class="currency">EUR</span>oil
+        </div>
+
+        <div class="small-box">
+          <div class="title">Fossil Gas</div>
+          <span class="currency">EUR</span>natural_gas
+        </div>
+
+        <div class="small-box">
+          <div class="title">Coal</div>
+          <span class="currency">EUR</span>coal
         </div>
       </div>
   </div>')
@@ -109,81 +106,25 @@ output$counter <- renderUI({
   HTML(x)
 })
 
-# output$selectPreset <- renderUI({
-#   selectInput("preset", NULL,
-#               multiple=F,
-#               choices=presets,
-#               selected="custom")
-# })
-#
-#
-# output$selectCountry <- renderUI({
-#   selectInput("country", NULL,
-#               multiple=F,
-#               choices=countries,
-#               selected="EU")
-# })
-#
-#
-# output$selectSources <- renderUI({
-#   pickerInput("sources", "Source",
-#               choices=rev(sources),
-#               options =list(`actions-box` = TRUE),
-#               multiple = T,
-#               selected = sources)
-#
-# })
-#
-#
-# output$selectFrequency <- renderUI({
-#   selectInput("frequency", "Frequency", multiple=F, choices = frequency, selected="week")
-# })
-#
-#
-# output$selectPlotType <- renderUI({
-#   selectInput("plot_type", "Plot Type", multiple=F, choices = plot_types, selected="area")
-# })
-#
-# output$selectYearFrom <- renderUI({
-#   selectInput("year_from", "From", multiple=F,
-#               choices = seq(2016, lubridate::year(lubridate::today())), selected="2018")
-# })
-#
-# output$selectYearTo <- renderUI({
-#   selectInput("year_to", "To", multiple=F,
-#               choices = seq(2016, lubridate::year(lubridate::today())), selected="2021")
-# })
-# # output$selectYears <- renderUI({
-# #   sliderTextInput("years", "Years",
-# #     choices = seq(2016, lubridate::year(lubridate::today())),
-# #     selected = c(2020, 2021)
-# #   )
-# # })
-#
-#
+
 # # Reactive Elements --------------------------------------
-flow_entsog <- reactive({
-  db.download_flows(source="entsog")
+
+counter_data <- reactive({
+  p <- db.download_flows(source="combined")
+
+  p <- p %>%
+    filter(date >= date_from_counter,
+           date <= lubridate::today()) %>%
+    mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
+                                               "oil_products"="oil"))) %>%
+    group_by(commodity) %>%
+    summarise(value_eur=sum(value_eur, na.rm=T)) %>%
+    ungroup()
+
+  as.list(p$value_eur) %>% `names<-`(p$commodity)
 })
 
 
-counter_natural_gas_eur <- reactive({
-  req(flow_entsog())
-
-  price <- price.natural_gas_based_on_brent(date_from=as.Date(date_from_counter)-lubridate::days(30)) %>%
-    filter(!is.na(value))
-
-  flow_entsog() %>%
-    filter(date >= date_from_counter) %>%
-    filter(unit=="MWh/day") %>%
-    left_join(
-      price %>% filter(unit=="EUR/MWh") %>% rename(price=value) %>% select(-c(unit))
-    ) %>%
-    mutate(value=value*price,
-           unit="EUR/day") %>%
-    pull(value) %>%
-    sum(na.rm=T)
-})
 
 
 # power_raw <- reactive({

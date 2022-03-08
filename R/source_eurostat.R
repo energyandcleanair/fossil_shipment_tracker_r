@@ -9,7 +9,7 @@ eurostat.get_flows <- function(use_cache=T){
   # exim_codes <- search_eurostat('(Imports|Exports).*partner', fixed=F) %>% data.frame %>% filter(data.end=='2020')
   # exim <- exim_codes$code %>% lapply(get_eurostat, select_time='M')
   # names(exim) <- exim_codes$code
-#
+
 #   exim %>% bind_rows(.id='code') %>% filter(year(time)%in%years) %>% filter(values != 0) -> d
 #   d %<>% left_join(exim_codes %>% select(code, title))
 #   d %>% filter(values != 0) %>%
