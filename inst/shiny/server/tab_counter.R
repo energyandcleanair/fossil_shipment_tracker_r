@@ -77,7 +77,7 @@ output$counter <- renderUI({
   x <- gsubfn::gsubfn("\\w+", labels, '
   <div class="container">
 
-    <h1>Fossil energy bought to Russia</h1>
+    <h1>Payments to Russia for fossil fuels</h1>
     <div class="subtitle">By European Union since 24 February 2022</div>
     <div class="row">
       <div class="col-xs-7">
