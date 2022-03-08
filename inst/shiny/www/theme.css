@@ -30,6 +30,7 @@ h1{
   color: #f6b26b;
   font-size: 20px;
   margin-top: 20px;
+  margin-bottom: -5px;
 }
 
 .small-box {
@@ -51,8 +52,15 @@ h1{
   float: unset;
 }
 
+.loader {
+  margin: 0 auto !important;
+}
 
-.about {
+#counter_loader{
+  height: 60px;
+}
+
+  .about {
     margin-right: auto;
     margin-left: auto;
     width: 65%;

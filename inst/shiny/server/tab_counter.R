@@ -188,8 +188,6 @@ counter_data <- reactive({
     ungroup()
 
   as.list(p$value_eur) %>% `names<-`(p$commodity)
-  # removeUI(
-
 })
 
 

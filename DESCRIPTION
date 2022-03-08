@@ -18,6 +18,7 @@ Imports:
     jsonlite,
     shinyURL,
     rclipboard,
+    metathis,
     magrittr,
     gsubfn,
     mongolite,
