@@ -1,4 +1,6 @@
-
+# Anything that calls autoInvalidate will automatically invalidate
+# every 2 seconds.
+autoInvalidate <- reactiveTimer(sec_per_cycle*1000)
 
 
 # Event Observers --------------------------------------
@@ -66,53 +68,117 @@
 #
 #
 # # Output Elements --------------------------------------
-output$counter <- renderUI({
-
-  req(counter_data())
-  data <- counter_data()
-  data$total <- sum(unlist(data))
-  labels <- lapply(data, scales::label_number_si(accuracy=0.1))
-  # names(labels) <- paste0("#", names(labels))
-
-  x <- gsubfn::gsubfn("\\w+", labels, '
-  <div class="container">
-
-    <h1>Payments to Russia for fossil fuels</h1>
-    <div class="subtitle">By European Union since 24 February 2022</div>
-    <div class="row">
-      <div class="col-xs-7">
-        <div class="big-box">
-          <span class="currency">EUR</span>total
-        </div>
-      </div>
-      <div class="col-xs-5">
-         <div class="small-box">
-          <div class="title">Oil</div>
-          <span class="currency">EUR</span>oil
-        </div>
-
-        <div class="small-box">
-          <div class="title">Fossil Gas</div>
-          <span class="currency">EUR</span>natural_gas
-        </div>
-
-        <div class="small-box">
-          <div class="title">Coal</div>
-          <span class="currency">EUR</span>coal
-        </div>
-      </div>
-  </div>')
-
-  HTML(x)
+output$counter_label_total <- renderUI({
+  req(counter_real_time())
+  total <- sum(unlist(counter_real_time()))
+  HTML(scales::comma(total, accuracy=NULL, suffix=""))
 })
+
+output$counter_label_total <- renderUI({
+  req(counter_real_time())
+  total <- sum(unlist(counter_real_time()))
+  HTML(scales::comma(total, accuracy=NULL, suffix=""))
+})
+
+output$counter_label_natural_gas <- renderUI({
+  req(counter_real_time())
+  HTML(scales::comma(counter_real_time()$natural_gas / 1e6, accuracy=NULL, suffix="M"))
+})
+
+output$counter_label_oil <- renderUI({
+  req(counter_real_time())
+  HTML(scales::comma(counter_real_time()$oil / 1e6, accuracy=NULL, suffix="M"))
+})
+
+output$counter_label_coal <- renderUI({
+  req(counter_real_time())
+  HTML(scales::comma(counter_real_time()$coal / 1e6, accuracy=NULL, suffix="M"))
+})
+
+output$counter_loader <- renderUI({
+  req(counter_real_time())
+  #remove itself
+  removeUI(selector="#counter_loader")
+})
+#
+# output$counter <- renderUI({
+#
+#   req(counter_real_time())
+#
+#   data <- counter_real_time()
+#   print(data)
+#   data$total <- sum(unlist(data))
+#   # labels <- lapply(data, scales::label_number_si(accuracy=0.1))
+#   labels <- lapply(data, function(x) scales::comma(x/1E6, accuracy=NULL, suffix="M"))
+#   # names(labels) <- paste0("#", names(labels))
+#
+#   x <- gsubfn::gsubfn("\\w+", labels, '
+#   <div class="container">
+#
+#     <h1>Payments to Russia for fossil fuels</h1>
+#     <div class="subtitle">By European Union since 24 February 2022</div>
+#     <div class="row">
+#       <div class="col-xs-7">
+#         <div class="big-box">
+#           <span class="currency">EUR</span>total
+#         </div>
+#       </div>
+#       <div class="col-xs-5">
+#          <div class="small-box">
+#           <div class="title">Oil</div>
+#           <span class="currency">EUR</span>oil
+#         </div>
+#
+#         <div class="small-box">
+#           <div class="title">Fossil Gas</div>
+#           <span class="currency">EUR</span>natural_gas
+#         </div>
+#
+#         <div class="small-box">
+#           <div class="title">Coal</div>
+#           <span class="currency">EUR</span>coal
+#         </div>
+#       </div>
+#   </div>')
+#
+#   HTML(x)
+# })
 
 
 # # Reactive Elements --------------------------------------
+flows <- reactive({
+  db.download_flows(source="combined_light")
+})
+
+
+counter_add_each_sec <- reactive({
+  req(flows())
+  p <- flows() %>%
+    filter(date <= lubridate::today()) %>%
+    group_by(commodity, transport, source) %>%
+    # Take average over last few days in case last day data is incorrect
+    arrange(desc(date)) %>%
+    slice_head(n=3) %>%
+    mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
+                                               "oil_products"="oil"))) %>%
+    filter(unit=="tonne") %>%
+    group_by(date, commodity, transport) %>%
+    summarise(value_eur=sum(value_eur)) %>%
+    group_by(date, commodity) %>%
+    summarise(value_eur=sum(value_eur)) %>%
+    group_by(commodity) %>%
+    summarise(value_eur=mean(value_eur)) %>%
+    mutate(value_eur=value_eur/24/3600)
+
+  as.list(p$value_eur) %>% `names<-`(p$commodity)
+
+})
+
 
 counter_data <- reactive({
-  p <- db.download_flows(source="combined_light")
+  req(flows())
 
-  p <- p %>%
+  p <- flows() %>%
     filter(date >= date_from_counter,
            date <= lubridate::today()) %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
@@ -122,7 +188,23 @@ counter_data <- reactive({
     ungroup()
 
   as.list(p$value_eur) %>% `names<-`(p$commodity)
+  # removeUI(
+
 })
+
+
+counter_real_time <- reactive({
+  req(counter_add_each_sec())
+  req(counter_data())
+
+  n_sec <- difftime(lubridate::now(), lubridate::floor_date(lubridate::now(),'day')) %>% as.numeric(units="hours") *3600
+  autoInvalidate()
+
+  lapply(names(counter_data()), function(f){
+    counter_data()[[f]] + counter_add_each_sec()[[f]] * n_sec
+  }) %>% `names<-`(names(counter_data()))
+})
+
 
 
 

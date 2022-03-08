@@ -19,7 +19,7 @@ entsog.get_flows <- function(use_cache=T){
     operator_key = interconnections_russia_exports$toOperatorKey,
     point_key = interconnections_russia_exports$toPointKey,
     direction = "entry",
-    date_from="2018-01-01") %>%
+    date_from="2022-01-01") %>%
     left_join(
       tibble(pointKey=interconnections_russia_exports$toPointKey,
              country=interconnections_russia_exports$toCountryLabel,
@@ -35,7 +35,7 @@ entsog.get_flows <- function(use_cache=T){
     operator_key = interconnections_russia_imports$fromOperatorKey[1],
     point_key = interconnections_russia_imports$fromPointKey[1],
     direction = "exit",
-    date_from="2020-01-01")
+    date_from="2022-01-01")
 
   flows_russia_imports <- flows_russia_imports %>%
     left_join(
@@ -57,6 +57,15 @@ entsog.get_flows <- function(use_cache=T){
            commodity="natural_gas",
            source="entsog") %>%
     ungroup()
+
+
+  # Cut tail with insufficient values
+  count <- flows_russia %>% group_by(date) %>% summarise(count=n())
+  thresholds <- count %>% arrange(desc(date)) %>% head(10) %>% summarise(count=mean(count), date=min(date))
+  flows_russia <-  flows_russia %>%
+    left_join(count) %>%
+    filter((date<=thresholds$date) | (count >= thresholds$count)) %>% arrange(desc(date))
+
 
   saveRDS(flows_russia, f)
   return(flows_russia)

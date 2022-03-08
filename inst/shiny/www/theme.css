@@ -1,6 +1,6 @@
 .big-box {
   color: #35416C;
-  font-size: 80px !important;
+  font-size: 60px !important;
 }
 
 h1{
@@ -19,6 +19,11 @@ h1{
   color: #8cc9D0;
   font-size: 30px !important;
   margin-right: 10px;
+  margin-bottom: 0px;
+}
+
+.big-box .counter{
+  margin-top: -20px;
 }
 
 .small-box > .title {
@@ -40,7 +45,7 @@ h1{
 }
 
 .container {
-  max-width: 600px !important;
+  max-width: 800px !important;
   margin-left: auto;
   margin-right: auto;
   float: unset;

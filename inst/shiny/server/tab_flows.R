@@ -67,24 +67,25 @@ output$download_csv <- downloadHandler(
 
 # Output Elements --------------------------------------
 
-output$selectSource <- renderUI({
-  available_sources <- db.available_sources()
-  choices <- sources[sources %in% available_sources]
-  selectInput("source", "Source:", choices=choices, selected=choices[1])
-})
+# output$selectSource <- renderUI({
+#   available_sources <- db.available_sources()
+#   choices <- sources[sources %in% available_sources]
+#   selectInput("source", "Source:", choices=choices, selected=choices[1])
+# })
 
-output$selectCommodity <- renderUI({
-  req(flows())
-  available_commodities <- unique(flows()$commodity)
-  choices <- commodities[commodities %in% available_commodities]
-  selectInput("commodity", "Commodity:", choices=choices, selected=choices[1])
-})
+# output$selectCommodity <- renderUI({
+#   req(flows())
+#   available_commodities <- unique(flows()$commodity)
+#   choices <- commodities[commodities %in% available_commodities]
+#   selectInput("commodity", "Commodity:", choices=choices, selected=choices[1])
+# })
 
 
 output$selectUnit <- renderUI({
-  req(flows())
-  req(input$commodity)
-  available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
+  # req(flows())
+  # req(input$commodity)
+  # available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
+  available_units <- c("Tonne"="tonne", "EUR"="eur")
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
@@ -92,30 +93,45 @@ output$selectUnit <- renderUI({
 
 # # Reactive Elements --------------------------------------
 flows <- reactive({
-  req(input$source)
-  db.download_flows(source=input$source)
+  db.download_flows(source="combined_light") %>%
+    filter(date >= "2022-01-01") %>%
+    mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
+                                               "oil_products"="oil"))) %>%
+    group_by(date, unit, source, commodity, transport) %>%
+    summarise_at(c("value", "value_eur"),
+                 sum, na.rm=T) %>%
+    ungroup()
 })
+
 
 output$plot <- renderPlotly({
 
   # chart_type <- input$chart_type
-  source <- input$source
+  # source <- input$source
   unit <- input$unit
   flows <- flows()
-  commodity <- input$commodity
-  req(source, flows, commodity, unit)
+  # commodity <- input$commodity
+  # req(source, flows, commodity, unit)
+  req(flows, unit)
 
-  flows <- flows %>%
-    filter(commodity==!!commodity,
-           unit==!!unit,
-           !is.na(value),
-           value>0)
+  commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
+  d <- flows %>%
+    filter(!is.na(value), value>0) %>%
+    filter(unit=="tonne") %>%
+    group_by(date, source, commodity, transport) %>%
+    summarise(value_tonne=sum(value),
+                 value_eur=sum(value_eur)) %>%
+    tidyr::pivot_longer(cols=c(value_tonne, value_eur),
+                        names_prefix="value_",
+                        names_to="unit") %>%
+    filter(unit==!!unit) %>%
+    mutate(commodity=recode(commodity, !!!commodities_rev))
 
 
   # if(source=="entsog"){
-    plt <- ggplot(flows) +
-      geom_line(aes(date, value, col=partner)) +
-      facet_wrap(~country, scales="free_y") +
+    plt <- ggplot(d) +
+      geom_line(aes(date, value, col=transport)) +
+      facet_wrap(~commodity, scales="free_y") +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(min(0,min(flows$value)), NA), expand=expansion(mult=c(0.1, 0.1))) +
       labs(y=unit,

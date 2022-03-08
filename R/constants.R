@@ -16,7 +16,8 @@ commodities <- c(
   "Crude Oil"="crude_oil",
   "Lignite"="lignite",
   "Hard Coal"="coal",
-  "Oil Products"="oil_products"
+  "Oil Products"="oil_products",
+  "Crude Oil & Oil products"="oil"
 )
 
 # Iso2s of importing countries we're interested in
