@@ -9,6 +9,15 @@ prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(),
                                    flows_eurostat_exeu=eurostat_exeu.get_flows())
 db.upload_flows(flows=prices, source="combined")
 
+# For faster loading
+prices_light <- prices %>%
+  filter(date>="2022-01-01") %>%
+  group_by(date, source, commodity) %>%
+  summarise(value_eur=sum(value_eur, na.rm=T)) %>%
+  filter(!is.na(source))
+
+db.upload_flows(flows=prices_light, source="combined_light")
+
 
 # seq(2021, 2016) %>% lapply(creapower::update_generation, data_source="entso")
 #

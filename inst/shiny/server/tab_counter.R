@@ -71,7 +71,7 @@ output$counter <- renderUI({
   req(counter_data())
   data <- counter_data()
   data$total <- sum(unlist(data))
-  labels <- lapply(data, label_number_si(accuracy=0.1))
+  labels <- lapply(data, scales::label_number_si(accuracy=0.1))
   # names(labels) <- paste0("#", names(labels))
 
   x <- gsubfn::gsubfn("\\w+", labels, '
@@ -110,7 +110,7 @@ output$counter <- renderUI({
 # # Reactive Elements --------------------------------------
 
 counter_data <- reactive({
-  p <- db.download_flows(source="combined")
+  p <- db.download_flows(source="combined_light")
 
   p <- p %>%
     filter(date >= date_from_counter,
