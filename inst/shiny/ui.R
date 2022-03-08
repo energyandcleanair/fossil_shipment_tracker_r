@@ -1,6 +1,6 @@
 library(shiny)
 library(shinydashboard)
-
+library(metathis)
 library(shinyBS)
 library(leaflet)
 library(plotly)
@@ -12,6 +12,17 @@ ui <- navbarPage(
     theme = "theme.css",
     id = "nav-page",
 
+
+
+    source(file.path("ui", "tab_counter.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_flows.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_methodology.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_about.R"),  local = TRUE)$value,
+
+    tags$head(
+      tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js")
+    ),
+
     meta() %>%
       meta_social(
         title = "Russian Fossil Cost Counter",
@@ -22,16 +33,7 @@ ui <- navbarPage(
         twitter_creator = "@HubertThieriot",
         twitter_card_type = "summary",
         twitter_site = "@CREACleanAir"
-      ),
-
-    source(file.path("ui", "tab_counter.R"),  local = TRUE)$value,
-    source(file.path("ui", "tab_flows.R"),  local = TRUE)$value,
-    source(file.path("ui", "tab_methodology.R"),  local = TRUE)$value,
-    source(file.path("ui", "tab_about.R"),  local = TRUE)$value,
-
-    tags$head(
-      tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js")
-    )
+      )
 )
 
 
