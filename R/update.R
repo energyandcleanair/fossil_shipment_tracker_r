@@ -3,7 +3,7 @@ update_counter <- function(){
   library(tidyverse)
   library(lubridate)
 
-  eurostat_exeu.get_flows(use_cache=T)
+
   # update_flows(source="eurostat_exeu") # No need, always the same
   update_flows(source="entsog")
 

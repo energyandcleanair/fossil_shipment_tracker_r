@@ -90,7 +90,8 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
   flows_month <- flows %>%
     distinct(date=month, transport, commodity, price)
 
-  models <- readRDS('data/pricing_models.RDS')
+  # models <- readRDS('data/pricing_models.RDS')
+  models <- readRDS(system.file("extdata", "pricing_models.RDS", package="russiacounter"))
 
   # Get predictors
   ttf <- quantmod::getSymbols("TTF=F", from = '2016-01-01', warnings = FALSE, auto.assign = F)
