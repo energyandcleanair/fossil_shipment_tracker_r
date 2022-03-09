@@ -104,7 +104,9 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
     summarise(across(Brent, mean, na.rm=T))
 
   #data downloaded from https://www.investing.com/commodities/rotterdam-coal-futures-streaming-chart
-  ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
+  # ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
+  ara <- readRDS(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter"))
+
   ara_monthly <- ara %>% rename(ARA = Price) %>%
     group_by(date = Date %>% mdy() %>% 'day<-'(1)) %>%
     summarise(across(ARA, mean, na.rm=T))
