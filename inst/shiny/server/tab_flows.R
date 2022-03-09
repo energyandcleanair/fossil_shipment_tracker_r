@@ -92,8 +92,9 @@ output$selectUnit <- renderUI({
 
 
 # # Reactive Elements --------------------------------------
-flows <- reactive({
-  db.download_flows(source="combined_light") %>%
+flows_combined <- reactive({
+  req(flows())
+  flows() %>%
     filter(date >= "2022-01-01") %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%
@@ -109,7 +110,7 @@ output$plot <- renderPlotly({
   # chart_type <- input$chart_type
   # source <- input$source
   unit <- input$unit
-  flows <- flows()
+  flows <- flows_combined()
   # commodity <- input$commodity
   # req(source, flows, commodity, unit)
   req(flows, unit)
