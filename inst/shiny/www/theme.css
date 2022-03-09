@@ -1,6 +1,18 @@
 .big-box {
   color: #35416C;
-  font-size: 60px !important;
+  font-size: 10vw;
+  font-size: 40px; /* just in case browser doesn't know vw */
+  margin-bottom: 20px;
+}
+
+@media (min-width: 600px) {
+  .big-box {
+     font-size: 80px;
+  }
+
+  .big-box > .currency{
+    font-size: 30px;
+  }
 }
 
 h1{
@@ -17,7 +29,7 @@ h1{
 
 .big-box > .currency{
   color: #8cc9D0;
-  font-size: 30px !important;
+  font-size: 20px;
   margin-right: 10px;
   margin-bottom: 0px;
 }
@@ -46,7 +58,7 @@ h1{
 }
 
 .container {
-  max-width: 800px !important;
+  max-width: 600px !important;
   margin-left: auto;
   margin-right: auto;
   float: unset;
@@ -56,9 +68,6 @@ h1{
   margin: 0 auto !important;
 }
 
-#counter_loader{
-  height: 60px;
-}
 
   .about {
     margin-right: auto;
