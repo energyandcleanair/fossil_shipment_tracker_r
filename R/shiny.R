@@ -1,13 +1,12 @@
 
 #' @export
-deployShinyApp <- function() {
+deployShinyApp <- function(lite=T) {
   if(!require(rsconnect)) install.packages('reconnect')
   if(!require(dotenv)) install.packages('dotenv')
   if(!require(devtools)) install.packages('devtools')
 
-  # # Basically telling ShinyApps where to get creahia
+  # Telling Shinyapps where to find packages
   urls <- c(
-    # "trafficonese/leaflet.extras2",
     "energyandcleanair/202203_russian_gas",
     "energyandcleanair/rcrea")
   remotes::install_github(urls, force=T, upgrade="never")
@@ -18,10 +17,16 @@ deployShinyApp <- function() {
   rsconnect::setAccountInfo(name=Sys.getenv("SHINYAPP_ACCOUNT"),
                             token=Sys.getenv("SHINYAPP_TOKEN"),
                             secret=Sys.getenv("SHINYAPP_SECRET"))
-  # # Deploy production
-  rsconnect::deployApp("inst/shiny",
-                       appName="russia_counter",
-                       account = Sys.getenv("SHINYAPP_ACCOUNT"),
-                       forceUpdate = T)
-
+  # Two versions
+  if(lite){
+    rsconnect::deployApp("inst/shiny_lite",
+                         appName="russia_counter_lite",
+                         account = Sys.getenv("SHINYAPP_ACCOUNT"),
+                         forceUpdate = T)
+  }else{
+    rsconnect::deployApp("inst/shiny",
+                         appName="russia_counter",
+                         account = Sys.getenv("SHINYAPP_ACCOUNT"),
+                         forceUpdate = T)
   }
+}
