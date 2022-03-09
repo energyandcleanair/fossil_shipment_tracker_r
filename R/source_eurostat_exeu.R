@@ -2,6 +2,11 @@ eurostat_exeu.get_flows <- function(use_cache=F){
 
   # f <- 'data/DS-1262527_1_Data.csv'
   f <- system.file("extdata", "DS-1262527_1_Data.RDS", package="russiacounter")
+  print(sprintf("Reading %s",f))
+  if(!file.exists(f)){
+    stop(sprintf("Can't find file %s",f))
+  }
+
   trade <- readRDS(f) %>%
     mutate(date=paste(1,PERIOD) %>% strptime("%d %b. %Y") %>% as.Date(),
            Value = gsub(',', '', Value) %>% as.numeric) %>%
@@ -27,7 +32,7 @@ eurostat_exeu.get_flows <- function(use_cache=F){
   trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
   trade$transport[grep('Sea', trade$transport)] <- "sea"
 
-  trade %<>% filter(grepl('pipeline|sea', transport),
+  trade <- trade %>% filter(grepl('pipeline|sea', transport),
                     grepl('^natural_gas|^coal|crude_oil|oil_products', commodity),
                     !is.na(value))
 
