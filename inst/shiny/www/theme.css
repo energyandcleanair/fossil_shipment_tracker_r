@@ -64,6 +64,11 @@ h1{
   float: unset;
 }
 
+.shiny-spinner-placeholder{
+  height: 120px !important;
+}
+
+
 .loader {
   margin: 0 auto !important;
 }
