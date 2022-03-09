@@ -38,8 +38,11 @@ tabPanel("Counter",
                                  htmlOutput("counter_label_coal", inline=T)
                              )
                          )
-                     )
+                     ),
+                   div(class="row",
+                       div(class="col-xs-12 caption", span("Source: CREA analysis based on Eurostat and ENTSO-G."))
                  )
              )
          )
+)
 

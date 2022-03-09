@@ -72,8 +72,14 @@ h1{
   margin: 0 auto !important;
 }
 
-
-  .about {
+.caption {
+  display: flex;
+  justify-content: right;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #CACACA;
+}
+.about {
     margin-right: auto;
     margin-left: auto;
     width: 65%;
