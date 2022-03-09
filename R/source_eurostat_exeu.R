@@ -1,6 +1,8 @@
 eurostat_exeu.get_flows <- function(use_cache=F){
 
-  trade <- read_csv('data/DS-1262527_1_Data.csv') %>%
+  # f <- 'data/DS-1262527_1_Data.csv'
+  f <- system.file("extdata", "DS-1262527_1_Data.RDS", package="russiacounter")
+  trade <- readRDS(f) %>%
     mutate(date=paste(1,PERIOD) %>% strptime("%d %b. %Y") %>% as.Date(),
            Value = gsub(',', '', Value) %>% as.numeric) %>%
     filter(!is.na(date)) %>%
