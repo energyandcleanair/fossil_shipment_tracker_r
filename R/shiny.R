@@ -1,6 +1,6 @@
 
 #' @export
-deployShinyApp <- function(lite=T) {
+deployShinyApp <- function(lite=T, test=T) {
   if(!require(rsconnect)) install.packages('reconnect')
   if(!require(dotenv)) install.packages('dotenv')
   if(!require(devtools)) install.packages('devtools')
@@ -20,12 +20,12 @@ deployShinyApp <- function(lite=T) {
   # Two versions
   if(lite){
     rsconnect::deployApp("inst/shiny_lite",
-                         appName="russia_counter_lite",
+                         appName=paste0("russia_counter_lite",ifelse(test,"_test","")),
                          account = Sys.getenv("SHINYAPP_ACCOUNT"),
                          forceUpdate = T)
   }else{
     rsconnect::deployApp("inst/shiny",
-                         appName="russia_counter",
+                         appName=paste0("russia_counter",ifelse(test,"_test","")),
                          account = Sys.getenv("SHINYAPP_ACCOUNT"),
                          forceUpdate = T)
   }

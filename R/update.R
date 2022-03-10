@@ -6,6 +6,7 @@ update_counter <- function(){
 
   # update_flows(source="eurostat_exeu") # No need, always the same
   update_flows(source="entsog")
+  update_flows(source="eurostat", use_cache=T, date_from="2019-01-01")
 
   prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
                                      flows_eurostat_exeu=eurostat_exeu.get_flows(use_cache=T))

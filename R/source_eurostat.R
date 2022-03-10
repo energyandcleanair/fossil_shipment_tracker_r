@@ -77,7 +77,7 @@ eurostat.get_flows <- function(use_cache=T){
            commodity=recode(siec, !!!commodity_codes)) %>%
     filter(value>0) %>%
     filter(!grepl('EU|EA19|EA', geo), partner != 'TOTAL') %>%
-    filter(partner %in% c("RU","BY","UA")) %>%
+    # filter(partner %in% c("RU","BY","UA")) %>%
     mutate(country=countrycode::countrycode(geo, "iso2c", "country.name",
                                             custom_match = c("UK"="United Kingdom", "EL"="Greece", "XK"="XK"))) %>%
     mutate(partner=countrycode::countrycode(partner, "iso2c", "country.name")) %>%

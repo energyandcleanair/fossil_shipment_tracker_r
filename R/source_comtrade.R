@@ -33,7 +33,7 @@ comtrade.get_flows <- function(use_cache=T){
     q %>%
         filter(!grepl("EU-28", reporter)) %>%
         mutate(country_iso2=countrycode(reporter, "country.name", "iso2c")) %>%
-        filter(country_iso2 %in% iso2s) %>%
+        filter(country_iso2 %in% eugb_iso2s) %>%
         mutate(country=countrycode(country_iso2, "iso2c", "country.name")) %>%
         mutate(date=as.Date(strptime(paste0(period,"01"), format="%Y%m%d"))) %>%
         group_by(commodity_code, commodity, date, country, partner) %>%

@@ -139,14 +139,14 @@ output$counter_loader <- renderUI({
 
 
 # # Reactive Elements --------------------------------------
-flows <- reactive({
+counter_flows <- reactive({
   db.download_flows(source="combined_light")
 })
 
 
 counter_add_each_sec <- reactive({
-  req(flows())
-  p <- flows() %>%
+  req(counter_flows())
+  p <- counter_flows() %>%
     filter(date <= lubridate::today()) %>%
     group_by(commodity, transport, source) %>%
     # Take average over last few days in case last day data is incorrect
@@ -169,9 +169,9 @@ counter_add_each_sec <- reactive({
 
 
 counter_data <- reactive({
-  req(flows())
+  req(counter_flows())
 
-  p <- flows() %>%
+  p <- counter_flows() %>%
     filter(date >= date_from_counter,
            date <= lubridate::today()) %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
