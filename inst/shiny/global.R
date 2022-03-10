@@ -3,7 +3,6 @@ library(shinyWidgets)
 library(shinycssloaders)
 library(countrycode)
 library(dplyr)
-library(shinyURL)
 library(rclipboard)
 # library(shinyjs)
 

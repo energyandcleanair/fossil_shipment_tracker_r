@@ -17,7 +17,6 @@ Imports:
     pbapply,
     countrycode,
     jsonlite,
-    shinyURL,
     rclipboard,
     metathis,
     magrittr,
