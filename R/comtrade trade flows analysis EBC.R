@@ -67,7 +67,7 @@ eurostat_data %>%
   summarise(share_of_ru = values[partner=='RU']/values[partner=='TOTAL']) %>%
   bind_rows(tibble(geo='AT', share_of_ru=.8)) ->
   gas_share_from_ru
-
+#reference for Austria https://www.thelocal.at/20220303/how-reliant-is-austria-on-russia-for-energy/
 
 total_imports_net %>% filter(product == 'fossil gas total') %>%
   inner_join(gas_share_from_ru %>%
@@ -79,8 +79,13 @@ total_imports_net %>% filter(product == 'fossil gas total') %>%
 imports_ru_net %>% anti_join(ru_adjusted %>% select(reporter, partner, product, year)) %>%
   bind_rows(ru_adjusted) -> ru_adjusted
 
-ru_adjusted %<>% group_by(reporter, year) %>%
-  filter(!(any('LNG' %in% product) & product=='fossil gas total'))
+ru_adjusted %<>% group_by(reporter) %>%
+  group_modify(function(df, ...) {
+    totgas <- sum(df$trade_value_usd[df$product=='fossil gas total'])
+    pipe_lng <- sum(df$trade_value_usd[df$product %in% c('pipeline gas', 'LNG')])
+    to_excl = ifelse(pipe_lng > totgas, 'gas total', 'pipeline|LNG')
+    df %>% filter(!grepl(to_excl, product))
+  })
 
 
 ru_adjusted %<>% mutate(EU = reporter_iso %in% codelist$iso3c[!is.na(codelist$eu28)] & reporter_iso != 'GBR')
