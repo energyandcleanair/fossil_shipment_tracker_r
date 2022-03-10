@@ -15,10 +15,12 @@ commodities <- c(
   "Liquefied Natural Gas"="lng",
   "Crude Oil"="crude_oil",
   "Lignite"="lignite",
-  "Hard Coal"="coal"
+  "Hard Coal"="coal",
+  "Oil Products"="oil_products",
+  "Crude Oil & Oil products"="oil"
 )
 
 # Iso2s of importing countries we're interested in
-iso2s <- c("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU",
-           "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SW", "GB"
+eugb_iso2s <- c("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU",
+           "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SW", "GB", "UK"
 )

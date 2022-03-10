@@ -12,12 +12,13 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     tidyverse,
+    lubridate,
     scales,
     pbapply,
     countrycode,
     jsonlite,
-    shinyURL,
     rclipboard,
+    metathis,
     magrittr,
     gsubfn,
     mongolite,

@@ -59,14 +59,11 @@ autoInvalidate <- reactiveTimer(sec_per_cycle*1000)
 
 # Downloadable csv of selected dataset
 
-
-
-
 # output$buttonClip <- renderUI({
 #   rclipButton("clipbtn", " Copy URL", input$.shinyURL, icon("copy"))
 # })
-#
-#
+
+
 # # Output Elements --------------------------------------
 output$counter_label_total <- renderUI({
   req(counter_real_time())
@@ -143,11 +140,6 @@ output$counter_loader <- renderUI({
 
 # # Reactive Elements --------------------------------------
 counter_flows <- reactive({
-  # Don't load flows if this is not the tab queried
-  query <- parseQueryString(session$clientData$url_search)
-  if(!is.null(query$tab) && (query$tab != "counter")){
-    return(NULL)
-  }
   db.download_flows(source="combined_light")
 })
 

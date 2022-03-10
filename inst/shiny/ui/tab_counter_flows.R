@@ -1,5 +1,5 @@
 tabPanel("Flows",
-         value="flows",
+         value="counter_flows",
 
          sidebarLayout(
            sidebarPanel(
@@ -10,13 +10,11 @@ tabPanel("Flows",
              # uiOutput("selectSource"),
              # uiOutput("selectCommodity"),
              uiOutput("selectUnit"),
-             sliderInput("year", "Year:", min=2019, max=2021, value=2021, step=1),
-
              # selectInput("color_by", "Color by:", multiple=F, choices = color_bys, selected=color_bys[2]),
              # selectInput("group_by", "Group by:", multiple=F, choices = group_bys, selected=group_bys[1]),
              # selectInput("chart_type", "Chart type:", multiple=F, choices = chart_types, selected=chart_types[1]),
              # uiOutput("selectUnit"),
-             downloadButton(outputId="download_csv", "Download (.csv)", class="btn-secondary")
+             downloadButton(outputId="download_counter_flows_csv", "Download (.csv)", class="btn-secondary")
            ),
            # Show a plot of the generated distribution
            mainPanel(
