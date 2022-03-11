@@ -144,10 +144,10 @@ output$counter_loader <- renderUI({
 # # Reactive Elements --------------------------------------
 counter_flows <- reactive({
   # Don't load flows if this is not the tab queried
-  query <- parseQueryString(session$clientData$url_search)
-  if(!is.null(query$tab) && (query$tab != "counter")){
-    return(NULL)
-  }
+  # query <- parseQueryString(session$clientData$url_search)
+  # if(!is.null(query$tab) && (query$tab != "counter")){
+  #   return(NULL)
+  # }
   db.download_flows(source="combined_light")
 })
 
