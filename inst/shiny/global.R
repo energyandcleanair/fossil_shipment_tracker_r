@@ -12,8 +12,11 @@ library(rclipboard)
 #####################
 library(russiacounter)
 
+flows_sources <- c("Eurostat"="eurostat")
+
 color_bys <- c("Country"="country", "Sector"="sector", "Fuel"="fuel")
 group_bys <- c("Country"="country", "Sector"="sector", "Fuel"="fuel")
+selected_countries <- c("EU", "Germany", "Italy", "France", "Finland", "United Kingdom", "Austria", "Sweden")
 # chart_types <- c("Bar (Horizontal)"="barh",
 #                  "Bar (Vertical)"="barv",
 #                  "Lines"="line",

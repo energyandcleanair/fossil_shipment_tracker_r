@@ -67,11 +67,7 @@ output$download_counter_flows_csv <- downloadHandler(
 
 # Output Elements --------------------------------------
 
-# output$selectSource <- renderUI({
-#   available_sources <- db.available_sources()
-#   choices <- sources[sources %in% available_sources]
-#   selectInput("source", "Source:", choices=choices, selected=choices[1])
-# })
+
 
 # output$selectCommodity <- renderUI({
 #   req(flows())

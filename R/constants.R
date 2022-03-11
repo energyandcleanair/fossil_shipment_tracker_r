@@ -10,15 +10,39 @@ sources <- c(
   "EUROSTAT"="eurostat"
 )
 
+
+
+
 commodities <- c(
-  "Fossil Gas"="natural_gas",
-  "Liquefied Natural Gas"="lng",
+  "Fossil Gas"="gas_all",
+  "Fossil Gas (pipeline)"="natural_gas",
+  "LNG"="lng",
+  "Coal gas"="coal_gas",
   "Crude Oil"="crude_oil",
   "Lignite"="lignite",
   "Hard Coal"="coal",
   "Oil Products"="oil_products",
-  "Crude Oil & Oil products"="oil"
+  "Oil (Others)"="oil_others",
+  "Crude Oil & Oil products"="oil",
+  "Coke"="coke",
+  "Coal & Coke"="coal_coke",
+  "Tar"="tar"
 )
+
+
+hs_commodities <- c(
+  "2711"="gas_all",
+  "271121"="natural_gas",
+  "271111"="lng",
+  "2701"="coal",
+  "2704"="coke",
+  "2710"="oil_others",
+  "2709"="oil",
+  "2705"="coal_gas",
+  "2706"="tar"
+)
+
+
 
 # Iso2s of importing countries we're interested in
 eugb_iso2s <- c("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU",

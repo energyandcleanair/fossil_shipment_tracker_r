@@ -9,6 +9,35 @@ source('iea.R')
 #   summarise_at("price", mean, na.rm=T)
 
 
+entso <- db.download_flows("entsog")
+comtrade <- db.download_flows("comtrade")
+eurostat <- db.download_flows("eurostat")
+eurostat_byhs <- db.download_flows("eurostat_byhs")
+eurostat_exeu <- db.download_flows("eurostat_exeu")
+
+
+d <- bind_rows(
+  entso,
+  comtrade,
+  eurostat,
+  eurostat_byhs,
+  eurostat_exeu
+) %>%
+  group_by(country, partner, commodity, unit, source, date=lubridate::floor_date(date, 'month')) %>%
+  summarise(value=sum(value, na.rm=T)) %>%
+  mutate(country=ifelse(grepl("Russia", country),"Russia", country),
+         partner=ifelse(grepl("Russia", partner),"Russia", partner))
+
+unique(d$partner)
+
+d %>% filter(country %in% c("Germany"),
+             grepl("gas", commodity)) %>%
+  ggplot() +
+  geom_line(aes(date, value, col=source)) +
+  facet_wrap(country~partner+unit+commodity)
+
+
+
 entso <- get_entsog()
 comtrade <- get_comtrade()
 eurostat <- get_eurostat()

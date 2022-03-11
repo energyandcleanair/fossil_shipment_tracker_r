@@ -18,9 +18,11 @@ price.brent<- function(date_from="2020-01-01"){
 }
 
 
-price.eur_per_usd <- function(date_from="2018-01-01"){
-  eur_per_usd <- quantmod::getSymbols("EUR=X", from=date_from, auto.assign = F)
-  tibble(date=zoo::index(eur_per_usd), eur_per_usd=as.numeric(eur_per_usd$`EUR=X.Adjusted`))
+price.eur_per_usd <- function(date_from="2018-01-01", date_to=lubridate::today()){
+  eur_per_usd <- priceR::historical_exchange_rates("USD", to = "EUR",
+                                   start_date = date_from,
+                                   end_date = date_to)
+  tibble(eur_per_usd) %>% `names<-`(c("date","eur_per_usd"))
 }
 
 

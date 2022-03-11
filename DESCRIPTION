@@ -26,7 +26,8 @@ Imports:
     entsog,
     eurostat,
     comtradr,
-    tidyquant
+    tidyquant,
+    priceR
 Remotes:
     energyandcleanair/entsog
 RoxygenNote: 7.1.1

@@ -87,6 +87,10 @@ h1{
     color: #35416C;
 }
 
+#plot_trade {
+  margin-top: 10px;
+}
+
 .about table {
   margin-top: 20px;
   border: 1px solid #35416C;
