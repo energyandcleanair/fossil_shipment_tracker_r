@@ -1,4 +1,4 @@
-tabPanel("Flows",
+tabPanel("Natural gas flows",
          value="flows",
 
          sidebarLayout(
@@ -20,10 +20,11 @@ tabPanel("Flows",
            mainPanel(
              width=10,
              div(class="container_trade",
-                 h1("Estimated European imports from Russia in 2022"),
+                 h1("European natural gas imports from Russia in 2022"),
+                 div(class="subtitle", "Pipeline distribution only"),
                  plotlyOutput("plot_flows", height='calc(100vh - 180px)') %>% withSpinner(color="#8cc9D0"),
                  div(class="row",
-                     div(class="col-xs-12 caption", span("Source: CREA analysis based on Eurostat and ENTSOG")
+                     div(class="col-xs-12 caption", span("Source: CREA analysis based on ENTSOG")
                      )
                  )
              )

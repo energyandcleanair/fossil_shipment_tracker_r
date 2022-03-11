@@ -81,7 +81,7 @@ output$selectUnit <- renderUI({
   # req(flows())
   # req(input$commodity)
   # available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
-  available_units <- c("Tonne"="tonne", "EUR"="eur")
+  available_units <- c("Tonne / day"="tonne", "EUR / day"="eur")
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
@@ -98,12 +98,13 @@ flows <- reactive({
 flows_combined <- reactive({
   req(flows())
   flows() %>%
-    filter(date >= "2022-01-01") %>%
+    filter(date >= "2021-01-01") %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%
     group_by(date, unit, source, commodity, transport) %>%
     summarise_at(c("value", "value_eur"),
                  sum, na.rm=T) %>%
+    filter(commodity=="natural_gas") %>%
     ungroup()
 })
 
