@@ -56,9 +56,9 @@
 # Download Handlers ----------------------------------
 
 # Downloadable csv of selected dataset
-output$download_counter_flows_csv <- downloadHandler(
+output$download_flows_csv <- downloadHandler(
   filename = function() {
-    sprintf("counter_flows_%s.csv", input$source)
+    sprintf("flows_%s.csv", input$source)
   },
   content = function(file) {
     write.csv(counter_flows(), file, row.names = FALSE)
@@ -101,7 +101,7 @@ flows_combined <- reactive({
 })
 
 
-output$plot <- renderPlotly({
+output$plot_flows <- renderPlotly({
 
   # chart_type <- input$chart_type
   # source <- input$source
