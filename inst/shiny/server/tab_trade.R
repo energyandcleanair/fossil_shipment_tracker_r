@@ -74,6 +74,16 @@ output$plot_trade <- renderPlotly({
   f <- flows()
   req(f)
 
+  f %>%
+    filter(unit=="usd") %>%
+    group_by(country, year=lubridate::year(date)) %>%
+    summarise(value=sum(value, na.rm=T)) %>%
+    group_by(country) %>%
+    summarise(value=mean(value, na.rm=T)) %>%
+    arrange(desc(value)) %>%
+    head(20) %>%
+    pull(country) -> top_importers_from_russia
+
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
 
   plt <- f %>%
@@ -90,8 +100,8 @@ output$plot_trade <- renderPlotly({
     ggplot(aes(country, value, fill=commodity, text=label)) +
     geom_col() + coord_flip() +
     rcrea::scale_fill_crea_d('dramatic', col.index = c(1:7), name=NULL) +
-    scale_x_discrete(limits=top_importers_from_russia$reporter[1:20] %>% rev) +
-    theme_crea() +
+    scale_x_discrete(limits=top_importers_from_russia %>% rev) +
+    rcrea::theme_crea() +
     scale_y_continuous(expand=expansion(mult=c(0,.05))) +
     labs(
       # title='Largest importers of fossil fuels from Russia',

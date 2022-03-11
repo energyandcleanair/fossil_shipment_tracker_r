@@ -9,10 +9,13 @@ deployShinyApp <- function(lite=T, test=T) {
   urls <- c(
     "energyandcleanair/202203_russian_gas",
     "energyandcleanair/rcrea")
-  remotes::install_github(urls, force=T, upgrade="never")
+  remotes::install_github(urls, force=F, upgrade="never")
 
   # try(dotenv::load_dot_env())
   try(readRenviron(".Renviron"))
+
+  options(rsconnect.http.trace = TRUE)
+  options(rsconnect.http.verbose = TRUE)
 
   rsconnect::setAccountInfo(name=Sys.getenv("SHINYAPP_ACCOUNT"),
                             token=Sys.getenv("SHINYAPP_TOKEN"),
