@@ -81,7 +81,7 @@ output$selectUnit <- renderUI({
   # req(flows())
   # req(input$commodity)
   # available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
-  available_units <- c("Tonne / day"="tonne", "EUR / day"="eur")
+  available_units <- c("tonne / day"="tonne", "EUR / day"="eur")
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
@@ -119,6 +119,9 @@ output$plot_flows <- renderPlotly({
   # req(source, flows, commodity, unit)
   req(flows, unit)
 
+  unit_label <- list(tonne="tonne / day", eur="EUR / day")[[unit]]
+
+
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
   d <- flows %>%
     filter(!is.na(value), value>0) %>%
@@ -139,7 +142,7 @@ output$plot_flows <- renderPlotly({
       facet_wrap(~commodity, scales="free_y") +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(min(0,min(flows$value)), NA), expand=expansion(mult=c(0.1, 0.1))) +
-      labs(y=unit,
+      labs(y=unit_label,
            x=NULL)
   # }
 
