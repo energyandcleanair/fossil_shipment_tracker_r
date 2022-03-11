@@ -138,7 +138,7 @@ output$plot_flows <- renderPlotly({
 
   # if(source=="entsog"){
     plt <- ggplot(d) +
-      geom_line(aes(date, value, col=transport)) +
+      geom_line(aes(date, value)) +
       facet_wrap(~commodity, scales="free_y") +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(min(0,min(flows$value)), NA), expand=expansion(mult=c(0.1, 0.1))) +
@@ -244,7 +244,8 @@ output$plot_flows <- renderPlotly({
   #                           tickformat=tickformat))
   # }
 
-  plt <- ggplotly(plt)
+  plt <- ggplotly(plt)  %>% config(displayModeBar = F)
+
     #
     # layout(
     #   annotations = list(x = 1, y = 0, text = caption,

@@ -108,7 +108,7 @@ output$plot_trade <- renderPlotly({
       x='', y='bln EUR/year',
       subtitle='2019–2021 average')
 
-  ggplotly(plt, tooltip = c("text"))
+  ggplotly(plt, tooltip = c("text")) %>% config(displayModeBar = F)
   # ggsave('Largest importers of fossil fuels from Russia.png')
 
 
