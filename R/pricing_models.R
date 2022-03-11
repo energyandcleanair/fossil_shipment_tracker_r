@@ -15,7 +15,7 @@ build_price_models <- function(){
     summarise(across(Brent, mean, na.rm=T))
 
   #data downloaded from https://www.investing.com/commodities/rotterdam-coal-futures-streaming-chart
-  ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
+  ara <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter"))
   ara_monthly <- ara %>% rename(ARA = Price) %>%
     group_by(date = Date %>% mdy() %>% 'day<-'(1)) %>%
     summarise(across(ARA, mean, na.rm=T))
@@ -36,12 +36,16 @@ build_price_models <- function(){
   trade$commodity[grep('crude$', trade$commodity)] <- "crude_oil"
   trade$commodity[grep('excl\\. crude', trade$commodity)] <- "oil_products"
   trade$commodity[grep('^Coal', trade$commodity)] <- "coal"
-  trade$commodity[grep('gas', trade$commodity)] <- "natural_gas"
+  # trade$commodity[grep('gas', trade$commodity)] <- "natural_gas"
+  trade$commodity[grepl('gas', trade$commodity) & grepl('Fixed', trade$transport)] <- "natural_gas"
+  trade$commodity[grepl('gas', trade$commodity) & grepl('Sea', trade$transport)] <- "lng"
+
+
   trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
   trade$transport[grep('Sea', trade$transport)] <- "sea"
 
   trade %<>% filter(grepl('pipeline|sea', transport),
-                    grepl('^natural_gas|^coal|crude_oil|oil_products', commodity),
+                    grepl('^natural_gas|lng|^coal|crude_oil|oil_products', commodity),
                     !is.na(price)) %>%
     left_join(prices_monthly)
 
@@ -51,7 +55,7 @@ build_price_models <- function(){
       independents = case_when(group$commodity=='coal' ~ 'ARA',
                                group$commodity=='natural_gas' & group$transport == 'pipeline' ~
                                  'Brent+TTF*date*abs(month(date)-9)',
-                               group$commodity=='natural_gas' ~ 'TTF',
+                               group$commodity=='lng' ~ 'TTF',
                                grepl('oil', group$commodity) & group$transport == 'sea' ~
                                  'Brent + lag(Brent) + lag(Brent, 3) + 0',
                                T ~ 'Brent + lag(price, 12)')
@@ -74,5 +78,6 @@ build_price_models <- function(){
     ggplot(aes(price, predicted_price, col=transport)) +
     facet_wrap(~commodity, scales='free') + geom_point() + geom_abline()+ geom_smooth()
 
+  saveRDS(trade_with_predictions, 'inst/extdata/pricing_models.RDS')
   saveRDS(trade_with_predictions, 'data/pricing_models.RDS')
 }

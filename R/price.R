@@ -75,7 +75,11 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
 
     # Spread on a daily basis as opposed to a monthly one
     flows_eurostat_exeu %>%
-      filter(unit=="tonne") %>%
+      filter(unit %in% c("tonne","eur")) %>%
+      tidyr::pivot_wider(names_from="unit", names_prefix="value_", values_from="value") %>%
+      mutate(price=value_eur/value_tonne) %>%
+      rename(value=value_tonne) %>%
+      select(-c(value_eur)) %>%
       filter(paste(commodity, transport) != paste("natural_gas", "pipeline")) %>%
       right_join(
         tibble(date_day=seq(min(flows_eurostat_exeu$date),
@@ -107,7 +111,7 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
 
   #data downloaded from https://www.investing.com/commodities/rotterdam-coal-futures-streaming-chart
   # ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
-  ara <- read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter"))
+  ara <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter"))
 
   ara_monthly <- ara %>% rename(ARA = Price) %>%
     group_by(date = Date %>% mdy() %>% 'day<-'(1)) %>%

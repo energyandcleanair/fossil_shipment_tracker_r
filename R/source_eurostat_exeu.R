@@ -35,8 +35,8 @@ eurostat_exeu.get_flows <- function(use_cache=F){
   trade$commodity[grepl('gas', trade$commodity) & grepl('Sea', trade$transport)] <- "lng"
 
 
-  # trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
-  # trade$transport[grep('Sea', trade$transport)] <- "sea"
+  trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
+  trade$transport[grep('Sea', trade$transport)] <- "sea"
 
   trade <- trade %>%
     filter(grepl('^natural_gas|^coal|crude_oil|oil_products|lng|^coke', commodity),

@@ -58,7 +58,7 @@
 # Downloadable csv of selected dataset
 output$download_flows_csv <- downloadHandler(
   filename = function() {
-    sprintf("flows_%s.csv", input$source)
+    sprintf("flows.csv")
   },
   content = function(file) {
     write.csv(counter_flows(), file, row.names = FALSE)

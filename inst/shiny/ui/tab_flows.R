@@ -19,8 +19,15 @@ tabPanel("Flows",
            # Show a plot of the generated distribution
            mainPanel(
              width=10,
-             # htmlOutput("message", class="msg"),
-             plotlyOutput("plot_flows", height='calc(100vh - 80px)') %>% withSpinner(color="#8cc9D0")
+             div(class="container_trade",
+                 h1("Largest importers of fossil fuels from Russia"),
+                 div(class="subtitle", "2019–2021 average"),
+                 plotlyOutput("plot_flows", height='calc(100vh - 180px)') %>% withSpinner(color="#8cc9D0"),
+                 div(class="row",
+                     div(class="col-xs-12 caption", span("Source: CREA analysis based on Eurostat and ENTSOG")
+                     )
+                 )
+             )
            )
          )
 )
