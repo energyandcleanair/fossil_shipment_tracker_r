@@ -85,12 +85,19 @@ output$selectUnit <- renderUI({
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
-
+flows <- reactive({
+  # Don't load flows if this is not the tab queried
+  # query <- parseQueryString(session$clientData$url_search)
+  # if(!is.null(query$tab) && (query$tab != "counter")){
+  #   return(NULL)
+  # }
+  db.download_flows(source="combined_light")
+})
 
 # # Reactive Elements --------------------------------------
 flows_combined <- reactive({
-  req(counter_flows())
-  counter_flows() %>%
+  req(flows())
+  flows() %>%
     filter(date >= "2022-01-01") %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%

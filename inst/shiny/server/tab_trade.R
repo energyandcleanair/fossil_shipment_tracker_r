@@ -56,7 +56,7 @@ output$selectCountry <- renderUI({
 })
 
 # # Reactive Elements --------------------------------------
-flows <- reactive({
+trade <- reactive({
   # Lauri's mix of comtrade and eurostat
   # db.download_flows(source="comtrade_eurostat_russia")
   readRDS(system.file("extdata","comtrade_eurostat_russia.RDS", package="russiacounter"))
@@ -71,7 +71,7 @@ output$plot_trade <- renderPlotly({
   # input$commodity
   # top_n <- 10
   # direction <- "to_europe" # To implement: from_russia
-  f <- flows()
+  f <- trade()
   req(f)
 
   f %>%
