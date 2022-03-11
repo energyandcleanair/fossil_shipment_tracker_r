@@ -20,8 +20,7 @@ tabPanel("Flows",
            mainPanel(
              width=10,
              div(class="container_trade",
-                 h1("Largest importers of fossil fuels from Russia"),
-                 div(class="subtitle", "2019–2021 average"),
+                 h1("Estimated European imports from Russia in 2022"),
                  plotlyOutput("plot_flows", height='calc(100vh - 180px)') %>% withSpinner(color="#8cc9D0"),
                  div(class="row",
                      div(class="col-xs-12 caption", span("Source: CREA analysis based on Eurostat and ENTSOG")
