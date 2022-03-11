@@ -79,6 +79,7 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
       tidyr::pivot_wider(names_from="unit", names_prefix="value_", values_from="value") %>%
       mutate(price=value_eur/value_tonne) %>%
       rename(value=value_tonne) %>%
+      mutate(unit="tonne") %>%
       select(-c(value_eur)) %>%
       filter(paste(commodity, transport) != paste("natural_gas", "pipeline")) %>%
       right_join(

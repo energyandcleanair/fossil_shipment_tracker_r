@@ -19,7 +19,7 @@ entsog.get_flows <- function(use_cache=T){
     operator_key = interconnections_russia_exports$toOperatorKey,
     point_key = interconnections_russia_exports$toPointKey,
     direction = "entry",
-    date_from="2022-01-01") %>%
+    date_from="2021-01-01") %>%
     left_join(
       tibble(pointKey=interconnections_russia_exports$toPointKey,
              country=interconnections_russia_exports$toCountryLabel,

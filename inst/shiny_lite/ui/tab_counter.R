@@ -41,7 +41,7 @@ tabPanel("Counter",
                      ),
                    div(class="row",
                        div(class="col-xs-12 caption", span("Source: CREA analysis. See methodology"), HTML("&nbsp;"),
-                           a(href="https://crea.shinyapps.io/russia_counter/?tab=methodology","here"), span(".")
+                           a(href="https://crea.shinyapps.io/russia_counter/?tab=methodology", target="_blank","here"), span(".")
                        )
                  )
              )

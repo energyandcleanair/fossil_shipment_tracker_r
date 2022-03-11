@@ -15,20 +15,16 @@ update_counter <- function(){
   prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
                                      flows_eurostat_exeu=eurostat_exeu.get_flows(use_cache=T))
 
-  prices$unit <- "tonne" #TODO REMOVE BUT SEE WHY IT IS REQUIRED
-  unique(prices$transport)
   prices <- prices %>% filter(transport %in% c("pipeline","sea"))
 
   db.upload_flows(flows=prices, source="combined")
 
   # For faster loading
   prices_light <- prices %>%
-    filter(date>="2022-01-01") %>%
+    filter(date>="2021-01-01") %>%
     group_by(date, source, commodity, transport, unit) %>%
     summarise_at(c("value","value_eur"), sum, na.rm=T) %>%
     filter(!is.na(source))
-
-  unique(prices_light$transport)
 
   db.upload_flows(flows=prices_light, source="combined_light")
 }
