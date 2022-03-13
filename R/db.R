@@ -10,7 +10,15 @@ db.get_gridfs <- function(){
   mongolite::gridfs(db="russian_fossil", prefix="flows", url=connection_string)
 }
 
-db.get_unique_columns <- function(){
+db.get_counter_collection <- function(){
+  db.get_collection("counter")
+}
+
+db.get_unique_columns_counter <- function(){
+  c("date")
+}
+
+db.get_unique_columns_flows <- function(){
   c("source")
 }
 
@@ -30,11 +38,34 @@ db.create_index <- function(collection_name, columns, index_name, unique=T){
 
 db.setup_db <- function(){
   db.create_index(collection_name="flows.files",
-                  columns=paste0("metadata.", db.get_unique_columns()),
+                  columns=paste0("metadata.", db.get_unique_columns_flows()),
+                  index_name="flows_unique_index",
+                  unique=T)
+
+  db.create_index(collection_name="counter",
+                  columns=paste0("metadata.", db.get_unique_columns_counter()),
                   index_name="flows_unique_index",
                   unique=T)
 }
 
+db.download_counter <- function(){
+  db.get_counter_collection()$find()
+}
+
+db.update_counter <- function(counter_data){
+
+  if(!all(c("date","oil_eur","gas_eur","coal_eur","total_eur") %in% names(counter_data))){
+    stop("Missing columns")
+  }
+
+  col <- db.get_counter_collection()
+  for(i in seq(nrow(counter_data))){
+    record <- as.list(counter_data[i,])
+    filter <- jsonlite::toJSON(record['date'], auto_unbox = T)
+    data <- jsonlite::toJSON(list(`$set`=record[setdiff(names(record),"date")]), auto_unbox = T)
+    col$update(filter, data, upsert = TRUE)
+  }
+}
 
 db.upload_flows <- function(flows,
                             source){
