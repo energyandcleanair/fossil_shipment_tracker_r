@@ -14,8 +14,8 @@ deployShinyApp <- function(lite=T, test=T) {
   # try(dotenv::load_dot_env())
   try(readRenviron(".Renviron"))
 
-  options(rsconnect.http.trace = TRUE)
-  options(rsconnect.http.verbose = TRUE)
+  options(rsconnect.http.trace = F)
+  options(rsconnect.http.verbose = F)
 
   rsconnect::setAccountInfo(name=Sys.getenv("SHINYAPP_ACCOUNT"),
                             token=Sys.getenv("SHINYAPP_TOKEN"),

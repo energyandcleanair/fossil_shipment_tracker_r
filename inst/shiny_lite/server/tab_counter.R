@@ -154,7 +154,7 @@ counter_add_each_sec <- reactive({
     slice_head(n=3) %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%
-    filter(unit=="tonne") %>%
+    # filter(unit=="tonne") %>%
     group_by(date, commodity, transport) %>%
     summarise(value_eur=sum(value_eur)) %>%
     group_by(date, commodity) %>%

@@ -56,9 +56,9 @@
 # Download Handlers ----------------------------------
 
 # Downloadable csv of selected dataset
-output$download_counter_flows_csv <- downloadHandler(
+output$download_flows_csv <- downloadHandler(
   filename = function() {
-    sprintf("counter_flows_%s.csv", input$source)
+    sprintf("flows.csv")
   },
   content = function(file) {
     write.csv(counter_flows(), file, row.names = FALSE)
@@ -81,27 +81,35 @@ output$selectUnit <- renderUI({
   # req(flows())
   # req(input$commodity)
   # available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
-  available_units <- c("Tonne"="tonne", "EUR"="eur")
+  available_units <- c("tonne / day"="tonne", "EUR / day"="eur")
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
-
+flows <- reactive({
+  # Don't load flows if this is not the tab queried
+  # query <- parseQueryString(session$clientData$url_search)
+  # if(!is.null(query$tab) && (query$tab != "counter")){
+  #   return(NULL)
+  # }
+  db.download_flows(source="combined_light")
+})
 
 # # Reactive Elements --------------------------------------
 flows_combined <- reactive({
-  req(counter_flows())
-  counter_flows() %>%
-    filter(date >= "2022-01-01") %>%
+  req(flows())
+  flows() %>%
+    filter(date >= "2021-01-01") %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%
     group_by(date, unit, source, commodity, transport) %>%
     summarise_at(c("value", "value_eur"),
                  sum, na.rm=T) %>%
+    filter(commodity=="natural_gas") %>%
     ungroup()
 })
 
 
-output$plot <- renderPlotly({
+output$plot_flows <- renderPlotly({
 
   # chart_type <- input$chart_type
   # source <- input$source
@@ -110,6 +118,9 @@ output$plot <- renderPlotly({
   # commodity <- input$commodity
   # req(source, flows, commodity, unit)
   req(flows, unit)
+
+  unit_label <- list(tonne="tonne / day", eur="EUR / day")[[unit]]
+
 
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
   d <- flows %>%
@@ -127,11 +138,11 @@ output$plot <- renderPlotly({
 
   # if(source=="entsog"){
     plt <- ggplot(d) +
-      geom_line(aes(date, value, col=transport)) +
+      geom_line(aes(date, value)) +
       facet_wrap(~commodity, scales="free_y") +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(min(0,min(flows$value)), NA), expand=expansion(mult=c(0.1, 0.1))) +
-      labs(y=unit,
+      labs(y=unit_label,
            x=NULL)
   # }
 
@@ -233,7 +244,8 @@ output$plot <- renderPlotly({
   #                           tickformat=tickformat))
   # }
 
-  plt <- ggplotly(plt)
+  plt <- ggplotly(plt)  %>% config(displayModeBar = F)
+
     #
     # layout(
     #   annotations = list(x = 1, y = 0, text = caption,
