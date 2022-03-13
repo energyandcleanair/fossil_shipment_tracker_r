@@ -35,7 +35,6 @@ db.create_index <- function(collection_name, columns, index_name, unique=T){
   m$run(cmd)
 }
 
-
 db.setup_db <- function(){
   db.create_index(collection_name="flows.files",
                   columns=paste0("metadata.", db.get_unique_columns_flows()),
