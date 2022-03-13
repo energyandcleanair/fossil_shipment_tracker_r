@@ -4,7 +4,7 @@ update_counter <- function(){
   library(lubridate)
 
 
-  # update_flows(source="eurostat_exeu") # No need, always the same
+  # update_flows(source="eurostat_exeu") # No need, always the same?
   update_flows(source="entsog")
   update_flows(source="eurostat", use_cache=T, date_from="2019-01-01")
   update_flows(source="comtrade", use_cache=F)
@@ -49,4 +49,5 @@ update_counter <- function(){
     mutate(across(c(coal_eur, gas_eur, oil_eur, total_eur), cumsum, .names='cumulated_{.col}'))
 
   db.update_counter(counter_data)
+
 }

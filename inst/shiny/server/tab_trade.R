@@ -108,8 +108,19 @@ output$plot_trade <- renderPlotly({
       x='', y='bln EUR/year',
       subtitle='2019–2021 average')
 
-  ggplotly(plt, tooltip = c("text")) %>% config(displayModeBar = F)
-  # ggsave('Largest importers of fossil fuels from Russia.png')
+  plt <- ggplotly(plt, tooltip = c("text")) %>%
+    config(displayModeBar = F)
+
+  # Pushing only once, to be embedded in Wordpres article
+  if(F){
+    readRenviron(".Renviron")
+    Sys.setenv("plotly_username"=Sys.getenv("PLOTLY_API_USER"))
+    Sys.setenv("plotly_api_key"=Sys.getenv("PLOTLY_API_KEY"))
+
+    api_create(plt, filename = "russia_fossil_trade")
+  }
+
+  return(plt)
 
 
 
