@@ -172,7 +172,7 @@ output$counter_loader <- renderUI({
 
 counter_data <- reactive({
   db.download_counter() %>%
-    filter(date==max(p$date))
+    filter(date==max(date))
 })
 
 
