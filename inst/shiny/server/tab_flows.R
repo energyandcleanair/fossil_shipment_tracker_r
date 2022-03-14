@@ -3,54 +3,6 @@
 
 # Event Observers --------------------------------------
 
-# Preset -> other select inputs
-# observeEvent(input$preset,{
-#
-#   preset <- input$preset
-#   req(preset)
-#
-#   if(preset=="custom"){
-#     return(NULL)
-#   }
-#
-#   params <- preset_params[[preset]]
-#
-#   updateSelectInput(session, "frequency",
-#                     selected=params[["frequency"]])
-#
-#   updateSelectInput(session, "sources",
-#                     selected=params[["sources"]])
-#
-#   updateSelectInput(session, "plot_type",
-#                     selected=params[["plot_type"]])
-# })
-
-#
-#
-# # Only show relevant sources
-# observe({
-#   power_raw <- power_raw()
-#   req(power_raw)
-#
-#   # sources <- unique(power_raw$source)
-#   sources <- as.character(unique(power_raw$source))
-#   updatePickerInput(session, "sources",
-#                     choices=sources,
-#                     selected=sources
-#                     )
-# })
-
-
-# observe({
-#   # Remove plotly parameters
-#   url <- input$.shinyURL
-#   req(url)
-#   url_new <- gsub("&plotly[^&]*","", url)
-#
-#   if(url != url_new){
-#     updateTextInput(session, ".shinyURL", value=url_new)
-#   }
-# })
 
 
 # Download Handlers ----------------------------------
@@ -98,7 +50,7 @@ flows <- reactive({
 flows_combined <- reactive({
   req(flows())
   flows() %>%
-    filter(date >= "2021-01-01") %>%
+    filter(date >= "2022-01-01") %>%
     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
                                                "oil_products"="oil"))) %>%
     group_by(date, unit, source, commodity, transport) %>%

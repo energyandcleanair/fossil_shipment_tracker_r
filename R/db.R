@@ -76,7 +76,7 @@ db.upload_flows <- function(flows,
   metadata <- list(source=source)
 
   # Remove first if exists
-  filter <- metadata[db.get_unique_columns()]
+  filter <- metadata[db.get_unique_columns_flows()]
   names(filter) <- paste0("metadata.", names(filter))
   found <- fs$find(jsonlite::toJSON(filter,auto_unbox=T))
   if(nrow(found)>0){
