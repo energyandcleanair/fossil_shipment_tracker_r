@@ -72,7 +72,7 @@ comtrade_eurostat_russia.get_flows <- function(use_cache=F){
     inner_join(gas_share_from_ru %>%
                  mutate(reporter_iso=countrycode(geo, 'iso2c', 'iso3c',
                                                  custom_match=c(UK='GBR', EL='GRC')))) %>%
-    mutate(across(c(trade_value_usd, netweight_kg), multiply_by, share_of_ru),
+    mutate(across(c(trade_value_usd, netweight_kg), magrittr::multiply_by, share_of_ru),
            partner='Russian Federation') -> ru_adjusted
 
   imports_ru_net %>% anti_join(ru_adjusted %>% select(reporter, partner, product, year)) %>%
