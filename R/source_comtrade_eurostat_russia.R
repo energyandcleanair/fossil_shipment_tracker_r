@@ -25,7 +25,7 @@ comtrade_eurostat_russia.get_flows <- function(use_cache=F){
   sum_q = function(df, fun=sum, na.rm=T) df %>% summarise(across(c(trade_value_usd, netweight_kg), fun, na.rm=na.rm))
 
 
-  ct_search(partners = comtradr::ct_country_lookup("Russia"),
+  comtradr::ct_search(partners = comtradr::ct_country_lookup("Russia"),
             reporters = "all",
             trade_direction = "all",
             commod_codes=c(coal_codes, oil_codes, gas_codes),
@@ -33,7 +33,7 @@ comtrade_eurostat_russia.get_flows <- function(use_cache=F){
             start_date = 2019,
             end_date = 2021) -> imports_from_russia
 
-  ct_search(partners = "World",
+  comtradr::ct_search(partners = "World",
             reporters = "all",
             trade_direction = "all",
             commod_codes=c(coal_codes, oil_codes, gas_codes),

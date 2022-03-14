@@ -15,7 +15,7 @@ comtrade.get_flows <- function(use_cache=T){
     # countries <- c("Germany", "Poland", "Finland", "Ukraine", "Estonia", "Belarus", "Lithuania", "Latvia", "Estonia", "Turkey", "Georgia")
     # countries_chunks <- split(countries, rep(1:ceiling(length(countries)/5), each=5)[1:length(countries)])
 
-    q <- ct_search(partners = c("Russian Federation"),
+    q <- comtradr::ct_search(partners = c("Russian Federation"),
                 reporters = "All",
                 trade_direction = c("imports", "exports"),
                 commod_codes=names(codes),
