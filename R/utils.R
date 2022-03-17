@@ -47,26 +47,31 @@ utils.expand_in_2022 <- function(flows_comtrade_eurostat, flows_eurostat_exeu){
 
 
   # Seaborne reduction
-  # since there is a reported 1/3 drop in seaborne cargoes
-  # I would assume that that's 1/2 for Europe, and apply that reduction to all seaborne imports
+  # crude oil: -6%, LNG -47%, oil products -11%
   ratio_2 <- flows_comtrade_eurostat %>% ungroup() %>% distinct(country, partner, commodity, unit) %>%
-    mutate(ratio_2=ifelse(grepl("lng", commodity), 0.5, 1))
+    mutate(ratio_2=ifelse(grepl("lng", commodity), 0.53, 1))
 
   # Also need to reduce seaborne oil
   # Split oil between pipeline and sea
-  ratio_3 <- flows_comtrade_eurostat %>% ungroup() %>% distinct(country, partner, commodity, unit) %>%
+  ratio_3 <- flows_comtrade_eurostat %>%
+    ungroup() %>%
+    distinct(country, partner, commodity, unit) %>%
     left_join(
       flows_eurostat_exeu %>%
         filter(lubridate::year(date) %in% seq(2019,2021),
-               commodity %in% c("oil","coal")) %>%
+               commodity %in% c("oil","oil_others","coal")) %>%
       group_by(commodity, transport, country, unit) %>%
       summarise(value=sum(value)) %>%
       group_by(country, unit, commodity) %>%
       mutate(share_sea=value/sum(value)) %>%
       arrange(country) %>%
       filter(transport=="sea") %>%
-      mutate(ratio_3=1-(share_sea*0.5)) %>%
-        select(-c(share_sea))) %>%
+      mutate(sea_reduction=recode(commodity,
+                              oil_others=0.11,
+                              oil=0.06,
+                              coal=0.5)) %>%
+      mutate(ratio_3=1-(share_sea*sea_reduction)) %>%
+        select(-c(share_sea, sea_reduction))) %>%
     mutate(ratio_3=tidyr::replace_na(ratio_3, 1))
 
   ratios <- ratio_1 %>% select(country, partner, commodity, unit, ratio_1) %>%
@@ -80,7 +85,8 @@ utils.expand_in_2022 <- function(flows_comtrade_eurostat, flows_eurostat_exeu){
            month(date) %in% c(1, 2, 3)) %>%
     left_join(ratios) %>%
     mutate(date=date+lubridate::years(1),
-           value=value*ratio_1*ratio_2*ratio_3)
+           value=value*ratio_1*ratio_2*ratio_3) %>%
+    select(-c(ratio_1, ratio_2, ratio_3))
 
   return(bind_rows(flows_comtrade_eurostat, flows_future) %>%
            filter(!is.na(date)))
