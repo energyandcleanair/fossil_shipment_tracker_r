@@ -66,7 +66,7 @@ build_price_models <- function(flows_comtrade_eurostat){
   trade %>% group_by(commodity) %>%
     group_map(function(df, group) {
       print(group$commodity)
-      start_year = ifelse(group$commodity=='natural_gas', 2015, 2015)
+      start_year = ifelse(group$commodity=='natural_gas', 2018, 2018)
       independents = case_when(group$commodity=='coal' ~ 'ARA',
                                group$commodity=='natural_gas' ~
                                  'Brent+TTF*date*abs(month(date)-9)',

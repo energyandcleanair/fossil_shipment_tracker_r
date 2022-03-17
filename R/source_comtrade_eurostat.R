@@ -41,7 +41,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     # Most counties except China seem to have monthly data
     imports_from_russia <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
                                                     reporters="all",
-                                                    years=seq(2019, 2021),
+                                                    years=seq(2016, 2021),
                                                   frequency="monthly",
                                                   codes=c(oil_codes, gas_codes, coal_codes)) %>%
       filter(!reporter %in% annual_countries)
@@ -49,11 +49,11 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     # Some country have no monthly data. We take years and split equally
     import_from_russia_china <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
                                                        reporters=annual_countries,
-                                                       years=seq(2019, 2021),
+                                                       years=seq(2016, 2021),
                                                        frequency="annual",
                                                        codes=c(oil_codes, gas_codes, coal_codes)) %>%
       select(-c(period)) %>%
-      left_join(tibble(period=seq(as.Date("2019-01-01"),as.Date("2021-12-31"),by="month")) %>%
+      left_join(tibble(period=seq(as.Date("2016-01-01"),as.Date("2021-12-31"),by="month")) %>%
                   mutate(year=lubridate::year(period),
                          period=as.integer(strftime(period, "%Y%m")))
                 ) %>%
@@ -70,7 +70,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
   }else{
     imports_world <- utils.collect_comtrade(partners="World",
                                             reporters="all",
-                                            years=seq(2019, 2021),
+                                            years=seq(2016, 2021),
                                             frequency="monthly",
                                             codes=c(oil_codes, gas_codes, coal_codes)) %>%
       filter(!reporter %in% annual_countries)
@@ -78,11 +78,11 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     # Some country have no monthly data. We take years and split equally
     imports_world_china <- utils.collect_comtrade(partners="World",
                                                        reporters=annual_countries,
-                                                       years=seq(2019, 2021),
+                                                       years=seq(2016, 2021),
                                                        frequency="annual",
                                                        codes=c(oil_codes, gas_codes, coal_codes)) %>%
       select(-c(period)) %>%
-      left_join(tibble(period=seq(as.Date("2019-01-01"),as.Date("2021-12-31"),by="month")) %>%
+      left_join(tibble(period=seq(as.Date("2016-01-01"),as.Date("2021-12-31"),by="month")) %>%
                   mutate(year=lubridate::year(period),
                          period=as.integer(strftime(period, "%Y%m")))
       ) %>%
@@ -111,7 +111,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     names(exim) <- eurostat_codes
 
     eurostat_data <- exim %>% bind_rows(.id='code') %>%
-      filter(lubridate::year(time) %in% seq(2019,2021)) %>% filter(values != 0)
+      filter(lubridate::year(time) %in% seq(2016,2021)) %>% filter(values != 0)
     saveRDS(eurostat_data, f_eurostat)
   }else{
     eurostat_data <- readRDS(f_eurostat)
@@ -166,7 +166,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
 ", "Netherlands")
   countries_all_is_pipelined <- c("Azerbaijan", "Bulgaria", "Czech Rep.","Greece","Hungary","Italy","Lithuania",
                                   "Rep. of Moldova","Montenegro","TFYR of Macedonia","Mongolia","Poland","Romania","Serbia","Slovenia","Slovakia","Turkey", "Ukraine", "Luxembourg","Germany","Austria")
-  countries_all_is_lng<- c("Côte d'Ivoire", "Cyprus", "Egypt", "Israel", "Morocco", "United States of America", "South Africa")
+  countries_all_is_lng<- c("Côte d'Ivoire", "Cyprus", "Egypt", "Israel", "Morocco", "United States of America", "South Africa", "Ireland")
   countries_pipelined_equals_total_minus_lng <- c("Belgium", "Finland", "Croatia", "Sweden")
   countries_split_is_correct <- c("Estonia", "France", "Latvia", "China")
 

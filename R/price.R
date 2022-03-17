@@ -61,7 +61,7 @@ price.comtrade <- function(){
 }
 
 
-price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat){
+price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_price=T){
 
   flows <- bind_rows(
     flows_entsog %>%
@@ -97,6 +97,18 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat){
   # Get pricing
   flows_month <- flows %>%
     distinct(date=month, transport, commodity, price)
+
+  # Preparing a capping price
+  price_cap <- flows_comtrade_eurostat %>%
+    filter(country=="EU") %>%
+    filter(date>="2019-01-01") %>% # There are weird prices before that, around 15,000 eur/tonne
+    filter(commodity %in% c('natural_gas','lng')) %>%
+    select(country, date, commodity, unit, value) %>%
+    tidyr::spread(unit, value) %>%
+    mutate(price=eur/tonne) %>%
+    group_by(commodity) %>%
+    summarise(price_cap=max(price, na.rm=T))
+
 
   # models <- readRDS('data/pricing_models.RDS')
   models <- readRDS(system.file("extdata", "pricing_models.RDS", package="russiacounter"))
@@ -143,5 +155,7 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat){
   flows %>%
     select(-c(price)) %>%
     left_join(prices %>% rename(month=date)) %>%
-    mutate(value_eur=value * price)
+    left_join(price_cap) %>%
+    mutate(price_cap=tidyr::replace_na(price_cap, +Inf)) %>%
+    mutate(value_eur=value * ifelse(cap_price, pmin(price, price_cap), price))
 }

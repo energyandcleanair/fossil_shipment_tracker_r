@@ -11,6 +11,26 @@ source('iea.R')
 library(tidyverse)
 library(plotly)
 
+prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
+                                   flows_comtrade_eurostat=flows_comtrade_eurostat_2022)
+
+prices %>% ungroup() %>%
+  select(date, commodity, value_eur, value_tonne=value) %>%
+  tidyr::pivot_longer(c(value_eur, value_tonne),
+                      names_prefix="value_",
+                      names_to="indicator") %>%
+  ggplot() +
+  geom_area(aes(date, value, fill=commodity)) +
+  facet_wrap(~indicator, scales="free_y") +
+  scale_x_date(limits=c(as.Date("2021-01-01"), max(prices[prices$commodity=="natural_gas",]$date)))
+
+prices %>% ungroup() %>%
+  select(date, commodity, eur_per_tonne=price) %>%
+  ggplot() +
+  geom_line(aes(date, eur_per_tonne, col=commodity)) +
+  scale_x_date(limits=c(as.Date("2021-01-01"), NA))
+
+
 comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
 top_10 <- comtrade_eurostat %>%
   filter(unit=="eur") %>%
