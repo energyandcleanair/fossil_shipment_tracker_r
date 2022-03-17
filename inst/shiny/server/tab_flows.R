@@ -13,7 +13,14 @@ output$download_flows_csv <- downloadHandler(
     sprintf("flows.csv")
   },
   content = function(file) {
-    write.csv(flows() %>% filter(source=="entsog"), file, row.names = FALSE)
+    f <- flows() %>%
+      filter(source=="entsog") %>%
+      filter(unit=="tonne") %>%
+      select(-c(unit)) %>%
+      rename(value_tonne=value) %>%
+      mutate(value_m3=value_tonne*1000/kg_per_m3)
+
+    write.csv(f, file, row.names = FALSE)
   }
 )
 
