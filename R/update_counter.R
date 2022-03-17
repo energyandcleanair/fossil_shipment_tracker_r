@@ -11,7 +11,7 @@ update_counter <- function(){
   # update_flows(source="comtrade", use_cache=F)
   update_flows(source="eurostat_exeu", use_cache=T)
   # update_flows(source="eurostat_byhs", use_cache=F)
-  update_flows(source="comtrade_eurostat", use_cache=T)
+  update_flows(source="comtrade_eurostat", use_cache=F)
 
   flows_eurostat_exeu = eurostat_exeu.get_flows(use_cache=T)
   flows_comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
