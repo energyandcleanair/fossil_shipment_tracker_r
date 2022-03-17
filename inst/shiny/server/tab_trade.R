@@ -23,7 +23,7 @@ output$download_trade_csv <- downloadHandler(
     "trade_with_russia.csv"
   },
   content = function(file) {
-    write.csv(flows(), file, row.names = FALSE)
+    write.csv(trade(), file, row.names = FALSE)
   }
 )
 

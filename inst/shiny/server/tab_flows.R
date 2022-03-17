@@ -13,7 +13,7 @@ output$download_flows_csv <- downloadHandler(
     sprintf("flows.csv")
   },
   content = function(file) {
-    write.csv(counter_flows(), file, row.names = FALSE)
+    write.csv(flows() %>% filter(source=="entsog"), file, row.names = FALSE)
   }
 )
 
