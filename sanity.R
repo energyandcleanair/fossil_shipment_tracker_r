@@ -8,12 +8,32 @@ source('iea.R')
 #   group_by(date=lubridate::floor_date(date, 'month')) %>%
 #   summarise_at("price", mean, na.rm=T)
 
+library(tidyverse)
+library(plotly)
+
+comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
+top_10 <- comtrade_eurostat %>%
+  filter(unit=="eur") %>%
+  group_by(country) %>%
+  summarise(value=sum(value, na.rm=T)) %>%
+  arrange(desc(value)) %>%
+  head(12) %>% pull(country)
+
+plt <- ggplot(comtrade_eurostat %>%
+         filter(unit=="eur",
+                country %in% top_10)) +
+  geom_line(aes(date, value, col=commodity)) +
+  facet_wrap(country~partner,
+             scales="free_y")
+
+ggplotly(plt)
 
 entso <- db.download_flows("entsog")
 comtrade <- db.download_flows("comtrade")
 eurostat <- db.download_flows("eurostat")
 eurostat_byhs <- db.download_flows("eurostat_byhs")
 eurostat_exeu <- db.download_flows("eurostat_exeu")
+comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
 
 
 d <- bind_rows(

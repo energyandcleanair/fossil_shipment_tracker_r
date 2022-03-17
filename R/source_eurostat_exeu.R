@@ -5,7 +5,7 @@ eurostat_exeu.get_flows <- function(use_cache=F){
     return(readRDS(f_cache))
   }
   # f <- 'data/DS-1262527_1_Data_20220316.csv'
-  f <- system.file("extdata", "1262527_1_Data_20220316.RDS", package="russiacounter")
+  f <- system.file("extdata", "DS-1262527_1_Data_20220316.RDS", package="russiacounter")
   print(sprintf("Reading %s",f))
   if(!file.exists(f)){
     stop(sprintf("Can't find file %s",f))
