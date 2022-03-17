@@ -61,7 +61,7 @@ price.comtrade <- function(){
 }
 
 
-price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
+price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat){
 
   flows <- bind_rows(
     flows_entsog %>%
@@ -74,17 +74,18 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
       mutate(country="All"),
 
     # Spread on a daily basis as opposed to a monthly one
-    flows_eurostat_exeu %>%
+    flows_comtrade_eurostat %>%
+      filter(country=="EU") %>%
       filter(unit %in% c("tonne","eur")) %>%
       tidyr::pivot_wider(names_from="unit", names_prefix="value_", values_from="value") %>%
       mutate(price=value_eur/value_tonne) %>%
       rename(value=value_tonne) %>%
       mutate(unit="tonne") %>%
       select(-c(value_eur)) %>%
-      filter(paste(commodity, transport) != paste("natural_gas", "pipeline")) %>%
+      filter(paste(commodity) != paste("natural_gas")) %>%
       right_join(
-        tibble(date_day=seq(min(flows_eurostat_exeu$date),
-                            lubridate::ceiling_date(max(flows_eurostat_exeu$date), "month") - 1, by="day")) %>%
+        tibble(date_day=seq(min(flows_comtrade_eurostat$date),
+                            lubridate::ceiling_date(max(flows_comtrade_eurostat$date), "month") - 1, by="day")) %>%
           mutate(date=lubridate::floor_date(date_day, 'month'))
       ) %>%
       mutate(value=value / lubridate::days_in_month(date)) %>%
@@ -123,10 +124,10 @@ price.get_modelled_price <- function(flows_entsog, flows_eurostat_exeu){
     left_join(ttf_monthly) %>%
     left_join(brent_monthly) %>%
     left_join(ara_monthly) %>%
-    group_by(commodity, transport) %>%
+    group_by(commodity) %>%
     tidyr::nest() %>%
-    left_join(models %>% select(-c(data)), by=c("commodity", "transport")) %>%
-    group_by(commodity, transport) %>%
+    left_join(models %>% select(-c(data)), by=c("commodity")) %>%
+    group_by(commodity) %>%
     group_map(function(df, group) {
 
       start_year <- 2015

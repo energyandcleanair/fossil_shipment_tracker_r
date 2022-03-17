@@ -1,5 +1,8 @@
 output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
+
+       </h2><p><span style="color: red;">Update 2022-03-17</span>: <span>We improved the way commodities and countries of origin are attributed to European countries, as well as better handled missing data in Comtrade.</span></p>
+
        </h1><p><span>Trade volumes and pricing of fossil fuels (i.e. oil, coal, and gas) are often not available on hourly or daily basis, and neither are the terms for long-term contracts. To develop this counter, we therefore relied on some assumptions, as detailed below.</span></p>
 
        <h2><span>Physical flows</span></h2><p><span>Two main sources are being used for the following flows:</span></p><p><span></span></p><a></a><a></a><table><tbody><tr><td colspan="1" rowspan="1"><p><span></span></p></td><td colspan="1" rowspan="1"><p><span>Crude oil</span></p></td><td colspan="1" rowspan="1"><p><span>Oil products</span></p></td><td colspan="1" rowspan="1"><p><span>Fossil gas</span></p></td><td colspan="1" rowspan="1"><p><span>Coal</span></p></td></tr><tr><td colspan="1" rowspan="1"><p><span>Pipeline</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td><td colspan="1" rowspan="1"><p><span>ENTSOG</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td></tr><tr><td colspan="1" rowspan="1"><p><span>Seaborne</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td><td colspan="1" rowspan="1"><p><span>Eurostat</span></p></td></tr></tbody></table><p>

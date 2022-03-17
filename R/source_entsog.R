@@ -1,4 +1,4 @@
-entsog.get_flows <- function(use_cache=T){
+entsog.get_flows <- function(date_from="2021-01-01", use_cache=T){
 
   f <- file.path("cache/entsog.RDS")
   dir.create("cache", F)
@@ -19,7 +19,7 @@ entsog.get_flows <- function(use_cache=T){
     operator_key = interconnections_russia_exports$toOperatorKey,
     point_key = interconnections_russia_exports$toPointKey,
     direction = "entry",
-    date_from="2021-01-01") %>%
+    date_from=date_from) %>%
     left_join(
       tibble(pointKey=interconnections_russia_exports$toPointKey,
              country=interconnections_russia_exports$toCountryLabel,
@@ -35,7 +35,7 @@ entsog.get_flows <- function(use_cache=T){
     operator_key = interconnections_russia_imports$fromOperatorKey[1],
     point_key = interconnections_russia_imports$fromPointKey[1],
     direction = "exit",
-    date_from="2022-01-01")
+    date_from=date_from)
 
   flows_russia_imports <- flows_russia_imports %>%
     left_join(

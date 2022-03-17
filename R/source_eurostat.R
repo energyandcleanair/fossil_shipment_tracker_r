@@ -1,7 +1,7 @@
 eurostat.get_flows <- function(use_cache=T){
 
   commodity_codes <- list(
-    "G3000"="natural_gas",
+    "G3000"="gas_all",
     "G3200"="lng",
     "O4100_TOT"="crude_oil",
     "2210"="lignite",

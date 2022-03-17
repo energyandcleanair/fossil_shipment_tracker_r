@@ -25,13 +25,18 @@ comtrade_eurostat_russia.get_flows <- function(use_cache=F){
   sum_q = function(df, fun=sum, na.rm=T) df %>% summarise(across(c(trade_value_usd, netweight_kg), fun, na.rm=na.rm))
 
 
-  comtradr::ct_search(partners = comtradr::ct_country_lookup("Russia"),
-            reporters = "all",
-            trade_direction = "all",
-            commod_codes=c(coal_codes, oil_codes, gas_codes),
-            freq="annual",
-            start_date = 2019,
-            end_date = 2021) -> imports_from_russia
+  comtradr::ct_search(
+    partners = comtradr::ct_country_lookup("Russia"),
+    reporters = "all",
+    trade_direction = "all",
+    commod_codes=c(coal_codes, oil_codes, gas_codes),
+    freq="annual",
+    start_date = 2019,
+    end_date = 2021) -> imports_from_russia
+
+  if(nrow(imports_from_russia)==0){
+    stop("Comtrade returned empty results")
+  }
 
   comtradr::ct_search(partners = "World",
             reporters = "all",
@@ -67,6 +72,16 @@ comtrade_eurostat_russia.get_flows <- function(use_cache=F){
     bind_rows(tibble(geo='AT', share_of_ru=.8)) ->
     gas_share_from_ru
   #reference for Austria https://www.thelocal.at/20220303/how-reliant-is-austria-on-russia-for-energy/
+
+
+  eurostat_data %>%
+    filter(!grepl('EU|EA19', geo), code=='nrg_ti_gas', unit=='MIO_M3',
+           partner %in% c('RU', 'TOTAL'), grepl('Imports', title),
+           year(time)==2019) %>%
+    group_by(geo, siec, partner) %>% summarise(across(values, sum)) %>% group_by(geo, siec) %>%
+    summarise(share_of_ru = values[partner=='RU']/values[partner=='TOTAL']) %>%
+    bind_rows(tibble(geo='AT', share_of_ru=.8)) ->
+    gas_share_from_ru_per_commodity
 
   total_imports_net %>% filter(product == 'fossil gas total') %>%
     inner_join(gas_share_from_ru %>%

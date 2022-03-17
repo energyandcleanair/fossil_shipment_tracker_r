@@ -59,7 +59,7 @@ output$selectCountry <- renderUI({
 trade <- reactive({
   # Lauri's mix of comtrade and eurostat
   # db.download_flows(source="comtrade_eurostat_russia")
-  readRDS(system.file("extdata","comtrade_eurostat_russia.RDS", package="russiacounter"))
+  readRDS(system.file("extdata","comtrade_eurostat.RDS", package="russiacounter"))
 })
 
 
@@ -71,11 +71,13 @@ output$plot_trade <- renderPlotly({
   # input$commodity
   # top_n <- 10
   # direction <- "to_europe" # To implement: from_russia
-  f <- trade()
+  f <- trade() %>%
+    filter(lubridate::year(date) %in% seq(2019,2021))
+
   req(f)
 
   f %>%
-    filter(unit=="usd") %>%
+    filter(unit=="eur") %>%
     group_by(country, year=lubridate::year(date)) %>%
     summarise(value=sum(value, na.rm=T)) %>%
     group_by(country) %>%
@@ -87,14 +89,14 @@ output$plot_trade <- renderPlotly({
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
 
   plt <- f %>%
-    filter(unit=="usd",
+    filter(unit=="eur",
            grepl("Russia", partner)) %>%
     group_by(country, year=lubridate::year(date), commodity, unit) %>%
     summarise(value=sum(value, na.rm=T)) %>%
     group_by(country, commodity, unit) %>%
     summarise(value=mean(value, na.rm=T)) %>%
     mutate(commodity=recode(commodity, !!!commodities_rev),
-           value=value/1e9/1.1,
+           value=value/1e9,
            label=sprintf("%s - %s\n%.3f bn EUR",country, commodity, value)
            ) %>%
     ggplot(aes(country, value, fill=commodity, text=label)) +
