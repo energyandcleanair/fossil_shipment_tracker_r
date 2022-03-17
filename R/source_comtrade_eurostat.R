@@ -290,7 +290,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
      select(-c(value_eur, value_tonne)) %>%
      filter(commodity !="NA") %>%
      tidyr::spread(commodity, value_mn_eur) %>%
-     mutate(total=coal + gas + oil,
+     mutate(total=sum(coal,gas,oil,na.rm=T),
             unit="million eur") %>%
      arrange(desc(total)) %>%
      write_csv("results/import_from_russia_mn_eur.csv")
