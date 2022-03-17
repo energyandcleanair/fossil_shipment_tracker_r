@@ -20,11 +20,7 @@ update_counter <- function(){
   prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
                                      flows_comtrade_eurostat=flows_comtrade_eurostat_2022)
 
-  # prices <- prices %>% filter(transport %in% c("pipeline","sea"))
-
   db.upload_flows(flows=prices, source="combined")
-
-
 
   # For faster loading
   prices_light <- prices %>%

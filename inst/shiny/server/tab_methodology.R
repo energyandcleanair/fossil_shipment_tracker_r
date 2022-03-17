@@ -1,7 +1,8 @@
 output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
-       </h2><p><span style="color: red;">Update 2022-03-17</span>: <span>We improved the way commodities and countries of origin are attributed to European countries, as well as better handled missing data in Comtrade.</span></p>
+       </h2><p><span style="color: red;">Update 2022-03-17</span>: <span>We improved the way commodities and countries of origin are attributed to European countries, as well as better handled missing data in Comtrade. Numbers may have varied significantly compared to the previous version.</span></p>
+       <hr>
 
        </h1><p><span>Trade volumes and pricing of fossil fuels (i.e. oil, coal, and gas) are often not available on hourly or daily basis, and neither are the terms for long-term contracts. To develop this counter, we therefore relied on some assumptions, as detailed below.</span></p>
 
