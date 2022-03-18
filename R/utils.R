@@ -21,6 +21,8 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
                                         freq=frequency,
                                         start_date = start_dates[i_date],
                                         end_date = end_dates[i_date])
+
+             Sys.sleep(2)
              if(nrow(res)==0){
                print("No row returned")
                stop("No row returned")

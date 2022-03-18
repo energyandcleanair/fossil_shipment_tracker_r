@@ -9,10 +9,10 @@ update_counter <- function(){
   # Only ENTSOG needs to be updated regularly for now
   update_flows(source="entsog")
 
-  # update_flows(source="comtrade_eurostat", use_cache=T)
+  update_flows(source="comtrade_eurostat", use_cache=F)
   # update_flows(source="eurostat", use_cache=T, date_from="2019-01-01")
   # update_flows(source="comtrade", use_cache=F)
-  update_flows(source="eurostat_exeu", use_cache=T)
+  # update_flows(source="eurostat_exeu", use_cache=F)
   # update_flows(source="eurostat_byhs", use_cache=F)
 
 

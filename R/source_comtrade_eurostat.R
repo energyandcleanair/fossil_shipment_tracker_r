@@ -157,7 +157,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     group_by(reporter, year=lubridate::date(date), partner, commodity ) %>%
     summarise(value=sum(trade_value_usd, na.rm=T)) %>%
     spread(commodity, value) %>%
-    filter(reporter %in% annual_countries) %>%
+    filter(reporter %in% c(annual_countries, "Austria")) %>%
     View()
 
   # Looking at each country, we deduct a rule to split
