@@ -1,7 +1,14 @@
 output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
-       </h2><p><span style="color: red;">Update 2022-03-17</span>: <span>We improved the way commodities and countries of origin are attributed to European countries, as well as better handled missing data in Comtrade. Numbers may have varied significantly compared to the previous version.</span></p>
+       </h2><p><span style="color: red;">Update 2022-03-17 </span>-
+       <span>We now estimate the volume of crude oil, oil product and LNG shipments based on the aggregate cargo capacity (deadweight tonnage) of ships of different types leaving Russian ports to a European Union port, extracted from <a href="https://www.marinetraffic.com/" target="_blank">MarineTraffic.com</a>.</span></p>
+<span>We first calculate the aggregate cargo capacity of EU-Russia shipments in the latest month with complete trade data (December 2021). Then we calculate the ratio of reported import volumes in that month to the gross tonnage of ships for each product. We then apply these ratios to estimate trade volumes on a day-to-day basis until present.</span></p>
+
+<div >
+<img src="shipments_russia_eu.png" width="600"></img>
+</div>
+       <span>We also improved the way commodities and countries of origin are attributed to European countries, as well as better handled missing data in Comtrade.</span>
        <hr>
 
        </h1><p><span>Trade volumes and pricing of fossil fuels (i.e. oil, coal, and gas) are often not available on hourly or daily basis, and neither are the terms for long-term contracts. To develop this counter, we therefore relied on some assumptions, as detailed below.</span></p>
