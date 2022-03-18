@@ -73,7 +73,7 @@ utils.expand_in_2022 <- function(flows_comtrade_eurostat, flows_eurostat_exeu){
     left_join(ratio_2 %>% select(country, partner, commodity, unit, ratio_2)) %>%
     left_join(ratio_3 %>% select(country, partner, commodity, unit, ratio_3))
 
-  flows_future <- flows %>%
+  flows_future <- flows_comtrade_eurostat %>%
     ungroup() %>%
     mutate(year=lubridate::year(date)) %>%
     filter(year %in% c(2021),
@@ -82,6 +82,6 @@ utils.expand_in_2022 <- function(flows_comtrade_eurostat, flows_eurostat_exeu){
     mutate(date=date+lubridate::years(1),
            value=value*ratio_1*ratio_2*ratio_3)
 
-  return(bind_rows(flows, flows_future) %>%
+  return(bind_rows(flows_comtrade_eurostat, flows_future) %>%
            filter(!is.na(date)))
 }
