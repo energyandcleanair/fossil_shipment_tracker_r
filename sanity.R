@@ -8,12 +8,52 @@ source('iea.R')
 #   group_by(date=lubridate::floor_date(date, 'month')) %>%
 #   summarise_at("price", mean, na.rm=T)
 
+library(tidyverse)
+library(plotly)
+
+prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
+                                   flows_comtrade_eurostat=flows_comtrade_eurostat_2022)
+
+prices %>% ungroup() %>%
+  select(date, commodity, value_eur, value_tonne=value) %>%
+  tidyr::pivot_longer(c(value_eur, value_tonne),
+                      names_prefix="value_",
+                      names_to="indicator") %>%
+  ggplot() +
+  geom_area(aes(date, value, fill=commodity)) +
+  facet_wrap(~indicator, scales="free_y") +
+  scale_x_date(limits=c(as.Date("2021-01-01"), max(prices[prices$commodity=="natural_gas",]$date)))
+
+prices %>% ungroup() %>%
+  select(date, commodity, eur_per_tonne=price) %>%
+  ggplot() +
+  geom_line(aes(date, eur_per_tonne, col=commodity)) +
+  scale_x_date(limits=c(as.Date("2021-01-01"), NA))
+
+
+comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
+top_10 <- comtrade_eurostat %>%
+  filter(unit=="eur") %>%
+  group_by(country) %>%
+  summarise(value=sum(value, na.rm=T)) %>%
+  arrange(desc(value)) %>%
+  head(12) %>% pull(country)
+
+plt <- ggplot(comtrade_eurostat %>%
+         filter(unit=="eur",
+                country %in% top_10)) +
+  geom_line(aes(date, value, col=commodity)) +
+  facet_wrap(country~partner,
+             scales="free_y")
+
+ggplotly(plt)
 
 entso <- db.download_flows("entsog")
 comtrade <- db.download_flows("comtrade")
 eurostat <- db.download_flows("eurostat")
 eurostat_byhs <- db.download_flows("eurostat_byhs")
 eurostat_exeu <- db.download_flows("eurostat_exeu")
+comtrade_eurostat = comtrade_eurostat.get_flows(use_cache=T)
 
 
 d <- bind_rows(

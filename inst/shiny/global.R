@@ -4,7 +4,6 @@ library(shinycssloaders)
 library(countrycode)
 library(dplyr)
 library(RColorBrewer)
-library(rclipboard)
 library(rcrea)
 # library(shinyjs)
 

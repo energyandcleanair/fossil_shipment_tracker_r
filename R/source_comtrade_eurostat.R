@@ -33,46 +33,71 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
 
 
   # Collect comtrade data ---------------------------------------------------
-  # All counties except China seem to have monthly data
-  imports_from_russia <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
-                                                  reporters="all",
-                                                  years=seq(2019, 2021),
-                                                frequency="monthly",
-                                                codes=c(oil_codes, gas_codes, coal_codes))
+  annual_countries <- c("China","Austria","Denmark","Ireland","Malta")
+  f_imports_russia <- "cache/comtrade_monthly_from_russia.RDS"
+  if(file.exists(f_imports_russia)){
+    imports_from_russia <- readRDS(f_imports_russia)
+  }else{
+    # Most counties except China seem to have monthly data
+    imports_from_russia <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
+                                                    reporters="all",
+                                                    years=seq(2016, 2021),
+                                                  frequency="monthly",
+                                                  codes=c(oil_codes, gas_codes, coal_codes)) %>%
+      filter(!reporter %in% annual_countries)
 
-  # China has no 2021 data
-  import_from_russia_china <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
-                                                     reporters="China",
-                                                     years=seq(2019, 2020),
-                                                     frequency="annual",
-                                                     codes=c(oil_codes, gas_codes, coal_codes)) %>%
-    mutate(period=as.integer(paste0(period, "01")))
-  imports_from_russia %<>% bind_rows(import_from_russia_china)
-  saveRDS(imports_from_russia, "cache/comtrade_monthly_from_russia.RDS")
-  # imports_from_russia <- readRDS("cache/comtrade_monthly_from_russia.RDS")
+    # Some country have no monthly data. We take years and split equally
+    import_from_russia_china <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
+                                                       reporters=annual_countries,
+                                                       years=seq(2016, 2021),
+                                                       frequency="annual",
+                                                       codes=c(oil_codes, gas_codes, coal_codes)) %>%
+      select(-c(period)) %>%
+      left_join(tibble(period=seq(as.Date("2016-01-01"),as.Date("2021-12-31"),by="month")) %>%
+                  mutate(year=lubridate::year(period),
+                         period=as.integer(strftime(period, "%Y%m")))
+                ) %>%
+      mutate(netweight_kg=netweight_kg/12,
+             trade_value_usd=trade_value_usd/12)
 
-  total_imports <- utils.collect_comtrade(partners="World",
-                                          reporters="all",
-                                          years=seq(2019, 2021),
-                                          frequency="monthly",
-                                          codes=c(oil_codes, gas_codes, coal_codes))
+    imports_from_russia %<>% bind_rows(import_from_russia_china)
+    saveRDS(imports_from_russia, f_imports_russia)
+  }
 
-  total_imports_china <- utils.collect_comtrade(partners="World",
-                                                reporters="China",
-                                                years=seq(2019, 2020),
-                                                frequency="annual",
-                                                codes=c(oil_codes, gas_codes, coal_codes)) %>%
-    mutate(period=as.integer(paste0(period, "01")))
+  f_imports_world <- "cache/comtrade_monthly_from_world.RDS"
+  if(file.exists(f_imports_world)){
+    imports_world <- readRDS(f_imports_world)
+  }else{
+    imports_world <- utils.collect_comtrade(partners="World",
+                                            reporters="all",
+                                            years=seq(2016, 2021),
+                                            frequency="monthly",
+                                            codes=c(oil_codes, gas_codes, coal_codes)) %>%
+      filter(!reporter %in% annual_countries)
 
-  total_imports %<>% bind_rows(total_imports_china)
-  saveRDS(total_imports, "cache/comtrade_monthly_from_world.RDS")
-  # total_imports <- readRDS("cache/comtrade_monthly_from_world.RDS")
+    # Some country have no monthly data. We take years and split equally
+    imports_world_china <- utils.collect_comtrade(partners="World",
+                                                       reporters=annual_countries,
+                                                       years=seq(2016, 2021),
+                                                       frequency="annual",
+                                                       codes=c(oil_codes, gas_codes, coal_codes)) %>%
+      select(-c(period)) %>%
+      left_join(tibble(period=seq(as.Date("2016-01-01"),as.Date("2021-12-31"),by="month")) %>%
+                  mutate(year=lubridate::year(period),
+                         period=as.integer(strftime(period, "%Y%m")))
+      ) %>%
+      mutate(netweight_kg=netweight_kg/12,
+             trade_value_usd=trade_value_usd/12)
 
-  total_imports %<>% add_commodity() %>% set_date()  %>% set_reporter_iso()
+    imports_world %<>% bind_rows(imports_world_china)
+    saveRDS(imports_world, f_imports_world)
+  }
+
+  imports_world %<>% add_commodity() %>% set_date()  %>% set_reporter_iso()
   imports_from_russia %<>% add_commodity() %>% set_date() %>% set_reporter_iso()
 
-  total_imports %>% exports_as_neg() %>% group_by(reporter, reporter_iso, partner, commodity, date) %>%
-    sum_q() -> total_imports_net
+  imports_world %>% exports_as_neg() %>% group_by(reporter, reporter_iso, partner, commodity, date) %>%
+    sum_q() -> imports_world_net
 
   imports_from_russia %>% exports_as_neg() %>% group_by(reporter, reporter_iso, partner, commodity, date) %>%
     sum_q() -> imports_ru_net
@@ -86,7 +111,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     names(exim) <- eurostat_codes
 
     eurostat_data <- exim %>% bind_rows(.id='code') %>%
-      filter(lubridate::year(time) %in% seq(2019,2021)) %>% filter(values != 0)
+      filter(lubridate::year(time) %in% seq(2016,2021)) %>% filter(values != 0)
     saveRDS(eurostat_data, f_eurostat)
   }else{
     eurostat_data <- readRDS(f_eurostat)
@@ -105,7 +130,9 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     group_by(geo, siec, time) %>%
     summarise(share_of_ru = values[partner=='RU']/values[partner=='TOTAL']) %>%
     mutate(commodity=recode(siec, G3000="gas_all", G3200="lng", GPIPELINE="natural_gas")) %>%
-    bind_rows(tibble(geo='AT', share_of_ru=.8, commodity=c("gas_all","natural_gas"))) %>%
+    bind_rows(
+      tibble(geo=c('AT','HR'), share_of_ru=c(.8,.7)) %>% tidyr::crossing(commodity=c("gas_all","natural_gas"))
+      ) %>%
     filter(!is.na(commodity)) %>%
     ungroup() %>%
     rename(reporter_iso=geo) %>%
@@ -114,9 +141,8 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     rename(date=time)
     #reference for Austria https://www.thelocal.at/20220303/how-reliant-is-austria-on-russia-for-energy/
 
-  ru_adjusted <- total_imports_net %>%
+  ru_adjusted <- imports_world_net %>%
     ungroup() %>%
-    # filter(product == 'fossil gas total') %>%
     inner_join(gas_share_from_ru) %>%
     mutate(across(c(trade_value_usd, netweight_kg), magrittr::multiply_by, share_of_ru),
            partner='Russian Federation')
@@ -126,21 +152,22 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     bind_rows(ru_adjusted)
 
   # Gas = pipeline + lng
-  # ru_adjusted %>%
-  #   filter(grepl("gas|lng",commodity)) %>%
-  #   group_by(reporter, year=lubridate::date(date), partner, commodity ) %>%
-  #   summarise(value=sum(trade_value_usd, na.rm=T)) %>%
-  #   spread(commodity, value) %>%
-  #   View()
+  ru_adjusted %>%
+    filter(grepl("gas|lng",commodity)) %>%
+    group_by(reporter, year=lubridate::date(date), partner, commodity ) %>%
+    summarise(value=sum(trade_value_usd, na.rm=T)) %>%
+    spread(commodity, value) %>%
+    filter(reporter %in% annual_countries) %>%
+    View()
 
   # Looking at each country, we deduct a rule to split
-  countries_keep_pipelined_only <-c("Armenia", "Bosnia Herzegovina", "Belarus", "Switzerland", "Georgia", "Kyrgyzstan", "Kazakhstan", "Uzbekistan")
+  countries_keep_pipelined_only <- c("Armenia", "Bosnia Herzegovina", "Belarus", "Switzerland", "Georgia", "Kyrgyzstan", "Kazakhstan", "Uzbekistan")
   countries_keep_lng_only <-c("Spain","India","Japan","Rep. of Korea","Norway","Pakistan","Portugal", "United Kingdom
-")
+", "Netherlands")
   countries_all_is_pipelined <- c("Azerbaijan", "Bulgaria", "Czech Rep.","Greece","Hungary","Italy","Lithuania",
-                                  "Rep. of Moldova","Montenegro","TFYR of Macedonia","Mongolia","Poland","Romania","Serbia","Slovenia","Slovakia","Turkey", "Ukraine", "Luxembourg","Germany")
-  countries_all_is_lng<- c("Côte d'Ivoire", "Cyprus", "Egypt", "Israel", "Morocco", "United States of America", "South Africa")
-  countries_pipelined_equals_total_minus_lng <- c("Belgium", "Finland", "Croatia", "Netherlands","Sweden")
+                                  "Rep. of Moldova","Montenegro","TFYR of Macedonia","Mongolia","Poland","Romania","Serbia","Slovenia","Slovakia","Turkey", "Ukraine", "Luxembourg","Germany","Austria")
+  countries_all_is_lng<- c("Côte d'Ivoire", "Cyprus", "Egypt", "Israel", "Morocco", "United States of America", "South Africa", "Ireland")
+  countries_pipelined_equals_total_minus_lng <- c("Belgium", "Finland", "Croatia", "Sweden")
   countries_split_is_correct <- c("Estonia", "France", "Latvia", "China")
 
   # Remaining:EU-28
@@ -173,7 +200,8 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
        }
 
        if(r %in% countries_pipelined_equals_total_minus_lng){
-         return(bind_rows(df %>% filter(commodity != "natural_gas"),
+         return(bind_rows(
+           df %>% filter(commodity != "natural_gas"),
                    bind_rows(df %>% filter(commodity=="gas_all"),
                              df %>% filter(commodity=="lng") %>% mutate(trade_value_usd=-trade_value_usd,
                                                                         netweight_kg=-netweight_kg)
@@ -186,7 +214,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
        if(r %in% countries_split_is_correct){
          return(df)
        }
-       return(tibble())
+       return(df)
      }) %>%
      filter(commodity != "gas_all")
 
@@ -243,6 +271,31 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
    saveRDS(flows, "inst/extdata/comtrade_eurostat.RDS")
 
    # Export for ebc
+   flows <- readRDS("inst/extdata/comtrade_eurostat.RDS")
+   flows %>%
+     filter(lubridate::year(date) %in% seq(2019,2021)) %>%
+     mutate(commodity = case_when(grepl('oil', commodity)~'oil',
+                                  grepl('coal', commodity)~'coal',
+                                  grepl('natural_gas|lng', commodity)~'gas',
+                                  T~"NA")) %>%
+     mutate(iso3=countrycode(country, "country.name","iso3c")) %>%
+     filter((country=="EU") | (iso3 %in% codelist$iso3c["NA" != codelist$eu28])) %>%
+     group_by(country, partner, year=lubridate::year(date), commodity, unit, source) %>%
+     summarise(value=sum(value, na.rm=T)) %>%
+     group_by(country, partner, commodity, unit, source) %>%
+     summarise(value = mean(value, na.rm=T)) %>%
+     tidyr::pivot_wider(names_from="unit", names_prefix="value_") %>%
+     mutate(value_mn_eur = sum(value_eur, na.rm=T) / 1e6) %>%
+     ungroup() %>%
+     select(-c(value_eur, value_tonne)) %>%
+     filter(commodity !="NA") %>%
+     tidyr::spread(commodity, value_mn_eur) %>%
+     rowwise() %>%
+     mutate(total=sum(coal,gas,oil,na.rm=T),
+            unit="million eur") %>%
+     arrange(desc(total)) %>%
+     write_csv("results/import_from_russia_mn_eur.csv")
+
    return(flows)
 
    # ru_adjusted %>%

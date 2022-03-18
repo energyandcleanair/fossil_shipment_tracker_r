@@ -10,8 +10,12 @@ db.get_gridfs <- function(){
   mongolite::gridfs(db="russian_fossil", prefix="flows", url=connection_string)
 }
 
-db.get_counter_collection <- function(){
-  db.get_collection("counter")
+db.get_counter_collection <- function(test=F){
+  if(test){
+    db.get_collection("counter_test")
+  }else{
+    db.get_collection("counter")
+  }
 }
 
 db.get_unique_columns_counter <- function(){
@@ -47,17 +51,17 @@ db.setup_db <- function(){
                   unique=T)
 }
 
-db.download_counter <- function(){
-  db.get_counter_collection()$find()
+db.download_counter <- function(test=F){
+  db.get_counter_collection(test=test)$find()
 }
 
-db.update_counter <- function(counter_data){
+db.update_counter <- function(counter_data, test=F){
 
   if(!all(c("date","oil_eur","gas_eur","coal_eur","total_eur") %in% names(counter_data))){
     stop("Missing columns")
   }
 
-  col <- db.get_counter_collection()
+  col <- db.get_counter_collection(test=test)
   for(i in seq(nrow(counter_data))){
     record <- as.list(counter_data[i,])
     filter <- jsonlite::toJSON(record['date'], auto_unbox = T)

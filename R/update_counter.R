@@ -1,3 +1,4 @@
+
 update_counter <- function(){
 
   library(tidyverse)
@@ -11,7 +12,7 @@ update_counter <- function(){
   # update_flows(source="comtrade_eurostat", use_cache=T)
   # update_flows(source="eurostat", use_cache=T, date_from="2019-01-01")
   # update_flows(source="comtrade", use_cache=F)
-  # update_flows(source="eurostat_exeu", use_cache=F)
+  update_flows(source="eurostat_exeu", use_cache=T)
   # update_flows(source="eurostat_byhs", use_cache=F)
 
 
@@ -26,8 +27,6 @@ update_counter <- function(){
 
   # Uploading information in the database -----------------------------------
   db.upload_flows(flows=prices, source="combined")
-
-  # A lighter version is used for the flows tab
   prices_light <- prices %>%
     filter(date>="2021-01-01") %>%
     group_by(date, source, commodity, transport, unit) %>%

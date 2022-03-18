@@ -57,7 +57,7 @@ output$selectCountry <- renderUI({
 
 # # Reactive Elements --------------------------------------
 trade <- reactive({
-  # Lauri's mix of comtrade and eurostat
+  # Mix of comtrade and eurostat
   # db.download_flows(source="comtrade_eurostat_russia")
   readRDS(system.file("extdata","comtrade_eurostat.RDS", package="russiacounter"))
 })
@@ -66,11 +66,6 @@ trade <- reactive({
 
 output$plot_trade <- renderPlotly({
 
-  # unit <- input$unit
-  # year <- input$year
-  # input$commodity
-  # top_n <- 10
-  # direction <- "to_europe" # To implement: from_russia
   f <- trade() %>%
     filter(lubridate::year(date) %in% seq(2019,2021))
 

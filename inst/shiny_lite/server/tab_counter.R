@@ -5,64 +5,10 @@ autoInvalidate <- reactiveTimer(sec_per_cycle*1000)
 
 # Event Observers --------------------------------------
 
-# Preset -> other select inputs
-# observeEvent(input$preset,{
-#
-#   preset <- input$preset
-#   req(preset)
-#
-#   if(preset=="custom"){
-#     return(NULL)
-#   }
-#
-#   params <- preset_params[[preset]]
-#
-#   updateSelectInput(session, "frequency",
-#                     selected=params[["frequency"]])
-#
-#   updateSelectInput(session, "sources",
-#                     selected=params[["sources"]])
-#
-#   updateSelectInput(session, "plot_type",
-#                     selected=params[["plot_type"]])
-# })
-
-#
-#
-# # Only show relevant sources
-# observe({
-#   power_raw <- power_raw()
-#   req(power_raw)
-#
-#   # sources <- unique(power_raw$source)
-#   sources <- as.character(unique(power_raw$source))
-#   updatePickerInput(session, "sources",
-#                     choices=sources,
-#                     selected=sources
-#                     )
-# })
-
-
-# observe({
-#   # Remove plotly parameters
-#   url <- input$.shinyURL
-#   req(url)
-#   url_new <- gsub("&plotly[^&]*","", url)
-#
-#   if(url != url_new){
-#     updateTextInput(session, ".shinyURL", value=url_new)
-#   }
-# })
-
 
 # Download Handlers ----------------------------------
 
 # Downloadable csv of selected dataset
-
-# output$buttonClip <- renderUI({
-#   rclipButton("clipbtn", " Copy URL", input$.shinyURL, icon("copy"))
-# })
-
 
 # # Output Elements --------------------------------------
 output$counter_label_total <- renderUI({
@@ -93,49 +39,6 @@ output$counter_loader <- renderUI({
   #remove itself
   removeUI(selector="#counter_loader")
 })
-#
-# output$counter <- renderUI({
-#
-#   req(counter_real_time())
-#
-#   data <- counter_real_time()
-#   print(data)
-#   data$total <- sum(unlist(data))
-#   # labels <- lapply(data, scales::label_number_si(accuracy=0.1))
-#   labels <- lapply(data, function(x) scales::comma(x/1E6, accuracy=NULL, suffix="M"))
-#   # names(labels) <- paste0("#", names(labels))
-#
-#   x <- gsubfn::gsubfn("\\w+", labels, '
-#   <div class="container">
-#
-#     <h1>Payments to Russia for fossil fuels</h1>
-#     <div class="subtitle">By European Union since 24 February 2022</div>
-#     <div class="row">
-#       <div class="col-xs-7">
-#         <div class="big-box">
-#           <span class="currency">EUR</span>total
-#         </div>
-#       </div>
-#       <div class="col-xs-5">
-#          <div class="small-box">
-#           <div class="title">Oil</div>
-#           <span class="currency">EUR</span>oil
-#         </div>
-#
-#         <div class="small-box">
-#           <div class="title">Fossil Gas</div>
-#           <span class="currency">EUR</span>natural_gas
-#         </div>
-#
-#         <div class="small-box">
-#           <div class="title">Coal</div>
-#           <span class="currency">EUR</span>coal
-#         </div>
-#       </div>
-#   </div>')
-#
-#   HTML(x)
-# })
 
 
 # # Reactive Elements --------------------------------------
@@ -171,7 +74,7 @@ output$counter_loader <- renderUI({
 # # Reactive Elements --------------------------------------
 
 counter_data <- reactive({
-  db.download_counter() %>%
+  db.download_counter(test=F) %>%
     filter(date==max(date))
 })
 
