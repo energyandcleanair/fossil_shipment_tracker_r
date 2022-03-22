@@ -13,12 +13,12 @@ output$download_flows_csv <- downloadHandler(
     sprintf("flows.csv")
   },
   content = function(file) {
-    f <- flows() %>%
-      filter(source=="entsog") %>%
-      filter(unit=="tonne") %>%
-      select(-c(unit)) %>%
-      rename(value_tonne=value) %>%
-      mutate(value_m3=value_tonne*1000/kg_per_m3)
+    f <- flows()
+      # filter(source=="entsog") %>%
+      # filter(unit=="tonne") %>%
+      # select(-c(unit)) %>%
+      # rename(value_tonne=value) %>%
+      # mutate(value_m3=value_tonne*1000/kg_per_m3)
 
     write.csv(f, file, row.names = FALSE)
   }
@@ -40,7 +40,7 @@ output$selectUnit <- renderUI({
   # req(flows())
   # req(input$commodity)
   # available_units <- unique(flows() %>% filter(commodity==input$commodity) %>% pull(unit))
-  available_units <- c("tonne / day"="tonne", "EUR / day"="eur")
+  available_units <- c("MWh/day"="MWh/day", "m3/day"="m3")
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
@@ -50,22 +50,23 @@ flows <- reactive({
   # if(!is.null(query$tab) && (query$tab != "counter")){
   #   return(NULL)
   # }
-  db.download_flows(source="combined_light")
+  # db.download_flows(source="combined_light")
+  db.download_flows(source="entsog")
 })
 
 # # Reactive Elements --------------------------------------
-flows_combined <- reactive({
-  req(flows())
-  flows() %>%
-    filter(date >= "2022-01-01") %>%
-    mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
-                                               "oil_products"="oil"))) %>%
-    group_by(date, unit, source, commodity, transport) %>%
-    summarise_at(c("value", "value_eur"),
-                 sum, na.rm=T) %>%
-    filter(commodity=="natural_gas") %>%
-    ungroup()
-})
+# flows_combined <- reactive({
+#   req(flows())
+#   flows() %>%
+#     filter(date >= "2022-01-01") %>%
+#     mutate(commodity=recode(commodity, !!!list("crude_oil"="oil",
+#                                                "oil_products"="oil"))) %>%
+#     group_by(date, unit, source, commodity, transport) %>%
+#     summarise_at(c("value", "value_eur"),
+#                  sum, na.rm=T) %>%
+#     filter(commodity=="natural_gas") %>%
+#     ungroup()
+# })
 
 
 output$plot_flows <- renderPlotly({
@@ -73,25 +74,24 @@ output$plot_flows <- renderPlotly({
   # chart_type <- input$chart_type
   # source <- input$source
   unit <- input$unit
-  flows <- flows_combined()
+  flows <- flows()
   # commodity <- input$commodity
   # req(source, flows, commodity, unit)
   req(flows, unit)
 
-  unit_label <- list(tonne="tonne / day", eur="EUR / day")[[unit]]
+  unit_label <- list(`MWh/day`="MWh / day", m3='m3 / day')[[unit]]
 
 
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
   d <- flows %>%
     filter(!is.na(value), value>0) %>%
-    filter(unit=="tonne") %>%
-    group_by(date, source, commodity, transport) %>%
-    summarise(value_tonne=sum(value),
-                 value_eur=sum(value_eur)) %>%
-    tidyr::pivot_longer(cols=c(value_tonne, value_eur),
-                        names_prefix="value_",
-                        names_to="unit") %>%
     filter(unit==!!unit) %>%
+    group_by(date, source, commodity, unit) %>%
+    summarise(value=sum(value)) %>%
+    # tidyr::pivot_longer(cols=c(value_tonne, value_eur),
+    #                     names_prefix="value_",
+    #                     names_to="unit") %>%
+    # filter(unit==!!unit) %>%
     mutate(commodity=recode(commodity, !!!commodities_rev))
 
 
