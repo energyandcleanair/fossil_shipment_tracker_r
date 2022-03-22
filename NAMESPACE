@@ -1,7 +1,7 @@
 exportPattern("^[[:alpha:]]+")
 
 importFrom(countrycode,countrycode)
-importFrom(countrycode,codelist)
+
 
 importFrom(dplyr,all_vars)
 importFrom(dplyr,any_vars)

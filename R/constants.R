@@ -5,7 +5,7 @@ gcv_MWh_per_m3 <- gcv_kWh_per_m3 / 1e3
 gcv_MJ_per_m3 <- gcv_kWh_per_m3 * 3.6 #40
 
 date_from_counter <- "2022-02-24"
-
+codelist <- countrycode::codelist
 
 sources <- c(
   "ENTSO-G"="entsog",
