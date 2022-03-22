@@ -100,7 +100,7 @@ output$plot_flows <- renderPlotly({
       geom_line(aes(date, value)) +
       facet_wrap(~commodity, scales="free_y") +
       rcrea::theme_crea() +
-      scale_y_continuous(limits=c(min(0,min(flows$value)), NA), expand=expansion(mult=c(0.1, 0.1))) +
+      scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0.1, 0.1))) +
       labs(y=unit_label,
            x=NULL)
   # }
