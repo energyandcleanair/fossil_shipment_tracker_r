@@ -17,6 +17,7 @@ ui <- navbarPage(
     source(file.path("ui", "tab_counter.R"),  local = TRUE)$value,
     source(file.path("ui", "tab_trade.R"),  local = TRUE)$value,
     source(file.path("ui", "tab_flows.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_shipment.R"),  local = TRUE)$value,
     source(file.path("ui", "tab_methodology.R"),  local = TRUE)$value,
     source(file.path("ui", "tab_about.R"),  local = TRUE)$value,
 

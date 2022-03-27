@@ -4,16 +4,70 @@ comtrade.get_flows <- function(use_cache=T){
   f <- "cache/comtrade.RDS"
   if(use_cache && file.exists(f)){ return(readRDS(f)) }
 
-  get_year_data <- function(year){
-    print(year)
-    Sys.sleep(30)
+  annual_countries <- c("China","Austria","Denmark","Ireland","Malta")
+  years <- seq(2016, 2021)
+  codes <- names(hs_commodities)
 
-    oil_codes <- c("2709"="crude_oil", "2710"="oil_others")
-    gas_codes <- c("2711"="gas_all","271121"="natural_gas","271111"="lng")
-    coal_codes <- c("2701"="coal","2704"="coke")
-    codes <- c(oil_codes, gas_codes, coal_codes)
-    # countries <- c("Germany", "Poland", "Finland", "Ukraine", "Estonia", "Belarus", "Lithuania", "Latvia", "Estonia", "Turkey", "Georgia")
-    # countries_chunks <- split(countries, rep(1:ceiling(length(countries)/5), each=5)[1:length(countries)])
+
+  # Utils -------------------------------------------------------------------
+  exports_as_neg <- function(df) {
+    df %>% mutate(netweight_kg=netweight_kg*ifelse(trade_flow=="Export",-1, 1),
+                  trade_value_usd=trade_value_usd*ifelse(trade_flow=="Export",-1,1))
+  }
+
+  set_date <- function(df){
+    df %>%
+      mutate(date=as.Date(strptime(paste0(period,"01"), "%Y%m%d")))
+  }
+
+  add_commodity <- function(df) {
+    df %>%
+      filter(commodity_code %in% names(hs_commodities)) %>%
+      mutate(commodity=recode(commodity_code, !!!hs_commodities))
+  }
+
+  set_reporter_iso <- function(df) {
+    df %>%
+      mutate(reporter_iso = countrycode(reporter, "country.name", "iso2c", custom_match = c(`EU-28`="EUU")))
+  }
+
+  # Collect data ------------------------------------------------------------
+  # Most counties have monthly data
+  imports_from_russia <- utils.collect_comtrade(partners=c("World", comtradr::ct_country_lookup("Russia")),
+                                                reporters="all",
+                                                years=years,
+                                                frequency="monthly",
+                                                codes=c(oil_codes, gas_codes, coal_codes)) %>%
+    filter(!reporter %in% annual_countries)
+
+  imports_from_world <- utils.collect_comtrade(partners="World",
+                                                reporters="all",
+                                                years=years,
+                                                frequency="monthly",
+                                                codes=c(oil_codes, gas_codes, coal_codes)) %>%
+    filter(!reporter %in% annual_countries)
+
+  # But others don't
+  import_from_russia_annual <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
+                                                     reporters=annual_countries,
+                                                     years=seq(2016, 2021),
+                                                     frequency="annual",
+                                                     codes=c(oil_codes, gas_codes, coal_codes)) %>%
+    select(-c(period)) %>%
+    left_join(tibble(period=seq(as.Date("2016-01-01"),as.Date("2021-12-31"),by="month")) %>%
+                mutate(year=lubridate::year(period),
+                       period=as.integer(strftime(period, "%Y%m")))
+    ) %>%
+    mutate(netweight_kg=netweight_kg/12,
+           trade_value_usd=trade_value_usd/12)
+
+  imports_from_russia %<>% bind_rows(import_from_russia_annual)
+
+
+
+
+
+
 
     q <- comtradr::ct_search(partners = c("Russian Federation"),
                 reporters = "All",
@@ -48,11 +102,9 @@ comtrade.get_flows <- function(use_cache=T){
         ungroup() %>%
       mutate(source="comtrade")
 
-  }
 
-  q <- lapply(seq(2020, 2021), get_year_data) %>%
-    do.call(bind_rows, .) %>%
-    mutate(source="Comtrade")
+
+
   saveRDS(q, f)
   return(q)
 }

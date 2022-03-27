@@ -5,6 +5,8 @@ library(countrycode)
 library(dplyr)
 library(RColorBrewer)
 library(rcrea)
+library(colorRamps)
+
 # library(shinyjs)
 
 #####################
