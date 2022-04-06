@@ -4,6 +4,7 @@ importFrom(countrycode,countrycode)
 
 
 importFrom(dplyr,all_vars)
+importFrom(dplyr,across)
 importFrom(dplyr,any_vars)
 importFrom(dplyr,arrange)
 importFrom(dplyr,as_tibble)
