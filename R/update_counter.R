@@ -16,12 +16,20 @@ update_counter <- function(){
   # update_flows(source="eurostat_byhs", use_cache=F)
 
 
+  eurostat.get_flows(use_cache=F)
+  comtrade.get_flows(use_cache=F)
+  eurostat_exeu.get_flows(use_cache=F)
+  comtrade_eurostat.get_flows(use_cache=F)
+
+
+
   # Computing prices --------------------------------------------------------
+  flows_entsog = db.download_flows("entsog")
   flows_eurostat_exeu = db.download_flows("eurostat_exeu")
   flows_comtrade_eurostat = db.download_flows("comtrade_eurostat")
   flows_comtrade_eurostat_2022 = utils.expand_in_2022(flows_comtrade_eurostat, flows_eurostat_exeu)
 
-  prices <- price.get_modelled_price(flows_entsog=entsog.get_flows(use_cache=T),
+  prices <- price.get_modelled_price(flows_entsog=flows_entsog,
                                      flows_comtrade_eurostat=flows_comtrade_eurostat_2022)
 
 
@@ -56,7 +64,8 @@ update_counter <- function(){
     select(date, coal_eur, gas_eur, oil_eur, total_eur) %>%
     arrange(date) %>%
     ungroup() %>%
-    mutate(across(c(coal_eur, gas_eur, oil_eur, total_eur), cumsum, .names='cumulated_{.col}'))
+    mutate(across(c(coal_eur, gas_eur, oil_eur, total_eur), cumsum, .names='cumulated_{.col}')) %>%
+    filter(!is.na(total_eur))
 
   # Upload if nothing is strange
   ok <- !any(is.na(counter_data))
