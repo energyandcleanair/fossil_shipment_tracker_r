@@ -73,6 +73,7 @@ update_counter <- function(){
                    "coal_eur", "gas_eur", "oil_eur", "total_eur",
                    "cumulated_coal_eur", "cumulated_gas_eur", "cumulated_oil_eur", "cumulated_total_eur") %in% names(counter_data))
   ok <- ok & nrow(counter_data>0)
+  ok <- ok & nrow(counter_data) == max(counter_data$date) - min(counter_data$date) + 1
 
   if(ok){
     print("Updating counter data")
