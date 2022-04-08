@@ -44,14 +44,27 @@ output$selectUnit <- renderUI({
   selectInput("unit", "Unit:", choices=available_units, selected=available_units[1])
 })
 
+output$selectRunningDays <- renderUI({
+  sliderInput("running_days", "Running average (days)", 1, 31, 7, 1)
+})
+
 flows <- reactive({
-  # Don't load flows if this is not the tab queried
-  # query <- parseQueryString(session$clientData$url_search)
-  # if(!is.null(query$tab) && (query$tab != "counter")){
-  #   return(NULL)
-  # }
-  # db.download_flows(source="combined_light")
-  db.download_flows(source="entsog")
+
+  # Combine pipeline and shipments
+  bind_rows(
+    db.download_flows(source="entsog") %>% filter(grepl("MWh",unit)),
+    shipments <- shipment.get_shipments() %>%
+      mutate(date=as.Date(arrival_date_utc),
+             country=countrycode(arrival_iso2, "iso2c", "country.name"),
+             partner=countrycode(departure_iso2, "iso2c", "country.name"),
+             value=quantity,
+             source="AIS") %>%
+      group_by(date, country, partner, unit, commodity, source) %>%
+      summarise(value=sum(value, na.rm=T),
+                count=n()) %>%
+      select(date, country, partner, value, unit, commodity, source)
+  )
+
 })
 
 # # Reactive Elements --------------------------------------
@@ -73,146 +86,45 @@ output$plot_flows <- renderPlotly({
 
   # chart_type <- input$chart_type
   # source <- input$source
-  unit <- input$unit
+  # unit <- input$unit
   flows <- flows()
-  # commodity <- input$commodity
+  running_days <- input$running_days
   # req(source, flows, commodity, unit)
-  req(flows, unit)
+  req(flows, running_days)
 
-  unit_label <- list(`MWh/day`="MWh / day", m3='m3 / day')[[unit]]
+  # unit_label <- list(`MWh/day`="MWh / day", m3='m3 / day')[[unit]]
 
 
   commodities_rev <- as.list(names(commodities)) %>% `names<-`(commodities)
   d <- flows %>%
     filter(!is.na(value), value>0) %>%
-    filter(unit==!!unit) %>%
+    filter(commodity %in% c("natural_gas", "lng", "crude_oil")) %>%
+    # filter(unit==!!unit) %>%
     group_by(date, source, commodity, unit) %>%
     summarise(value=sum(value)) %>%
     # tidyr::pivot_longer(cols=c(value_tonne, value_eur),
     #                     names_prefix="value_",
     #                     names_to="unit") %>%
     # filter(unit==!!unit) %>%
-    mutate(commodity=recode(commodity, !!!commodities_rev))
+    mutate(commodity=recode(commodity, !!!commodities_rev)) %>%
+    rcrea::utils.running_average(running_days) %>%
+    mutate(commodity=sprintf("%s (%s)", commodity, unit))
 
 
   # if(source=="entsog"){
     plt <- ggplot(d) +
-      geom_line(aes(date, value)) +
-      facet_wrap(~commodity, scales="free_y") +
+      geom_line(aes(date, value, col=commodity)) +
+      facet_wrap(~commodity, scales="free_y", ncol=1) +
       rcrea::theme_crea() +
+      rcrea::scale_color_crea_d("dramatic") +
       scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0.1, 0.1))) +
-      labs(y=unit_label,
+      scale_x_date(limits=c(as.Date("2022-01-01"), NA)) +
+      labs(y=NULL,
            x=NULL)
-  # }
-
-  # if(chart_type=="lines"){
-  #   ggplot(flows) +
-  #     geom_bar(stat="identity",
-  #              aes(date, value, fill=source)) +
-  #     facet_wrap(~country)
-  #
-  #     plot_ly(flows,
-  #           x = ~date,
-  #           y = ~value,
-  #           color = ~source,
-  #           customdata=~source,
-  #           colors=creapower::palette_power(),
-  #           type = "scatter",
-  #           mode="lines+marker",
-  #           hovertemplate = '%{customdata} %{y:,.0f} MW<extra></extra>',
-  #           showlegend = T) %>%
-  #     layout(
-  #       hovermode = "x unified",
-  #       yaxis = list(title = 'Power generation (MW)'),
-  #       xaxis = list(title = ''))
-  # }
-  #
-  # if(plot_type=="area"){
-  #   plt <- plot_ly(power_sources,
-  #           x = ~date,
-  #           y = ~output_mw,
-  #           color = ~source,
-  #           customdata = ~source,
-  #           colors = creapower::palette_power(),
-  #           type = 'scatter',
-  #           mode = 'lines',
-  #           line = list(width = 0),
-  #           alpha = 0.9,
-  #           stackgroup = 'one',
-  #           hovertemplate = '%{customdata} %{y:,.0f} MW<extra></extra>',
-  #           showlegend = T) %>%
-  #     layout(
-  #       hovermode = "x unified",
-  #       yaxis = list(title = 'Power generation (MW)'),
-  #       xaxis = list(title = ''))
-  # }
-  #
-  # if(plot_type=="area_pct"){
-  #   plt <- plot_ly(power_sources,
-  #           x = ~date,
-  #           y = ~output_pct,
-  #           color = ~factor(source),
-  #           customdata = ~source,
-  #           colors = creapower::palette_power(),
-  #           type = 'scatter',
-  #           mode = 'lines',
-  #           line = list(width = 0),
-  #           alpha = 0.9,
-  #           stackgroup = 'one',
-  #           hovertemplate = '%{customdata} %{y:.0%}<extra></extra>',
-  #           showlegend = T) %>%
-  #     layout(
-  #       hovermode = "x unified",
-  #       yaxis = list(title = 'Share of power generation',
-  #                    tickformat = '.0%'),
-  #       xaxis = list(title = ''))
-  # }
-  #
-  # if(plot_type=="bar"){
-  #
-  #   power_deyeared <- power_sources %>%
-  #     mutate(year=lubridate::year(date),
-  #            date2000 = lubridate::`year<-`(date, 2000)) %>%
-  #     group_by(iso2, region, date2000, year) %>%
-  #     summarise(output_mw=sum(output_mw)) %>%
-  #     ungroup()
-  #
-  #   tickformat <- recode(frequency,
-  #                        "day"="%e %b",
-  #                        "week"= "%W",
-  #                        "month"="%b",
-  #                        "year"="%Y")
-  #
-  #   dtick <- ifelse(frequency=="month", "M1", NA)
-  #
-  #   plt <- plot_ly(power_deyeared,
-  #                  x = ~date2000,
-  #                  y = ~output_mw,
-  #                  color = ~factor(year),
-  #                  customdata = ~year,
-  #                  colors = 'Reds',
-  #                  type = 'bar',
-  #                  alpha = 0.9,
-  #                  hovertemplate = '%{customdata} %{y:,.0f} MW<extra></extra>',
-  #                  showlegend = T) %>%
-  #            layout(
-  #              hovermode = "x unified",
-  #              yaxis = list(title = 'Power generation (MW)'),
-  #              xaxis = list(title = '',
-  #                           dtick = dtick,
-  #                           tickformat=tickformat))
   # }
 
   plt <- ggplotly(plt)  %>% config(displayModeBar = F)
 
-    #
-    # layout(
-    #   annotations = list(x = 1, y = 0, text = caption,
-    #      showarrow = F, xref='paper', yref='paper',
-    #      xanchor='right', yanchor='auto', xshift=0, yshift=-60,
-    #      font=list(color="#AAAAAA")),
-    #   margin = list(b=60),
-    #   yaxis = list(fixedrange=T))
 
   return(plt)
 })
