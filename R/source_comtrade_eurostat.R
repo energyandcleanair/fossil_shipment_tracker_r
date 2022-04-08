@@ -174,7 +174,6 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
   # To solve:
   # -Greece gas probably transiting in Turkey.
   # -UK has a very significant non-lng part. What is it??
-
    ru_adjusted <- ru_adjusted %>% group_by(reporter) %>%
      group_modify(function(df, reporter) {
        r <- unique(reporter$reporter)
@@ -219,10 +218,10 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
      filter(commodity != "gas_all")
 
 
-       # totgas <- sum(df$trade_value_usd[df$commodity=='gas_all'])
-       # pipe_lng <- sum(df$trade_value_usd[df$commodity %in% c('natural_gas', 'lng')])
-       # to_excl = ifelse(!is.na(pipe_lng) & (pipe_lng >= totgas), 'gas_all', 'natural_gas|lng')
-       # df %>% filter(!grepl(to_excl, commodity))
+     # totgas <- sum(df$trade_value_usd[df$commodity=='gas_all'])
+     # pipe_lng <- sum(df$trade_value_usd[df$commodity %in% c('natural_gas', 'lng')])
+     # to_excl = ifelse(!is.na(pipe_lng) & (pipe_lng >= totgas), 'gas_all', 'natural_gas|lng')
+     # df %>% filter(!grepl(to_excl, commodity))
 
    ru_adjusted %<>% mutate(EU = (reporter_iso %in% codelist$iso2c[codelist$eu28=="EU"]) & (reporter_iso != 'GB'))
    ru_adjusted %<>% filter(EU) %>%
