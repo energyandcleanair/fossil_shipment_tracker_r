@@ -1,5 +1,8 @@
 comtrade.get_flows <- function(use_cache=T){
 
+  oil_codes <- c("2709","2710")
+  gas_codes <- c("2711","271121","271111")
+  coal_codes <- c("2701","2704","2705","2706")
 
   f <- "cache/comtrade.RDS"
   if(use_cache && file.exists(f)){ return(readRDS(f)) }

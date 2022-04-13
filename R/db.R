@@ -18,8 +18,20 @@ db.get_counter_collection <- function(test=F){
   }
 }
 
+db.get_counter_prices_collection <- function(test=F){
+  if(test){
+    db.get_collection("counter_prices_test")
+  }else{
+    db.get_collection("counter_prices")
+  }
+}
+
 db.get_unique_columns_counter <- function(){
   c("date")
+}
+
+db.get_unique_columns_counter_prices <- function(){
+  c("date","commodity")
 }
 
 db.get_unique_columns_flows <- function(){
@@ -46,7 +58,12 @@ db.setup_db <- function(){
                   unique=T)
 
   db.create_index(collection_name="counter",
-                  columns=paste0("metadata.", db.get_unique_columns_counter()),
+                  columns=db.get_unique_columns_counter(),
+                  index_name="flows_unique_index",
+                  unique=T)
+
+  db.create_index(collection_name="counter_prices",
+                  columns=db.get_unique_columns_counter_prices(),
                   index_name="flows_unique_index",
                   unique=T)
 }
@@ -56,7 +73,7 @@ db.download_counter <- function(test=F){
 }
 
 db.update_counter <- function(counter_data, test=F){
-
+  print("=== Update counter ===")
   if(!all(c("date","oil_eur","gas_eur","coal_eur","total_eur") %in% names(counter_data))){
     stop("Missing columns")
   }
@@ -65,6 +82,31 @@ db.update_counter <- function(counter_data, test=F){
   for(i in seq(nrow(counter_data))){
     record <- as.list(counter_data[i,])
     filter <- jsonlite::toJSON(record['date'], auto_unbox = T)
+    data <- jsonlite::toJSON(list(`$set`=record[setdiff(names(record),"date")]), auto_unbox = T)
+    col$update(filter, data, upsert = TRUE)
+  }
+}
+
+db.update_counter_prices <- function(prices, test=F){
+  print("=== Update counter prices ===")
+  p <- prices %>%
+    filter(date>="2021-01-01") %>%
+    group_by(date, source, commodity, transport, unit) %>%
+    summarise_at(c("value","value_eur"), sum, na.rm=T) %>%
+    filter(unit=="tonne") %>%
+    filter(!is.na(source)) %>%
+    mutate(eur_per_tonne=value_eur / value) %>%
+    ungroup()
+
+
+  if(!all(c("date","source","commodity","unit","value","value_eur","eur_per_tonne") %in% names(p))){
+    stop("Missing columns")
+  }
+
+  col <- db.get_counter_prices_collection(test=test)
+  for(i in seq(nrow(p))){
+    record <- as.list(p[i,])
+    filter <- jsonlite::toJSON(record[db.get_unique_columns_counter_prices()], auto_unbox = T)
     data <- jsonlite::toJSON(list(`$set`=record[setdiff(names(record),"date")]), auto_unbox = T)
     col$update(filter, data, upsert = TRUE)
   }
