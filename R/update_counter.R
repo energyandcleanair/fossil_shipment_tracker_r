@@ -81,7 +81,7 @@ update_counter <- function(){
 
   # ONLY ALLOW FOR LIMITED UPDATE EACH TIME
   # SO THAT COUNTER DOESN"T JUMP TOO MUCH
-  max_diff_per_update <- 100 # 100M on total at the beginning of the day (can be higher if we're at the end of the day)
+  max_diff_per_update <- 200E6 # maximum gap in eur for total number
 
   update_til_now <- function(c, now){
     difftime_day <- as.numeric(difftime(lubridate::force_tz(as.POSIXct(now), tzone="UTC"), lubridate::force_tz(as.POSIXct(max(c$date)), tzone="UTC")), "days")
