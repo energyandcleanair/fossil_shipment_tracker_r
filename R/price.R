@@ -125,9 +125,10 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_
 
   #data downloaded from https://www.investing.com/commodities/rotterdam-coal-futures-streaming-chart
   # ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
-  ara <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter"))
-  ara_monthly <- ara %>% rename(ARA = Price) %>%
-    group_by(date = Date %>% mdy() %>% 'day<-'(1)) %>%
+
+  ara <- get_ara()
+  ara_monthly <- ara %>% rename(ARA = eur_per_tonne) %>%
+    group_by(date = date %>% 'day<-'(1)) %>%
     summarise(across(ARA, mean, na.rm=T))
 
   prices <- flows_month %>%
@@ -157,4 +158,15 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_
     left_join(price_cap) %>%
     mutate(price_cap=tidyr::replace_na(price_cap, +Inf)) %>%
     mutate(value_eur=value * ifelse(cap_price, pmin(price, price_cap), price))
+}
+
+get_ara <- function(){
+  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310587&historicalSpan=2"
+  ara <- jsonlite::fromJSON(url)$bars
+
+  as.data.frame(ara) %>%
+    `names<-`(c("date", "eur_per_tonne")) %>%
+    tibble() %>%
+    mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y"),
+           eur_per_tonne = as.numeric(eur_per_tonne))
 }
