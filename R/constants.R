@@ -38,7 +38,7 @@ hs_commodities <- c(
   "271111"="lng",
   "2701"="coal",
   "2704"="coke",
-  "2710"="oil_others",
+  "2710"="oil_products",
   "2709"="oil",
   "2705"="coal_gas",
   "2706"="tar"

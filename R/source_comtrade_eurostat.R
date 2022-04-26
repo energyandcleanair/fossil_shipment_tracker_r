@@ -157,18 +157,24 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     group_by(reporter, year=lubridate::date(date), partner, commodity ) %>%
     summarise(value=sum(trade_value_usd, na.rm=T)) %>%
     spread(commodity, value) %>%
-    filter(reporter %in% c(annual_countries, "Austria")) %>%
+    # filter(reporter %in% c(annual_countries, "Austria")) %>%
+    filter(reporter=="Netherlands") %>%
     View()
 
   # Looking at each country, we deduct a rule to split
-  countries_keep_pipelined_only <- c("Armenia", "Bosnia Herzegovina", "Belarus", "Switzerland", "Georgia", "Kyrgyzstan", "Kazakhstan", "Uzbekistan")
-  countries_keep_lng_only <-c("Spain","India","Japan","Rep. of Korea","Norway","Pakistan","Portugal", "United Kingdom
-", "Netherlands")
-  countries_all_is_pipelined <- c("Azerbaijan", "Bulgaria", "Czech Rep.","Greece","Hungary","Italy","Lithuania",
-                                  "Rep. of Moldova","Montenegro","TFYR of Macedonia","Mongolia","Poland","Romania","Serbia","Slovenia","Slovakia","Turkey", "Ukraine", "Luxembourg","Germany","Austria")
+  countries_keep_pipelined_only <- c("Armenia", "Bosnia Herzegovina", "Belarus",
+                                     "Switzerland", "Georgia", "Kyrgyzstan",
+                                     "Kazakhstan", "Uzbekistan")
+
+  countries_keep_lng_only <-c("Spain","India","Japan","Rep. of Korea",
+                              "Norway","Pakistan","Portugal", "United Kingdom")
+
+  countries_all_is_pipelined <- c("Azerbaijan", "Bulgaria", "Czech Rep.","Hungary","Lithuania",
+                                  "Rep. of Moldova","Montenegro","TFYR of Macedonia","Mongolia","Poland","Romania","Serbia","Slovenia","Slovakia", "Ukraine", "Luxembourg","Germany","Austria")
   countries_all_is_lng<- c("Côte d'Ivoire", "Cyprus", "Egypt", "Israel", "Morocco", "United States of America", "South Africa", "Ireland")
-  countries_pipelined_equals_total_minus_lng <- c("Belgium", "Finland", "Croatia", "Sweden")
-  countries_split_is_correct <- c("Estonia", "France", "Latvia", "China")
+  countries_pipelined_equals_total_minus_lng <- c("Belgium", "Finland", "Croatia", "Sweden", "China", "Netherlands")
+  countries_split_is_correct <- c("Estonia", "France", "Latvia", "China", "Italy", "Greece")
+  countries_impose_pipeline_share <- c("Turkey"=0.77) #https://www.mees.com/2022/3/4/economics-finance/turkey-2021-gas-imports-ukraine-war-puts-russia-reliance-in-focus/dd8176c0-9bcd-11ec-96b1-3f07b501dca9#:~:text=*Turkey%20imported%20a%20record%2060.1,in%20the%20form%20of%20LNG.
 
   # Remaining:EU-28
   # To solve:
@@ -210,9 +216,27 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
                                netweight_kg=sum(netweight_kg, na.rm=T)) %>%
                      mutate(commodity="natural_gas")))
        }
+
+       if(r %in% names(countries_impose_pipeline_share)){
+
+         pipeline_share <- countries_impose_pipeline_share[[r]]
+         df <- bind_rows(df %>% filter(commodity=="gas_all"),
+                   df %>% filter(commodity=="gas_all") %>%
+                     mutate(trade_value_usd=trade_value_usd * pipeline_share,
+                            netweight_kg=netweight_kg*pipeline_share,
+                            commodity="natural_gas"),
+                   df %>% filter(commodity=="lng") %>%
+                     mutate(trade_value_usd=trade_value_usd * pipeline_share,
+                            netweight_kg=netweight_kg*pipeline_share,
+                            commodity="lng"))
+
+       }
+
        if(r %in% countries_split_is_correct){
          return(df)
        }
+
+
        return(df)
      }) %>%
      filter(commodity != "gas_all")

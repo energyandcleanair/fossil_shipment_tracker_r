@@ -4,27 +4,35 @@ eurostat_exeu.get_flows <- function(use_cache=F){
   if(use_cache & file.exists(f_cache)){
     return(readRDS(f_cache))
   }
-  # f <- 'data/DS-1262527_1_Data_20220316.csv'
+
   f <- system.file("extdata", "DS-1262527_1_Data_20220316.RDS", package="russiacounter")
+  f <- "inst/extdata/DS-1262527_1_Data_20220424.RDS"
   print(sprintf("Reading %s",f))
   if(!file.exists(f)){
     stop(sprintf("Can't find file %s",f))
   }
 
-  trade <- readRDS(f) %>%
+  read_csv("~/Downloads/DS-1262527 ()/DS-1262527_1_Data.csv") %>%
+    mutate(partner=ifelse(grepl("Russia", partner), "Russia", "World"))
+    saveRDS(f)
+
+  trade <- readRDS(f)
+
+  trade <- trade %>%
     mutate(date=paste(1,PERIOD) %>% strptime("%d %b. %Y") %>% as.Date(),
            Value = gsub(',| ', '', Value) %>% as.numeric,) %>%
     filter(!is.na(date),
            date >= "2015-01-01") %>%
     tidyr::spread(INDICATORS, Value) %>%
-    select(date, country=REPORTER, partner=PARTNER, direction=FLOW, commodity_code=PRODUCT, transport=TRANSPORT_MODE,
+    select(date, iso2=REPORTER, partner=PARTNER, direction=FLOW, commodity_code=PRODUCT, transport=TRANSPORT_MODE,
            value_tonne = QUANTITY_IN_TONS, value_eur = VALUE_IN_EUROS) %>%
-    mutate(factor=ifelse(direction=="IMPORT",1,-1),
+      mutate(factor=ifelse(direction=="IMPORT",1,-1),
            value_tonne=value_tonne*factor,
            value_eur=value_eur*factor
            ) %>%
     group_by(date,
-             country=countrycode::countrycode(country, "iso2c", "country.name", custom_match=c("EU"="EU")),
+             iso2,
+             country=countrycode::countrycode(iso2, "iso2c", "country.name", custom_match=c("EU"="EU")),
              partner, commodity_code, transport) %>%
     summarise(value_tonne=sum(value_tonne, na.rm=T),
               value_eur=sum(value_eur, na.rm=T)) %>%
@@ -39,10 +47,12 @@ eurostat_exeu.get_flows <- function(use_cache=F){
     filter(commodity_code %in% names(hs_commodities)) %>%
     mutate(commodity=recode(commodity_code, !!!hs_commodities))
 
-  trade %>% ungroup() %>% filter(value>0, unit=="tonne") %>% group_by(country, commodity, unit) %>% summarise(value=sum(value)) %>%
-    tidyr::spread(commodity, value, fill = 0) %>%
-    mutate(gas_all2=lng+natural_gas) %>%
-    select(country, unit, gas_all, gas_all2)
+  # trade %>% ungroup() %>%
+  #   filter(value>0, unit=="tonne") %>%
+  #   group_by(country, commodity, unit) %>% summarise(value=sum(value)) %>%
+  #   tidyr::spread(commodity, value, fill = 0) %>%
+  #   mutate(gas_all2=lng+natural_gas) %>%
+  #   select(country, unit, gas_all, gas_all2)
 
   # Some countries only share total gas numbers
   # trade %>% ungroup() %>% filter(value>0, unit=="tonne") %>%
@@ -51,50 +61,20 @@ eurostat_exeu.get_flows <- function(use_cache=F){
   #   mutate(gas_all2=lng+natural_gas) %>%
   #   select(country, unit, transport, gas_all, gas_all2) %>% View()
 
-
-#   trade$commodity[grep('crude$', trade$commodity)] <- "crude_oil"
-#   trade$commodity[grep('excl\\. crude', trade$commodity)] <- "oil_products"
-#   trade$commodity[grep('^Coal', trade$commodity)] <- "coal"
-#   trade$commodity[grep('^Coke', trade$commodity)] <- "coke"
-#   trade$commodity[grepl('gas', trade$commodity) & grepl('Fixed', trade$transport)] <- "natural_gas"
-#   trade$commodity[grepl('gas', trade$commodity) & grepl('Sea', trade$transport)] <- "lng"
-
-
+  # Clean commodities
   trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
-  trade$transport[grep('Sea', trade$transport)] <- "sea"
+  trade$transport[grep('Sea', trade$transport)] <- "seaborne"
+  trade$transport[grep('Rail|Road', trade$transport)] <- "rail_road"
+
+  # We ignore others (#TODO investigate a bit further Inland Waterway)
+  trade$transport[!grep('pipeline|seaborne|rail_road', trade$transport)] <- "other"
 
   trade <- trade %>%
-    filter(grepl('^natural_gas|gas_all|^coal|oil|oil_others|lng|^coke', commodity),
+    filter(grepl('^natural_gas|gas_all|^coal|oil|oil_products|lng|^coke', commodity),
            !is.na(value)) %>%
     ungroup()
 
-  # Project in the future
-  # [Feb-Mar 2021 average] * (1 + [Nov-Dec 2021 YoY change])
-  ratios <- trade %>%
-    ungroup() %>%
-    mutate(year=lubridate::year(date)) %>%
-    filter(year %in% c(2020, 2021),
-           month(date) %in% c(11,12)) %>%
-    group_by(year, country, partner, commodity, unit) %>%
-    summarise(value=sum(value, na.rm=T)) %>%
-    tidyr::pivot_wider(names_from=year, values_from=value, names_prefix="value_") %>%
-    mutate(ratio=value_2021/value_2020) %>%
-    # since there is a reported 1/3 drop in seaborne cargoes
-    # I would assume that that's 1/2 for Europe, and apply that reduction to all seaborne imports
-    mutate(ratio=ratio*ifelse(grepl("lng", commodity), 0.5, 1))
 
-
-  trade_future <- trade %>%
-    ungroup() %>%
-    mutate(year=lubridate::year(date)) %>%
-    filter(year %in% c(2021),
-           month(date) %in% c(1, 2, 3)) %>%
-    left_join(ratios) %>%
-    mutate(date=date+lubridate::years(1),
-           value=value*ratio) %>%
-    select(-c(value_2020, value_2021, ratio))
-
-  trade <- bind_rows(trade, trade_future)
   trade$source <- "eurostat_exeu"
   saveRDS(trade, f_cache)
   return(trade)

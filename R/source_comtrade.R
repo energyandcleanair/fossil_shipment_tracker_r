@@ -106,8 +106,6 @@ comtrade.get_flows <- function(use_cache=T){
       mutate(source="comtrade")
 
 
-
-
   saveRDS(q, f)
   return(q)
 }

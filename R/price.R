@@ -1,65 +1,166 @@
-price.ttf <- function(date_from="2016-01-01"){
-  p <- quantmod::getSymbols("TTF=F",
-                  from = date_from,
-                  warnings = FALSE,
-                  auto.assign = F)
-  tibble(date=index(p),
-         price=as.numeric(coredata(p$`TTF=F.Adjusted`)[]),
-         unit="EUR/MWh")
-}
+prices.get_predicted_portprices <- function(){
 
+  # Ports
+  ports <- read_csv("https://api.russiafossiltracker.com/v0/port?format=csv&iso2=RU")
+  # ports <- read_csv("http://127.0.0.1:8080/v0/port?format=csv&iso2=RU")
 
-price.brent<- function(date_from="2020-01-01"){
-    p <- tidyquant::tq_get("BZ=F", from=date_from)
-    p %>%
-    select(date, value=adjusted) %>%
-      mutate(unit="USD/bbl") %>%
-      drop_na()
-}
+  ports_ural <- ports %>%
+    filter(iso2=="RU", check_departure) %>%
+    filter(lon < 40)
 
+  ports_espo <- ports %>%
+    filter(iso2=="RU", check_departure) %>%
+    filter(lon > 40)
 
-price.eur_per_usd <- function(date_from="2018-01-01", date_to=lubridate::today()){
-  eur_per_usd <- priceR::historical_exchange_rates("USD", to = "EUR",
-                                   start_date = date_from,
-                                   end_date = date_to)
-  tibble(eur_per_usd) %>% `names<-`(c("date","eur_per_usd"))
-}
+  # Discounts
+  brent <- get_brent()
 
+  eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=max(brent$date))
+  tonne_per_bbl <- 0.138
 
-price.natural_gas_based_on_brent<- function(date_from="2018-01-01"){
-  # oil price of $69/barrel = $280 / 1000 m3 for gas; contracts are tied to oil
-  # https://www.reuters.com/markets/europe/russias-oil-gas-revenue-windfall-2022-01-21/
-  eur_per_usd <- price.eur_per_usd(date_from=date_from)
+  spread_ural <- get_ural_brent_spread() %>%
+    select(date, add_brent=usd_per_bbl)
 
-  tidyquant::tq_get("BZ=F", from=date_from) %>%
-    select(date, value=adjusted) %>% #USD/bbl
+  price_ural <- brent %>%
+    left_join(spread_ural) %>%
+    arrange(desc(date)) %>%
+    mutate(usd_per_bbl = brent + add_brent) %>%
     left_join(eur_per_usd) %>%
-    mutate(value=value* 280 / 69 /1000 / gcv_MWh_per_m3 * eur_per_usd) %>%
-    mutate(unit="EUR/MWh") %>%
-    select(-c(eur_per_usd)) %>%
-    rcrea::utils.running_average(30) %>%
-    mutate(commodity="natural_gas")
+    mutate(eur_per_tonne=usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+    select(date, eur_per_tonne) %>%
+    mutate(commodity="crude_oil")
 
+
+  spread_espo <- get_espo_brent_spread() %>%
+    select(date, add_brent=usd_per_bbl)
+
+  price_espo <- brent %>%
+    left_join(spread_espo) %>%
+    arrange(desc(date)) %>%
+    mutate(usd_per_bbl = brent + add_brent) %>%
+    left_join(eur_per_usd) %>%
+    mutate(eur_per_tonne=usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+    select(date, eur_per_tonne) %>%
+    mutate(commodity="crude_oil")
+
+  portprice_ural <- ports_ural %>%
+    select(port_id=id) %>%
+    crossing(price_ural) %>%
+    filter(!is.na(eur_per_tonne))
+
+
+  portprice_espo <- ports_espo %>%
+    select(port_id=id) %>%
+    crossing(price_espo) %>%
+    filter(!is.na(eur_per_tonne))
+
+  return(bind_rows(portprice_ural,
+                   portprice_espo))
 }
 
 
-#' Price based on Comtrade data, which is given both in kg and USD
-#'
-#' @return
-#' @export
-#'
-#' @examples
-price.comtrade <- function(){
-  flows <- comtrade.get_flows(use_cache=F)
+prices.get_predicted_prices <- function(add_to_predictors=NULL){
 
-  flows %>%
-    filter(unit=="MWh/month") %>%
-    mutate(value_usd_per_mwh=value_usd/value) %>%
-    ggplot() +
-    geom_line(aes(date, value_usd_per_mwh, col=commodity)) +
-    facet_wrap(~country, scales="free")
+  prices_monthly <- get_prices_monthly() %>%
+    arrange(desc(date)) %>%
+    filter(!is.na(date))
+
+  if(!is.null(add_to_predictors)){
+    #TODO make it automatic for all predictors. Only for brent for now
+    prices_monthly <- prices_monthly %>%
+      left_join(add_to_predictors %>%
+                  group_by(date=lubridate::floor_date(date, "month")) %>%
+                  summarise(brent=mean(brent, na.rm=T)) %>%
+                  rename(add_to_brent=brent)) %>%
+      mutate(brent=brent + tidyr::replace_na(add_to_brent,0))
+  }
+
+  models_eu <- readRDS(system.file("extdata", "pricing_models_eu.RDS", package="russiacounter"))
+  models_noneu <- readRDS(system.file("extdata", "pricing_models_noneu.RDS", package="russiacounter"))
+
+  prices_eu <- models_eu %>%
+    mutate(new_data=list(prices_monthly)) %>%
+    group_by(commodity) %>%
+    group_map(function(df, group) {
+      model <- df$model[[1]]
+      new_data <- df$new_data[[1]] %>% arrange(date)
+      if(is.null(model)){ return(NULL) }
+      new_data$price_eur_per_tonne <- predict(model, new_data)
+      new_data$price_eur_per_tonne <- pmin(new_data$price_eur_per_tonne, df$price_ceiling)
+      new_data$price_ceiling <- df$price_ceiling
+      tibble(group, new_data)
+    }) %>% do.call(bind_rows, .) %>%
+    arrange(desc(date))
+
+  prices_eu <- prices_eu %>%
+    tidyr::crossing(tibble(country_iso=codelist$iso2c[which(codelist$eu28=="EU")] ))
+
+  prices_noneu  <- models_noneu %>%
+    mutate(new_data=list(prices_monthly)) %>%
+    group_by(commodity, country, country_iso) %>%
+    group_map(function(df, group) {
+      model <- df$model[[1]]
+      new_data <- df$new_data[[1]] %>% arrange(date)
+      if(is.null(model)){ return(NULL) }
+      new_data$price_eur_per_tonne <- predict(model, new_data)
+      new_data$price_eur_per_tonne <- pmin(new_data$price_eur_per_tonne, df$price_ceiling)
+      new_data$price_ceiling <- df$price_ceiling
+      tibble(group, new_data)
+    }) %>% do.call(bind_rows, .)
+
+  p <- bind_rows(prices_eu,
+                 prices_noneu) %>%
+    dplyr::select(country_iso2=country_iso,
+                  date,
+                  commodity,
+                  eur_per_tonne=price_eur_per_tonne) %>%
+    mutate(date=as.Date(date))
+
+  # Add pipeline_oil equivalent to crude_oil
+  p <- bind_rows(p,
+                 p %>% filter(commodity=="crude_oil") %>% mutate(commodity="pipeline_oil"))
+
+  # Monthly -> daily
+  days_buffer <- 8
+  dates <- seq.Date(min(p$date, na.rm=T), lubridate::today() + days_buffer, by="day")
+  filler <- tidyr::crossing(tibble(date=dates),
+                            p %>% distinct(commodity, country_iso2))
+  p <- p %>%
+    full_join(filler, by=c("commodity","country_iso2","date")) %>%
+    group_by(country_iso2, commodity) %>%
+    arrange(date) %>%
+    fill(eur_per_tonne) %>%
+    filter(!is.na(eur_per_tonne)) %>%
+    filter(!is.na(date))
+
+  return(p)
 }
 
+
+price.check_prices <- function(p){
+  ok <- !any(is.na(p$eur_per_tonne))
+  ok <- ok & all(p$eur_per_tonne >= 0)
+  ok <- ok & all(c("country_iso2","date","commodity","eur_per_tonne") %in% names(p))
+  ok <- ok & nrow(p>0)
+  return(ok)
+}
+
+
+price.update_prices <- function(){
+  p <- prices.get_predicted_prices()
+  ok <- price.check_prices(p)
+  if(ok){
+    db.upload_prices_to_posgres(p)
+  }
+}
+
+price.update_portprices <- function(){
+  p <- prices.get_predicted_portprices()
+  ok <- price.check_prices(p)
+  if(ok){
+    db.upload_portprices_to_posgres(p)
+  }
+}
 
 price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_price=T){
 
@@ -127,7 +228,7 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_
   # ara <- read_csv('data/Rotterdam_Coal_Futures_Historical_Data.csv')
 
   ara <- get_ara()
-  ara_monthly <- ara %>% rename(ARA = eur_per_tonne) %>%
+  ara_monthly <- ara %>% rename(ARA = ara) %>%
     group_by(date = date %>% 'day<-'(1)) %>%
     summarise(across(ARA, mean, na.rm=T))
 
@@ -160,13 +261,5 @@ price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_
     mutate(value_eur=value * ifelse(cap_price, pmin(price, price_cap), price))
 }
 
-get_ara <- function(){
-  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310587&historicalSpan=2"
-  ara <- jsonlite::fromJSON(url)$bars
 
-  as.data.frame(ara) %>%
-    `names<-`(c("date", "eur_per_tonne")) %>%
-    tibble() %>%
-    mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y"),
-           eur_per_tonne = as.numeric(eur_per_tonne))
-}
+

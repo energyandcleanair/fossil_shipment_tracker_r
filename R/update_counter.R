@@ -32,7 +32,6 @@ update_counter <- function(){
   prices <- price.get_modelled_price(flows_entsog=flows_entsog,
                                      flows_comtrade_eurostat=flows_comtrade_eurostat_2022)
 
-
   # Uploading information in the database -----------------------------------
   db.upload_flows(flows=prices, source="combined")
 
@@ -67,6 +66,12 @@ update_counter <- function(){
     ungroup() %>%
     mutate(across(c(coal_eur, gas_eur, oil_eur, total_eur), cumsum, .names='cumulated_{.col}')) %>%
     filter(!is.na(total_eur))
+
+  upload_counter_data(counter_data, prices)
+}
+
+
+upload_counter_data <- function(counter_data, prices=NULL){
 
   # Upload if nothing is strange
   ok <- !any(is.na(counter_data))
@@ -132,13 +137,16 @@ update_counter <- function(){
 
   ok <- ok & all(counter_data_updated > 0 )
   ok <- ok & (abs((counter_data_updated$cumulated_coal_eur +
-                   counter_data_updated$cumulated_oil_eur +
-                   counter_data_updated$cumulated_gas_eur) -
-                counter_data_updated$cumulated_total_eur) < 1)
+                     counter_data_updated$cumulated_oil_eur +
+                     counter_data_updated$cumulated_gas_eur) -
+                    counter_data_updated$cumulated_total_eur) < 1)
 
   if(ok){
     print("Updating counter data")
     db.update_counter(counter_data_updated)
-    db.update_counter_prices(prices)
+    if(!is.null(prices)){
+      db.update_counter_prices(prices)
+    }
   }
 }
+

@@ -4,21 +4,24 @@ bp.get_flows <- function(use_cache=T){
   sheet <- "Gas - Trade movts - pipeline"
 
 
-#
-#   # natural_gas
-#   readxl::read_xlsx(f,
-#                     sheet="Gas - Trade movts - pipeline",
-#                     range="A3:W41") %>%
-#     tidyr::pivot_longer(cols = -To,
-#                         names_to="partner") %>%
-#     rename(country=To) %>%
-#     mutate(commodity=commodity,
-#            unit="m3",
-#            value=value*1e9) %>%
-#     filter(!country %in% c("North America", "S. & Cent. America", "Europe",
-#                            "CIS","Middle East","Middle East", "Asia Pacific")) %>%
-#     mutate(commodity="natural_gas"),
-#
+
+  # natural_gas
+  readxl::read_xlsx(f,
+                    sheet="Gas - Trade movts - pipeline",
+                    range="A3:W41") %>%
+    tidyr::pivot_longer(cols = -To,
+                        names_to="partner") %>%
+    rename(country=To) %>%
+    mutate(commodity="natural_gas",
+           unit="m3",
+           value=value*1e9) %>%
+    filter(!country %in% c("North America", "S. & Cent. America", "Europe",
+                           "CIS","Middle East","Middle East", "Asia Pacific")) %>%
+    mutate(commodity="natural_gas") %>%
+    filter(partner=="Germany")
+
+
+  #
 #
 #   #lng
 #   readxl::read_xlsx(f,

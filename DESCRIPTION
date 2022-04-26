@@ -27,7 +27,9 @@ Imports:
     eurostat,
     comtradr,
     tidyquant,
-    priceR
+    priceR,
+    dbx,
+    RPostgres
 Remotes:
     energyandcleanair/entsog
 RoxygenNote: 7.1.1

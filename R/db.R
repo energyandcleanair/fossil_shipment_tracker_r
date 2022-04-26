@@ -87,7 +87,20 @@ db.update_counter <- function(counter_data, test=F){
   }
 }
 
+
+db.upload_flows_to_postgres <- function(pipeline_flows){
+
+  p <- pipeline_flows %>%
+    select(commodity, departure_iso2, destination_iso2, date, value_tonne, value_mwh, value_m3)
+  print("=== Upload entsog flows (Postgres) ===")
+  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+  dbx::dbxUpsert(db, "pipelineflow", p, where_cols=c("commodity", "date", "departure_iso2", "destination_iso2"))
+  dbx::dbxDisconnect(db)
+}
+
+
 db.update_counter_prices <- function(prices, test=F){
+
   print("=== Update counter prices ===")
   p <- prices %>%
     filter(date>="2021-01-01") %>%
@@ -110,6 +123,48 @@ db.update_counter_prices <- function(prices, test=F){
     data <- jsonlite::toJSON(list(`$set`=record[setdiff(names(record),"date")]), auto_unbox = T)
     col$update(filter, data, upsert = TRUE)
   }
+
+
+  # print("=== Update counter prices (Postgres) ===")
+  # p_postgres <- p %>%
+  #   select(date, commodity, eur_per_tonne) %>%
+  #   mutate(commodity=recode(commodity,
+  #                           oil="crude_oil",
+  #                           oil_others="oil_products"))
+  # db.upload_prices_to_posgres(prices=p_postgres)
+}
+
+db.upload_portprices_to_posgres <- function(portprices){
+  print("=== Uploading portprices ===")
+  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+  dbx::dbxUpsert(db, "portprice", portprices, where_cols=c("port_id", "commodity", "date"))
+  dbx::dbxDisconnect(db)
+}
+
+db.upload_prices_to_posgres <- function(prices){
+  print("=== Uploading prices ===")
+  p <- prices %>%
+    select(country_iso2, date, commodity, eur_per_tonne) %>%
+    mutate(date = lubridate::date(date))
+
+  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+  # Do in two times
+
+  # Values with non null country values can be upserted properly
+  p_w_country <- p %>% filter(!is.na(country_iso2) & !is.null(country_iso2))
+  p_wo_country <- p %>% filter(is.na(country_iso2) | is.null(country_iso2))
+
+  ps <- split(p_w_country, (seq(nrow(p_w_country))-1) %/% 100000)
+  pbapply::pblapply(ps, function(p){
+    dbx::dbxUpsert(db, "price", p %>% filter(!is.na(country_iso2)), where_cols=c("country_iso2", "commodity", "date"))
+  })
+
+  # For those with null country, the unique constraint doesn't work
+  # so we first remove existing records and replace. During that time,
+  # counter calculations would be wrong, that's why we try to minimise the time
+  dbx::dbxExecute(db, "DELETE FROM price WHERE country_iso2 is null")
+  dbx::dbxInsert(db, "price", p_wo_country)
+  dbx::dbxDisconnect(db)
 }
 
 db.upload_flows <- function(flows,
