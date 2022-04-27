@@ -100,15 +100,27 @@ output$counter_loader <- renderUI({
 # # Reactive Elements --------------------------------------
 
 counter_data <- reactive({
-  db.download_counter() %>%
-    filter(date==max(date))
+  # db.download_counter() %>%
+  #   filter(date==max(date))
+  read_csv("https://api.russiafossiltracker.com/v0/counter_last?aggregate_by=commodity_group,destination_region&destination_region=EU28&format=csv") %>%
+    select(date, commodity_group, total_eur, eur_per_day) %>%
+    tidyr::pivot_wider(values_from=c(total_eur, eur_per_day), names_from="commodity_group") %>%
+    rename(cumulated_coal_eur=total_eur_coal,
+           cumulated_gas_eur=total_eur_gas,
+           cumulated_oil_eur=total_eur_oil,
+           cumulated_total_eur=total_eur_total,
+           coal_eur=eur_per_day_coal,
+           gas_eur=eur_per_day_gas,
+           oil_eur=eur_per_day_oil,
+           total_eur=eur_per_day_total
+    )
 })
 
 
 counter_real_time <- reactive({
   req(counter_data())
   c <- counter_data()
-  n_days <- difftime(lubridate::now(tzone = "UTC"), as.Date(c$date, tz="UTC")) %>% as.numeric(units="days")
+  n_days <- difftime(lubridate::now(tzone = "UTC"), as.POSIXct(c$date, tz="UTC")) %>% as.numeric(units="days")
   autoInvalidate()
 
   list(

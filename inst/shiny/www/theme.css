@@ -10,11 +10,10 @@
   color: #35416C;
   font-size: 10vw;
   font-size: 40px; /* just in case browser doesn't know vw */
-  margin-bottom: 20px;
-}
+  /*margin-bottom: 20px;*/}
 
 @media (min-width: 600px) {
-  .big-box {
+  .big-box #counter_label_total{
      font-size: 80px;
   }
 
@@ -25,7 +24,8 @@
 
 h1{
   color: #35416C;
-  font-size: 30px !important;
+  font-size: 35px !important;
+  margin-bottom: 1.8rem;
 }
 
 .subtitle {
@@ -66,15 +66,75 @@ h1{
 }
 
 .container {
-  max-width: 600px !important;
   margin-left: auto;
   margin-right: auto;
   float: unset;
+  margin-bottom: 80px;
 }
+
+.container-header {
+  margin-top: 50px !important;
+}
+
+.container-counter {
+  max-width: 620px !important;
+}
+
+.container-payments {
+  max-width: 900px !important;
+}
+
+.container-payments .subtitle {
+  padding-left: 50px !important;
+}
+
+.container-briefing {
+  padding: 30px !important;
+  padding-bottom: 50px !important;
+  background-color: #35416C !important;
+  color: white !important;
+  border-radius: 5px;
+  max-width: 900px !important;
+}
+
+.container-briefing h1,
+.container-briefing .subtitle
+{
+  color: white !important;
+}
+
+.container-briefing .subtitle
+{
+  color: white !important;
+}
+
+.container-briefing img {
+  padding-top: 20px;
+}
+
+.container-briefing .btn-primary {
+  font-size: 18px !important;
+  padding: 8px 39px !important;
+  border: 1px solid transparent !important;
+  height: unset !important;
+  line-height: unset !important;
+  margin-top: 2.5rem;
+  width: unset !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
+.container-methodology table{
+    margin-left: auto;
+    margin-right: auto;
+}
+
 
 .shiny-spinner-placeholder{
   height: 120px !important;
 }
+
 
 
 .loader {
@@ -127,6 +187,12 @@ h1{
   padding-top: 15px !important;
   padding-bottom: 15px !important;
   margin-bottom: 15px !important;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 label {

@@ -1,3 +1,11 @@
+db.get_pg_url <- function(production){
+  readRenviron(".Renviron")
+  if(production){
+    Sys.getenv("FOSSIL_DB_PRODUCTION")
+  }else{
+    Sys.getenv("FOSSIL_DB_DEVELOPMENT")
+  }
+}
 db.get_collection <- function(collection_name){
   readRenviron(".Renviron")
   connection_string=Sys.getenv("CREA_MONGODB_URL")
@@ -88,12 +96,13 @@ db.update_counter <- function(counter_data, test=F){
 }
 
 
-db.upload_flows_to_postgres <- function(pipeline_flows){
+db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
 
   p <- pipeline_flows %>%
     select(commodity, departure_iso2, destination_iso2, date, value_tonne, value_mwh, value_m3)
-  print("=== Upload entsog flows (Postgres) ===")
-  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+  print(sprintf("=== Upload flows to postgres (%s) ===", ifelse(production,"production","development")))
+
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   dbx::dbxUpsert(db, "pipelineflow", p, where_cols=c("commodity", "date", "departure_iso2", "destination_iso2"))
   dbx::dbxDisconnect(db)
 }
@@ -134,20 +143,22 @@ db.update_counter_prices <- function(prices, test=F){
   # db.upload_prices_to_posgres(prices=p_postgres)
 }
 
-db.upload_portprices_to_posgres <- function(portprices){
-  print("=== Uploading portprices ===")
-  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+db.upload_portprices_to_posgres <- function(portprices, production=F){
+  print(sprintf("=== Uploading portprices (%s) ===", ifelse(production,"production","development")))
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   dbx::dbxUpsert(db, "portprice", portprices, where_cols=c("port_id", "commodity", "date"))
   dbx::dbxDisconnect(db)
 }
 
-db.upload_prices_to_posgres <- function(prices){
-  print("=== Uploading prices ===")
+db.upload_prices_to_posgres <- function(prices, production=F){
+  print(sprintf("=== Uploading portprices (%s) ===", ifelse(production,"production","development")))
+
   p <- prices %>%
     select(country_iso2, date, commodity, eur_per_tonne) %>%
     mutate(date = lubridate::date(date))
 
-  db <- dbx::dbxConnect(adapter="postgres", url=Sys.getenv("FOSSIL_DB_DEVELOPMENT"))
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+
   # Do in two times
 
   # Values with non null country values can be upserted properly

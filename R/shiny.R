@@ -8,8 +8,9 @@ deployShinyApp <- function(lite=T, test=T) {
   # Telling Shinyapps where to find packages
   urls <- c(
     "energyandcleanair/202203_russian_gas",
-    "energyandcleanair/rcrea")
-  remotes::install_github(urls, force=F, upgrade="never")
+    "energyandcleanair/rcrea",
+    "energyandcleanair/entsog")
+  remotes::install_github(urls, force=T, upgrade="never")
 
   # try(dotenv::load_dot_env())
   try(readRenviron(".Renviron"))

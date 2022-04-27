@@ -1,7 +1,4 @@
-tabPanel("About CREA",
-         value="about",
-
+div(class="container container-about",
          htmlOutput("aboutCrea", class = "about")
-
 )
 

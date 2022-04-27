@@ -105,7 +105,13 @@ ggplot(d7) +
 # Switching to new counter ------------------------------------------------
 
 voyages <- read_csv("https://api.russiafossiltracker.com/v0/voyage?date_from=2022-02-24&aggregate_by=arrival_date,destination_region,status,commodity_group&format=csv")
+
 overland_flows <- read_csv("https://api.russiafossiltracker.com/v0/overland?date_from=2022-02-24&aggregate_by=date,destination_region,commodity_group&format=csv")
+
+overland_flows %>%
+  ggplot() +
+  geom_line(aes(date, value_eur, col=destination_region)) +
+  facet_wrap(~commodity_group)
 
 
 voyages %>%
