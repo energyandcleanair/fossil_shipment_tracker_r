@@ -4,12 +4,13 @@ update_counter_new <- function(){
   library(tidyverse)
   library(lubridate)
   library(magrittr)
+  library(countrycode)
 
 
   # Europe pipeline gas ------------------------------------------------------------
 
   # Pipeline gas to Europe
-  flows_entsog <- entsog.get_flows(use_cache=F) %>%
+  flows_entsog <- entsog.get_flows(use_cache=T) %>%
     mutate(departure_iso2=countrycode::countrycode(partner, "country.name", "iso2c"),
            destination_iso2=countrycode::countrycode(country, "country.name", "iso2c")) %>%
     tidyr::pivot_wider(values_from="value", names_from="unit") %>%
@@ -50,38 +51,8 @@ update_counter_new <- function(){
   db.upload_flows_to_postgres(flows_entsog_distributed)
 
   # Other European overland flows ----------------------------------------------------
-  trade_share <- utils.get_transport_share()
-  #TODO missing coke
-
-  flows_comtrade_eurostat = db.download_flows("comtrade_eurostat")
-  flows_eurostat_exeu = db.download_flows("eurostat_exeu")
-  flows_comtrade_eurostat_2022 = utils.expand_in_2022(flows_comtrade_eurostat, flows_eurostat_exeu)
-  unique(flows_comtrade_eurostat_2022$commodity)
-
-  flows_overland_non_pipeline_eu <- flows_comtrade_eurostat_2022 %>%
-    filter(partner=="Russia") %>%
-    mutate(departure_iso2="RU") %>%
-    mutate(commodity=recode(commodity, oil_others="oil_products")) %>%
-    filter(country!="EU", EU) %>%
-    filter(unit=="tonne") %>%
-    left_join(trade_share %>%
-                filter(transport != "pipeline" | !grepl("gas", commodity)) %>%
-                filter(transport != "seaborne") %>%
-                filter(transport != "other") %>%
-                group_by(country, destination_iso2=iso2, commodity, transport) %>%
-                summarise(share=sum(share, na.rm=T))) %>%
-    mutate(value=value*share) %>%
-    select(departure_iso2, commodity, transport, destination_iso2, date, value_tonne=value) %>%
-    filter(!is.na(transport)) %>%
-    mutate(commodity=paste(commodity, transport, sep="_")) %>%
-    mutate(commodity = recode(commodity,
-                              oil_pipeline="pipeline_oil",
-                              oil_rail_road="crude_oil_rail_road")) %>%
-    filter(value_tonne>0) %>%
-    filter(!is.infinite(value_tonne)) %>%
-    mutate(value_m3=NA, value_mwh=NA)
-
-  db.upload_flows_to_postgres(flows_overland_non_pipeline_eu)
+  flows_overland_eu <- overland_eu.get_flows()
+  db.upload_flows_to_postgres(flows_overland_eu, production=T)
 
   # China --------------------------------------------------------
   flows_china <- china.get_flows() %>%
