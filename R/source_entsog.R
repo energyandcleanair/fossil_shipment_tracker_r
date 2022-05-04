@@ -32,8 +32,8 @@ entsog.get_flows <- function(date_from="2021-01-01", use_cache=T){
     interconnections %>% filter(toCountryKey %in% c("RU", "BY"))
 
   flows_russia_imports <- entsog::physical_flows(
-    operator_key = interconnections_russia_imports$fromOperatorKey[1],
-    point_key = interconnections_russia_imports$fromPointKey[1],
+    operator_key = interconnections_russia_imports$fromOperatorKey,
+    point_key = interconnections_russia_imports$fromPointKey,
     direction = "exit",
     date_from=date_from)
 

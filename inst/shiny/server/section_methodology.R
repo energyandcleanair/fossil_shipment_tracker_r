@@ -1,7 +1,11 @@
 output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
- </h2><p><span style="color: #8cc9d0;">Update 2022-04-25 </span>-
+ </h2>
+ <p><span style="color: #8cc9d0;">Update 2022-05-04 </span>-
+       <span>We fixed a bug pertaining to ship IMO / MMSI correspondance. As a result, several shipments that were not accounted for before were added to the counter.</span></p>
+
+ <p><span style="color: #8cc9d0;">Update 2022-04-25 </span>-
        <span>We improved the shipment detection methodology, allowing us to detect more shipments than previously. The counter data has therefore increased faster than usual over the past dew days, progressively integrating previously missing shipments.</span></p>
 
 

@@ -15,6 +15,11 @@ library(readr)
 #####################
 library(russiacounter)
 
+environment <- "production"
+base_url <- list("development"="https://development-dot-fossil-shipment-tracker.ew.r.appspot.com",
+                 "production"="https://api.russiafossiltracker.com")[[environment]]
+
+
 flows_sources <- c("Eurostat"="eurostat")
 
 color_bys <- c("Country"="country", "Sector"="sector", "Fuel"="fuel")

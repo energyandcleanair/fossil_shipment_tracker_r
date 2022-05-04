@@ -12,9 +12,6 @@ sources <- c(
   "EUROSTAT"="eurostat"
 )
 
-
-
-
 commodities <- c(
   "Fossil Gas"="gas_all",
   "Fossil Gas (pipeline)"="natural_gas",

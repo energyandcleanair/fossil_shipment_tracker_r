@@ -1,6 +1,6 @@
 
 payments <- reactive({
-  url <- sprintf("https://api.russiafossiltracker.com/v0/counter?date_from=2022-01-01&format=csv&aggregate_by=date,destination_region,commodity_group&rolling_days=7")
+  url <- sprintf("%s/v0/counter?date_from=2022-01-01&format=csv&aggregate_by=date,destination_region,commodity_group&rolling_days=7", base_url)
 
   payments <- read_csv(url)
 

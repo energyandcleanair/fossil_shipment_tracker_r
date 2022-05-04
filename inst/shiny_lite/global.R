@@ -3,7 +3,7 @@ library(shinyWidgets)
 library(shinycssloaders)
 library(countrycode)
 library(dplyr)
-
+library(readr)
 
 library(russiacounter)
 

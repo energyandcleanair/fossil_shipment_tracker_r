@@ -151,6 +151,7 @@ price.update_prices <- function(){
   ok <- price.check_prices(p)
   if(ok){
     db.upload_prices_to_posgres(p)
+    db.upload_prices_to_posgres(p,production=T)
   }
 }
 
@@ -159,6 +160,7 @@ price.update_portprices <- function(){
   ok <- price.check_prices(p)
   if(ok){
     db.upload_portprices_to_posgres(p)
+    db.upload_portprices_to_posgres(p, production=T)
   }
 }
 #
