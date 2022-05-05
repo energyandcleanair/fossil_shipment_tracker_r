@@ -78,6 +78,6 @@ update_counter <- function(){
   price.update_portprices()
 
   # Ask platform to update counter
-  # library(httr)
-  # httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
+  library(httr)
+  httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
 }
