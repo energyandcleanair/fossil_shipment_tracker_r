@@ -158,9 +158,9 @@ utils.get_russia_pipeline_distribution <- function(){
 
 utils.get_transport_share <- function(){
 
-  f <- "inst/extdata/DS-1262527_1_Data_for_transport_share_20220424.RDS"
-  # f <- system.file("extdata", "DS-1262527_1_Data_for_transport_share_20220424.RDS",
-  #                  package="russiacounter")
+  #f <- "inst/extdata/DS-1262527_1_Data_for_transport_share_20220424.RDS"
+  f <- system.file("extdata", "DS-1262527_1_Data_for_transport_share_20220424.RDS",
+                    package="russiacounter")
   print(sprintf("Reading %s",f))
 
   if(!file.exists(f)){
