@@ -151,7 +151,7 @@ price.update_prices <- function(){
   ok <- price.check_prices(p)
   if(ok){
     db.upload_prices_to_posgres(p)
-    db.upload_prices_to_posgres(p,production=T)
+    db.upload_prices_to_posgres(p, production=T)
   }
 }
 

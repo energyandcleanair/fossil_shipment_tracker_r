@@ -151,7 +151,7 @@ db.upload_portprices_to_posgres <- function(portprices, production=F){
 }
 
 db.upload_prices_to_posgres <- function(prices, production=F){
-  print(sprintf("=== Uploading portprices (%s) ===", ifelse(production,"production","development")))
+  print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- prices %>%
     select(country_iso2, date, commodity, eur_per_tonne) %>%

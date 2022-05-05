@@ -1,3 +1,11 @@
+fill_gaps_and_future <- function(result, n_days=7){
+  result %>%
+    ungroup() %>%
+    tidyr::complete(date = seq(min(date), max(date) + lubridate::days(n_days), by = "day")) %>%
+    arrange(desc(date)) %>%
+    tidyr::fill(setdiff(names(.),"date"), .direction="up")
+}
+
 get_brent <- function(){
   quantmod::getSymbols("BZ=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
     as.data.frame() %>%
@@ -5,7 +13,8 @@ get_brent <- function(){
     tibble() %>%
     rename(brent = contains('Close')) %>%
     filter(!is.na(date)) %>%
-    select(date, brent)
+    select(date, brent) %>%
+    fill_gaps_and_future()
 }
 
 
@@ -15,11 +24,11 @@ get_ttf <- function(){
     mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
     tibble() %>%
     rename(ttf = contains('Close')) %>%
-    select(date, ttf)
+    select(date, ttf) %>%
+    fill_gaps_and_future()
 }
 
 get_ara <- function(){
-
   ara_historical <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package="russiacounter")) %>%
     mutate(date=strptime(Date, "%b %d, %Y", tz="UTC"),
            ara = as.numeric(Price)) %>%
@@ -34,19 +43,24 @@ get_ara <- function(){
     mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y", tz="UTC"),
            ara = as.numeric(ara))
 
-  bind_rows(ara_historical,
-            ara_new %>% filter(date >= max(ara_historical$date)))
+  ara <- bind_rows(ara_historical,
+                      ara_new %>% filter(date >= max(ara_historical$date)))
+
+  # Fill gaps and next 7 days
+  ara %>%
+    fill_gaps_and_future()
 }
 
 get_newcastle <- function(){
   url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310550&historicalSpan=3"
   newcastle <- jsonlite::fromJSON(url)$bars
 
-  as.data.frame(newcastle) %>%
+ as.data.frame(newcastle) %>%
     `names<-`(c("date", "newcastle")) %>%
     tibble() %>%
     mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y", tz="UTC"),
-           newcastle = as.numeric(newcastle))
+           newcastle = as.numeric(newcastle))  %>%
+    fill_gaps_and_future()
 }
 
 
@@ -63,15 +77,8 @@ get_global_coal <- function(){
     warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
   }
 
-  # Fill with last 7 days average
-  completion <- tidyr::crossing(date = seq.POSIXt(min(max(result$date) + lubridate::days(1), lubridate::today()), lubridate::now(tz="UTC"), by="day"),
-                  global_coal = result %>% arrange(date) %>% tail(7) %>% pull(global_coal) %>% mean())
-
-  result <- bind_rows(
-    result %>% arrange(date),
-    completion
-  )
-  return(result)
+  result  %>%
+    fill_gaps_and_future()
 }
 
 
@@ -88,15 +95,8 @@ get_asia_lng <- function(){
     warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
   }
 
-  # Fill with last 7 days average
-  completion <- tidyr::crossing(date = seq.POSIXt(min(max(result$date) + lubridate::days(1), lubridate::today()), lubridate::now(tz="UTC"), by="day"),
-                                asia_lng = result %>% arrange(date) %>% tail(7) %>% pull(asia_lng) %>% mean())
-
-  result <- bind_rows(
-    result %>% arrange(date),
-    completion
-  )
-  return(result)
+  result  %>%
+    fill_gaps_and_future()
 }
 
 
@@ -107,7 +107,8 @@ get_jkm <- function(){
     `names<-`(c("date", "open", "high", "low", "close", "volume")) %>%
     tibble() %>%
     mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
-    select(date, jkm=close)
+    select(date, jkm=close) %>%
+    fill_gaps_and_future()
 }
 
 
@@ -181,7 +182,7 @@ get_ural_brent_spread <- function(){
     select(date, usd_per_bbl)
 
   # Fill with last 7 days average
-  completion <- tidyr::crossing(date = seq.Date(min(max(result$date) + lubridate::days(1), lubridate::today(tz="UTC")), lubridate::today(tz="UTC"), by="day"),
+  completion <- tidyr::crossing(date = seq.Date(min(max(result$date) + lubridate::days(7), lubridate::today(tz="UTC")), lubridate::today(tz="UTC"), by="day"),
                                 usd_per_bbl = result %>% arrange(date) %>% tail(7) %>% pull(usd_per_bbl) %>% mean())
 
   result <- bind_rows(
@@ -200,17 +201,19 @@ get_ural_brent_spread <- function(){
 
 get_espo_brent_spread <- function(){
 
+  date_to <- lubridate::today() + lubridate::days(7)
   get_at_date <- function(target_date){
     espo_discount = tibble(date=c('1990-01-01', '2022-02-24', '2022-03-11', '2022-03-17',
-                                  '2022-04-11', as.character(Sys.Date())),
-                           discount=c(0,0,0,20,20,20))
+                                  '2022-04-11', '2022-05-04', as.character(date_to)),
+                           discount=c(0,0,0,20,26,30,30))
     approx(as_date(espo_discount$date), espo_discount$discount, as_date(target_date))$y
   }
-  dates <- seq.Date(as.Date("2022-01-01"), lubridate::today(), by="day")
+  dates <- seq.Date(as.Date("2022-01-01"), date_to, by="day")
   # eur_per_usd <- price.eur_per_usd(date_from=min(dates), date_to=max(dates))
   # tonne_per_bbl <- 0.138
   tibble(date=dates, usd_per_bbl=-get_at_date(date)) %>%
-    select(date, usd_per_bbl)
+    select(date, usd_per_bbl) %>%
+    arrange(desc(date))
 
 
     # left_join(eur_per_usd) %>%
