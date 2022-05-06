@@ -31,7 +31,7 @@ update_counter <- function(){
     filter(commodity=="gas_all",
            transport=="pipeline")
 
-  distrib_entsog_lauri <- read_csv("data/EU fossil fuel imports from RU, by country, bln EUR 2019.csv") %>%
+  distrib_entsog_lauri <- readr::read_csv(system.file("extdata", "EU fossil fuel imports from RU, by country, bln EUR 2019.csv", package="russiacounter")) %>%
     select(destination_country=reporter, value = Gas) %>%
     mutate(share_of_russia=value/sum(value)) %>%
     arrange(desc(share_of_russia)) %>%
