@@ -46,7 +46,9 @@ update_counter <- function(){
     mutate_at(c("value_mwh", "value_tonne"), function(x) x * .$share_of_russia) %>%
     mutate(value_m3=NA)
 
-
+  print(flows_entsog)
+  print(distrib_entsog_lauri)
+  print(flows_entsog_distributed)
 
   ok <- T
   ok <- ok & (sum(flows_entsog$value_tonne) == sum(flows_entsog_distributed$value_tonne))

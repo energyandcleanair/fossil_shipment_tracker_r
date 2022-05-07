@@ -31,7 +31,7 @@ output$plot_payments <- renderPlotly({
     facet_wrap(~destination_region, nrow=3) +
     rcrea::theme_crea() +
     scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
-    scale_x_date(date_labels = "%b %Y", limits=c(as.Date("2022-01-15"), max(p$date) - lubridate::days(3))) +
+    scale_x_date(date_labels = "%b %Y", limits=c(as.Date("2022-01-15"), max(p$date) - lubridate::days(5))) +
     scale_color_manual(values = getPalette(colourCount), name=NULL) +
     labs(x=NULL,
          y=NULL)
