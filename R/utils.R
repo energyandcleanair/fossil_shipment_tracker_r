@@ -8,7 +8,7 @@ utils.recode_comtrade_commodity <- function(df){
   return(df)
 }
 
-utils.collect_comtrade <- function(partners, reporters, years, codes, frequency="monthly"){
+utils.collect_comtrade <- function(partners, reporters, years, codes, frequency="monthly", trade_flow='all', stop_if_no_row=T){
   # Max 5 reporters at a time and one year
 
   if(partners=="World" & reporters=="all" & (frequency=="monthly")){
@@ -24,18 +24,26 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
     lapply(split(reporters, rep(seq(1, length(reporters)/4), each=5)[1:length(reporters)]),
            function(reporters){
              print(reporters)
-             res <- comtradr::ct_search(partners = partners,
-                                        reporters = reporters,
-                                        trade_direction = "all",
-                                        commod_codes=codes,
-                                        freq=frequency,
-                                        start_date = start_dates[i_date],
-                                        end_date = end_dates[i_date])
+             res <- tibble()
+             itry <- 0
+             ntries <- 3
+             while(nrow(res)==0 & (itry<ntries)){
+               res <- comtradr::ct_search(partners = partners,
+                                          reporters = reporters,
+                                          trade_direction = trade_flow,
+                                          commod_codes=codes,
+                                          freq=frequency,
+                                          start_date = start_dates[i_date],
+                                          end_date = end_dates[i_date])
 
-             Sys.sleep(2)
-             if(nrow(res)==0){
-               print("No row returned")
-               stop("No row returned")
+               Sys.sleep(5)
+               if(nrow(res)==0 & (itry<ntries)){
+                 itry <- itry + 1
+                 print("No row returned. Trying again")
+               }
+             }
+             if(nrow(res)==0 & stop_if_no_row){
+               stop("No row returned.")
              }
              return(res)
            }) %>% do.call(bind_rows, .)

@@ -1,4 +1,4 @@
-prices.get_predicted_portprices <- function(){
+prices.get_predicted_portprices <- function(production=F){
 
   # Ports
   ports <- read_csv("https://api.russiafossiltracker.com/v0/port?format=csv&iso2=RU")
@@ -15,7 +15,7 @@ prices.get_predicted_portprices <- function(){
   # Discounts
   brent <- get_brent()
 
-  eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=max(brent$date))
+  eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
   tonne_per_bbl <- 0.138
 
   spread_ural <- get_ural_brent_spread() %>%
@@ -59,7 +59,7 @@ prices.get_predicted_portprices <- function(){
 }
 
 
-prices.get_predicted_prices <- function(add_to_predictors=NULL){
+prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
 
   prices_monthly <- get_prices_monthly() %>%
     arrange(desc(date)) %>%
@@ -75,8 +75,14 @@ prices.get_predicted_prices <- function(add_to_predictors=NULL){
       mutate(brent=brent + tidyr::replace_na(add_to_brent,0))
   }
 
-  models_eu <- readRDS(system.file("extdata", "pricing_models_eu.RDS", package="russiacounter"))
-  models_noneu <- readRDS(system.file("extdata", "pricing_models_noneu.RDS", package="russiacounter"))
+  if(production){
+    suffix=''
+  }else{
+    suffix='_development'
+  }
+
+  models_eu <- readRDS(system.file("extdata", sprintf("pricing_models_eu%s.RDS", suffix), package="russiacounter"))
+  models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu%s.RDS", suffix), package="russiacounter"))
 
   prices_eu <- models_eu %>%
     mutate(new_data=list(prices_monthly)) %>%
@@ -145,24 +151,30 @@ price.check_prices <- function(p){
   return(ok)
 }
 
+price.check_portprices <- function(p){
+  ok <- !any(is.na(p$eur_per_tonne))
+  ok <- ok & all(p$eur_per_tonne >= 0)
+  ok <- ok & all(c("port_id","date","commodity","eur_per_tonne") %in% names(p))
+  ok <- ok & nrow(p>0)
+  return(ok)
+}
 
-price.update_prices <- function(){
-  p <- prices.get_predicted_prices()
+price.update_prices <- function(production=F){
+  p <- prices.get_predicted_prices(production=production)
   ok <- price.check_prices(p)
   if(ok){
-    db.upload_prices_to_posgres(p)
-    db.upload_prices_to_posgres(p, production=T)
+    db.upload_prices_to_posgres(p, production=production)
   }
 }
 
-price.update_portprices <- function(){
-  p <- prices.get_predicted_portprices()
-  ok <- price.check_prices(p)
+price.update_portprices <- function(production=F){
+  p <- prices.get_predicted_portprices(production=production)
+  ok <- price.check_portprices(p)
   if(ok){
-    db.upload_portprices_to_posgres(p)
-    db.upload_portprices_to_posgres(p, production=T)
+    db.upload_portprices_to_posgres(p, production=production)
   }
 }
+
 #
 # price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_price=T){
 #

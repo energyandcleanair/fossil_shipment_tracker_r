@@ -1,4 +1,4 @@
-build_price_models <- function(){
+build_price_models <- function(production=F){
 
   library(tidyverse)
   library(magrittr)
@@ -18,19 +18,26 @@ build_price_models <- function(){
 
   # imp <- utils.collect_comtrade(partners="Russian Federation",
   #                               reporters="all",
-  #                               years=seq(2015,2022),
+  #                               years=seq(2016,2022),
   #                               codes=c(coal_codes, oil_codes, gas_codes),
-  #                               frequency="monthly") %>%
+  #                               frequency="monthly",
+  #                               stop_if_no_row=F) %>%
   #   filter(trade_flow=="Imports")
   # saveRDS(imp, "cache/imp_for_building_models.RDS")
   imp <- readRDS("cache/imp_for_building_models.RDS")
-  imp <- imp %>% filter(year < 2022) # 2022 doesn't have enough data yet
+  if(production){
+    max_date <- "2022-01-01"
+  }else{
+    max_date <- "2022-01-01"
+  }
+
 
   # exp <- utils.collect_comtrade(partners="all",
   #                               reporters="Russian Federation",
   #                               years=seq(2015,2019), # No record for 2020, and 2021
   #                               codes=c(coal_codes, oil_codes, gas_codes),
-  #                               frequency="monthly") %>%
+  #                               frequency="monthly",
+  #                               stop_if_no_row=F) %>%
   #   filter(trade_flow=="Exports")
   # saveRDS(exp, "cache/exp_for_building_models.RDS")
   exp <- readRDS("cache/exp_for_building_models.RDS")
@@ -65,6 +72,23 @@ build_price_models <- function(){
 
   imp_cleaned <- clean_comtrade(imp, is_import=T) %>% rename(country=reporter) %>% select(-c(reporter_iso))
   exp_cleaned <- clean_comtrade(exp, is_import=F) %>% rename(country=partner) %>% select(-c(partner_iso))
+
+  imp_cleaned <- imp_cleaned %>% filter(date <= max_date)
+  exp_cleaned <- exp_cleaned %>% filter(date <= max_date)
+
+  # plt <- imp_cleaned %>%
+  #   group_by(commodity, date) %>%
+  #   summarise(netweight_kg=sum(netweight_kg, na.rm=T),
+  #             count=n()) %>%
+  #   arrange(desc(date)) %>% ggplot() + geom_line(aes(date, netweight_kg, col=commodity))
+  #
+  # library(plotly)
+  # ggplotly(plt)
+
+  # exp_cleaned %>%
+  #   group_by(commodity, date) %>%
+  #   summarise(count=n()) %>%
+  #   arrange(desc(date)) %>% View()
 
   # Combine: take source with max flow for that month
   trade <- bind_rows(imp_cleaned, exp_cleaned) %>%
@@ -145,9 +169,14 @@ build_price_models <- function(){
     ggplot(aes(price_eur_per_tonne, predicted_price)) +
     facet_wrap(~commodity, scales='free') + geom_point() + geom_abline()+ geom_smooth()
 
-  saveRDS(trade_with_predictions_eu, 'inst/extdata/pricing_models_eu.RDS')
-  saveRDS(trade_with_predictions_eu, 'data/pricing_models_eu.RDS')
+  if(production){
+    suffix=''
+  }else{
+    suffix='_development'
+  }
 
+  saveRDS(trade_with_predictions_eu, sprintf('inst/extdata/pricing_models_eu%s.RDS',suffix))
+  saveRDS(trade_with_predictions_eu, sprintf('data/pricing_models_eu%s.RDS',suffix))
 
 
 
@@ -212,8 +241,10 @@ build_price_models <- function(){
   trade_with_predictions_non_eu <- trade_with_predictions %>%
     filter(country != 'EU')
 
-  saveRDS(trade_with_predictions_non_eu, 'inst/extdata/pricing_models_noneu.RDS')
-  saveRDS(trade_with_predictions_non_eu, 'data/pricing_models_noneu.RDS')
+  saveRDS(trade_with_predictions_non_eu,
+          sprintf('inst/extdata/pricing_models_noneu%s.RDS', suffix))
+  saveRDS(trade_with_predictions_non_eu,
+          sprintf('data/pricing_models_noneu%s.RDS',suffix))
 
   trade_with_predictions %>% rowwise() %>% group_split() %>%
     lapply(function(df) {

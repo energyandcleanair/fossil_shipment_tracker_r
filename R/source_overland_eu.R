@@ -41,7 +41,7 @@ overland_eu.get_flows <- function(){
   # Split in days
   flows <- flows %>%
     left_join(
-      tibble(date=seq(min(flows$month), max(flows$month) + 7, by="day")) %>%
+      tibble(date=seq(min(flows$month), max(flows$month) + lubridate::days_in_month(max(flows$month)) - 1, by="day")) %>%
         mutate(weight=1/lubridate::days_in_month(date),
                month=lubridate::floor_date(date, "month"))) %>%
     mutate(value_m3=value_m3*weight,

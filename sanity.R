@@ -81,7 +81,7 @@ d %>% filter(country %in% c("Germany"),
 entso <- get_entsog()
 comtrade <- get_comtrade()
 eurostat <- get_eurostat()
-iea <- get_iea()
+iea <- iea.get_flows()
 
 # operators <- entsog::operators()
 

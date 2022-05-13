@@ -103,7 +103,14 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
   print(sprintf("=== Upload flows to postgres (%s) ===", ifelse(production,"production","development")))
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
-  dbx::dbxUpsert(db, "pipelineflow", p, where_cols=c("commodity", "date", "departure_iso2", "destination_iso2"))
+  chunk_size <- 1000
+  pbapply::pblapply(split(p, (seq(nrow(p))-1) %/% chunk_size), function(chunk){
+    dbx::dbxUpsert(db, "pipelineflow", chunk, where_cols=c("commodity", "date", "departure_iso2", "destination_iso2"))
+  })
+
+  # And remove 0 values for query answers not to exceed max_size (32MB)
+  dbx::dbxDelete(db, "pipelineflow", where=data.frame(value_tonne=0))
+
   dbx::dbxDisconnect(db)
 }
 

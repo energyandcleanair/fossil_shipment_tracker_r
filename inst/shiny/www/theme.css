@@ -130,6 +130,9 @@ h1{
     margin-right: auto;
 }
 
+.container-diagnostic .subtitle {
+  margin-top: 15px !important;
+}
 
 .shiny-spinner-placeholder{
   height: 120px !important;

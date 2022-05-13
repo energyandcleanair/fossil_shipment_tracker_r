@@ -2,6 +2,16 @@ output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
  </h2>
+  <p><span style="color: #8cc9d0;">Update 2022-05-13 </span>-
+       <span>This is a significant update, with four majour changes:</span>
+       <ul>
+       <li>we have fixed a mistake that led us to overestimate pipelined gas imports from Russia (read more <a href="https://energyandcleanair.org/russia-fossil-tracker-corrigendum/" target="_blank">here</a>);</li>
+       <li>we have implemented a new methodology to attribute pipelined gas to individual European countries (read more <a href="https://energyandcleanair.org/russia-fossil-tracker-updated-methodology/" target="_blank">here</a>);</li>
+       <li>we have added shipments loading at anchorage; and</li>
+       <li>we have included January 2022 trade data in our price modeling.</li>
+       </ul>
+      </p>
+
  <p><span style="color: #8cc9d0;">Update 2022-05-04 </span>-
        <span>We fixed a bug pertaining to ship IMO / MMSI correspondance. As a result, several shipments that were not accounted for before were added to the counter.</span></p>
 

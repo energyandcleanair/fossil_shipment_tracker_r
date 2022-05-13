@@ -76,8 +76,10 @@ update_counter <- function(){
   db.upload_flows_to_postgres(flows_turkey, production=T)
 
   # V2: build and update prices to postgres
-  price.update_prices()
-  price.update_portprices()
+  price.update_prices(production=F)
+  price.update_prices(production=T)
+  price.update_portprices(production=F)
+  price.update_portprices(production=T)
 
   # Ask platform to update counter
   library(httr)

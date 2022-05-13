@@ -15,6 +15,7 @@ server <- function(input, output, session) {
 
     source(file.path("server", "section_counter.R"),  local = TRUE)$value
     source(file.path("server", "section_payments.R"),  local = TRUE)$value
+    source(file.path("server", "section_diagnostic.R"),  local = TRUE)$value
     source(file.path("server", "section_methodology.R"),  local = TRUE)$value
     source(file.path("server", "section_about.R"),  local = TRUE)$value
 

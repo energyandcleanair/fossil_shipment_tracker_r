@@ -1,4 +1,4 @@
-eurostat_exeu.get_flows <- function(use_cache=F){
+eurostat_exeu.get_flows <- function(use_cache=T){
 
   f_cache <- "cache/eurostat_exeu.RDS"
   if(use_cache & file.exists(f_cache)){
@@ -12,9 +12,9 @@ eurostat_exeu.get_flows <- function(use_cache=F){
     stop(sprintf("Can't find file %s",f))
   }
 
-  read_csv("~/Downloads/DS-1262527 ()/DS-1262527_1_Data.csv") %>%
-    mutate(partner=ifelse(grepl("Russia", partner), "Russia", "World"))
-    saveRDS(f)
+  # read_csv(f) %>%
+  #   mutate(partner=ifelse(grepl("Russia", partner), "Russia", "World")) %>%
+  #   saveRDS(f)
 
   trade <- readRDS(f)
 

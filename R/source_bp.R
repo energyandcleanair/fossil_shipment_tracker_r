@@ -1,6 +1,9 @@
 bp.get_flows <- function(use_cache=T){
 
-  f <- "data/bp-stats-review-2021-all-data.xlsx"
+  f <- system.file("extdata", "bp-stats-review-2021-all-data.xlsx",
+                   package="russiacounter")
+  # f <- "data/bp-stats-review-2021-all-data.xlsx"
+
   sheet <- "Gas - Trade movts - pipeline"
 
 
@@ -17,11 +20,12 @@ bp.get_flows <- function(use_cache=T){
            value=value*1e9) %>%
     filter(!country %in% c("North America", "S. & Cent. America", "Europe",
                            "CIS","Middle East","Middle East", "Asia Pacific")) %>%
-    mutate(commodity="natural_gas") %>%
-    filter(partner=="Germany")
+    mutate(destination_iso2=countrycode::countrycode(country, "country.name", "iso2c")) %>%
+    mutate(destination_region=ifelse(destination_iso2 %in% countrycode::codelist$iso2c[which(countrycode::codelist$eu28=="EU")] | country=='Other EU', "EU28", NA)) %>%
+    mutate(year=2020)
 
 
-  #
+
 #
 #   #lng
 #   readxl::read_xlsx(f,
@@ -83,41 +87,30 @@ bp.get_flows <- function(use_cache=T){
 #     "TJ_GCV"=1,
 #     "THS_T"=1
 #   )
-#
-#   f <- "cache/eurostat.RDS"
-#   if(use_cache && file.exists(f)){ return(readRDS(f)) }
-#
-#   gas_import <- eurostat::get_eurostat("nrg_ti_gasm")
-#   gas_export <- eurostat::get_eurostat("nrg_te_gasm") %>% mutate(values=values*-1)
-#
-#   oil_import <- eurostat::get_eurostat("nrg_ti_oilm")
-#   oil_export <- eurostat::get_eurostat("nrg_te_oilm") %>% mutate(values=values*-1)
-#
-#   coal_import <- eurostat::get_eurostat("nrg_122m") %>% rename(siec=product)
-#   coal_export <- eurostat::get_eurostat("nrg_132m") %>% rename(siec=product) %>% mutate(values=values*-1)
-#
-#   data <- bind_rows(gas_import, gas_export,
-#                     oil_import, oil_export,
-#                     coal_import, coal_export) %>%
-#     rename(value=values,
-#            date=time) %>%
-#     filter(siec %in% names(commodity_codes)) %>%
-#     mutate(value=recode(unit, !!!unit_factors)*value,
-#            unit=recode(unit, !!!units),
-#            commodity=recode(siec, !!!commodity_codes)) %>%
-#     filter(value>0) %>%
-#     filter(!grepl('EU|EA19|EA', geo), partner != 'TOTAL') %>%
-#     # filter(partner %in% c("RU","BY","UA")) %>%
-#     mutate(country=countrycode::countrycode(geo, "iso2c", "country.name",
-#                                             custom_match = c("UK"="United Kingdom", "EL"="Greece", "XK"="XK"))) %>%
-#     mutate(partner=countrycode::countrycode(partner, "iso2c", "country.name")) %>%
-#     # mutate(value=values * 1e6 / MJ_per_kWh / 1000,
-#     #        unit="MWh/month") %>%
-#     group_by(country, unit, partner, date, commodity) %>%
-#     summarise(value=sum(value)) %>%
-#     mutate(source='Eurostat') %>%
-#     ungroup()
-#
-#   saveRDS(data, f)
-#   return(data)
+
+}
+
+
+bp.get_gas_consumption <- function(){
+  f <- system.file("extdata", "bp-stats-review-2021-all-data.xlsx",
+                   package="russiacounter")
+  # f <- "data/bp-stats-review-2021-all-data.xlsx"
+
+  sheet <- "Gas Consumption - Bcm"
+
+
+
+  # natural_gas
+  d <- readxl::read_xlsx(f,
+                    sheet=sheet,
+                    range="A3:BE109")
+
+  d['country'] <- d[,1]
+  d %>%
+    select(country, value=`2020`) %>%
+    mutate(unit='m3',
+           value=as.numeric(value) * 1e9) %>%
+    mutate(iso2=countrycode::countrycode(country, "country.name", "iso2c"),
+           year=2020) %>%
+    filter(!is.na(iso2))
 }
