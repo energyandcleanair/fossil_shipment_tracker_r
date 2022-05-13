@@ -143,7 +143,7 @@ netize <- function(d){
       by=c("source", "destination_country", "departure_country")
     ) %>%
     mutate(value_m3_opposite=tidyr::replace_na(value_m3_opposite, 0)) %>%
-    mutate(value=pmax(0, value_m3-value_m3_opposite)) %>%
+    mutate(value_m3=pmax(0, value_m3-value_m3_opposite)) %>%
     select(-c(value_m3_opposite))
 }
 
@@ -191,9 +191,8 @@ output$plot_flows_comparison <- renderPlotly({
     summarise(value_m3=sum(value_m3)) %>%
     # netize_data() %>%
     filter(destination_country %in% head(sorted_importers, top_n)) %>%
-    filter(destination_country != departure_country)
-
-  data_plt
+    filter(destination_country != departure_country) %>%
+    netize()
 
   colourCount = length(unique(d$departure_country))
   getPalette = colorRampPalette(brewer.pal(12, "Paired"))
@@ -222,7 +221,7 @@ output$plot_flows_comparison <- renderPlotly({
                        destination_country=factor(destination_country, head(sorted_importers, top_n))),
               inherit.aes = F,
               aes(x=source, y=value_m3/1e9, group=destination_country, col=legend)) +
-    scale_color_manual(values=list(Consumption='red')) +
+    scale_color_manual(values=c(Consumption='red')) +
     scale_fill_manual(values = getPalette(colourCount), name=NULL) +
     labs(y='bcm', x=NULL) +
     facet_wrap(~destination_country,
