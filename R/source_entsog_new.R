@@ -39,7 +39,7 @@ entsog_new.get_flows <- function(date_from='2022-01-01', use_cache=T){
       mutate(value_tonne=value_mwh/gcv_MWh_per_m3*kg_per_m3/1000) %>%
       mutate(value_m3=value_mwh/gcv_MWh_per_m3) %>%
       mutate(commodity='natural_gas')) %>%
-    select(from_country, to_country, date, value_m3)
+    select(from_country, to_country, date, value_m3, value_tonne, value_mwh)
 
 
   # Plotting diagnosis

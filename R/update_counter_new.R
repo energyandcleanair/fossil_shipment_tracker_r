@@ -13,10 +13,9 @@ update_counter_new <- function(){
   flows_entsog <- entsog_new.get_flows(date_from='2020-01-01', use_cache=F)
 
   flows_entsog <- flows_entsog %>%
-    mutate(departure_iso2=countrycode::countrycode(from_country, "country.name", "iso2c"),
-           destination_iso2=countrycode::countrycode(to_country, "country.name", "iso2c")) %>%
+    mutate(departure_iso2=countrycode::countrycode(from_country, "country.name", "iso2c", custom_match = c("Moldavia"="MD", "LNG"="lng")),
+           destination_iso2=countrycode::countrycode(to_country, "country.name", "iso2c", custom_match = c("Moldavia"="MD", "LNG"="lng"))) %>%
     select(date, departure_iso2, destination_iso2, value_m3, value_mwh, value_tonne) %>%
-    mutate(departure_iso2=ifelse(departure_country=='LNG', 'lng', departure_iso2)) %>%
     mutate(commodity='natural_gas')
 
   # saveRDS(flows_entsog, "cache/tmp_flows_entsog_new.RDS")
