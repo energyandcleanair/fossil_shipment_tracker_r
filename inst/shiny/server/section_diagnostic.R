@@ -129,12 +129,29 @@ output$plot_pipelined_gas_yearly <- renderPlotly({
 })
 
 
+netize <- function(d){
+  d %>%
+    ungroup() %>%
+    left_join(
+      d %>%
+        ungroup() %>%
+        select(source,
+               departure_country=destination_country,
+               destination_country=departure_country,
+               value_m3_opposite=value_m3) %>%
+        filter(departure_country!=destination_country), #We keep production
+      by=c("source", "destination_country", "departure_country")
+    ) %>%
+    mutate(value_m3_opposite=tidyr::replace_na(value_m3_opposite, 0)) %>%
+    mutate(value=pmax(0, value_m3-value_m3_opposite)) %>%
+    select(-c(value_m3_opposite))
+}
 
 
+output$plot_flows_comparison <- renderPlotly({
 
-build_plot_flows_comparison <- function(){
   year <- 2020
-  top_n <- 20
+  top_n <- 27
 
   flows <- flows()
   flows_iea <- flows_iea()
@@ -176,6 +193,8 @@ build_plot_flows_comparison <- function(){
     filter(destination_country %in% head(sorted_importers, top_n)) %>%
     filter(destination_country != departure_country)
 
+  data_plt
+
   colourCount = length(unique(d$departure_country))
   getPalette = colorRampPalette(brewer.pal(12, "Paired"))
 
@@ -207,7 +226,7 @@ build_plot_flows_comparison <- function(){
     scale_fill_manual(values = getPalette(colourCount), name=NULL) +
     labs(y='bcm', x=NULL) +
     facet_wrap(~destination_country,
-               nrow=2) +
+               nrow=3) +
     rcrea::theme_crea() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     theme(legend.position='none')
@@ -217,11 +236,6 @@ build_plot_flows_comparison <- function(){
     plotly::config(displayModeBar = F) %>%
     plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
   return(plt)
-}
 
 
-output$plot_flows_comparison <- renderPlotly({
-  build_plot_flows_comparison()
 })
-
-
