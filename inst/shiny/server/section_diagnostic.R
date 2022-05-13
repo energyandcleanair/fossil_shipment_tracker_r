@@ -130,7 +130,11 @@ output$plot_pipelined_gas_yearly <- renderPlotly({
 
 
 
-output$plot_flows_comparison <- renderPlotly({
+
+
+build_plot_flows_comparison <- function(){
+  year <- 2020
+  top_n <- 20
 
   flows <- flows()
   flows_iea <- flows_iea()
@@ -153,9 +157,8 @@ output$plot_flows_comparison <- renderPlotly({
     # filter(eu28,grepl("Russia|Belarus|Turkey", departure_country)) %>%
     group_by(departure_country, destination_country, year=lubridate::year(date), source) %>%
     summarise_at(c("value_m3", "value_eur"), sum, na.rm=T) %>%
-    filter(year ==2020)
+    filter(year==!!year)
 
-  top_n <- 10
 
   sorted_importers <- d %>%
     filter(source=='CREA') %>%
@@ -181,7 +184,7 @@ output$plot_flows_comparison <- renderPlotly({
     ungroup() %>%
     mutate(destination_country=factor(destination_country, head(sorted_importers, top_n)),
            # source=factor(source, source_levels)
-           ) %>%
+    ) %>%
     # filter(value>0) %>%
     tidyr::complete(
       departure_country, destination_country, source
@@ -192,18 +195,19 @@ output$plot_flows_comparison <- renderPlotly({
                  y=value_m3/1e9,
                  fill=departure_country),
              show.legend = F) +
-    geom_line(data=manual %>% filter(year==2020,
+    geom_line(data=manual %>% filter(year==!!year,
                                      country %in% head(sorted_importers, top_n)) %>%
-                  rename(destination_country=country) %>%
-                  tidyr::crossing(source=unique(data_plt$source)) %>%
+                rename(destination_country=country) %>%
+                tidyr::crossing(source=unique(data_plt$source)) %>%
                 mutate(legend='Consumption',
                        destination_country=factor(destination_country, head(sorted_importers, top_n))),
-                inherit.aes = F,
-                aes(x=source, y=value_m3/1e9, group=destination_country, col=legend)) +
+              inherit.aes = F,
+              aes(x=source, y=value_m3/1e9, group=destination_country, col=legend)) +
     scale_color_manual(values=list(Consumption='red')) +
     scale_fill_manual(values = getPalette(colourCount), name=NULL) +
     labs(y='bcm', x=NULL) +
-    facet_grid(~destination_country) +
+    facet_wrap(~destination_country,
+               nrow=2) +
     rcrea::theme_crea() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     theme(legend.position='none')
@@ -213,6 +217,11 @@ output$plot_flows_comparison <- renderPlotly({
     plotly::config(displayModeBar = F) %>%
     plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
   return(plt)
+}
+
+
+output$plot_flows_comparison <- renderPlotly({
+  build_plot_flows_comparison()
 })
 
 

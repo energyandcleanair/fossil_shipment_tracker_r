@@ -1,11 +1,12 @@
 div(class="container container-diagnostic",
   h1("Diagnostics"),
   div(class="subtitle", "Pipelined gas to EU28"),
-  plotlyOutput("plot_pipelined_gas_yearly", height='600px') %>% withSpinner(color="#8cc9D0"),
+  plotlyOutput("plot_pipelined_gas_yearly", height='400px') %>% withSpinner(color="#8cc9D0"),
 
   div(class="subtitle", "2020 Net imports of pipelined gas by country"),
+  div(class="", "Note: quite a few countries have NA values in IEA dataset, potentially explaining why it is lower."),
 
-  plotlyOutput("plot_flows_comparison", height='600px') %>% withSpinner(color="#8cc9D0"),
+  plotlyOutput("plot_flows_comparison", height='800px') %>% withSpinner(color="#8cc9D0"),
   div(class="", "Red line represents country's annual consumption (source: BP)."),
 
   div(class="subtitle", "Commodity pricing"),
