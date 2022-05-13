@@ -9,7 +9,8 @@ ui <- fluidPage(
     windowTitle="Russia Ïossil Counter",
     theme = "theme.css",
     id = "counter",
-    source(file.path("ui", "tab_counter.R"),  local = TRUE)$value
+    source(file.path("ui", "section_maintenance.R"),  local = TRUE)$value
+    # source(file.path("ui", "tab_counter.R"),  local = TRUE)$value
 )
 
 
