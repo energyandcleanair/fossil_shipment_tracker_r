@@ -148,6 +148,7 @@ netize <- function(d){
     ) %>%
     mutate(value_opposite=tidyr::replace_na(value_opposite, 0)) %>%
     mutate(value=pmax(0, value-value_opposite)) %>%
+    # mutate(value=value-value_opposite)) %>%
     select(-c(value_opposite))
 }
 
@@ -288,37 +289,23 @@ process_iterative <- function(flows){
   #
   # print(abs(scaling-1))
 
-  flows <- flows %>%
-    mutate(
-      # value = ifelse(from_country=="Ukraine", value*scaling, value),
-      from_country=recode(from_country, "Ukraine"="Russia")) %>%
-    mutate(value=ifelse((from_country=='Russia') & (to_country=='Ukraine'), 0, value))
 
+  sanity_check <- function(flows, flow_mat, pos){
 
-  flow_mat <- flows %>%
-    consolidate() %>%
-    netize() %>%
-    to_flow_mat()
-
-  pos = pmax(flow_mat, 0)
-  n <- dim(pos)[1] # Matrix must be square
-  if(dim(pos)[1]!=dim(pos)[2]){stop("Matrix not square")}
-
-  new_pos = pos
-
-  for(i in seq(n)){
-    old_pos = new_pos
-    new_pos = distribute(new_pos)
-    if(dim(new_pos)[1]!=dim(new_pos)[2]){stop("Matrix not square")}
-    # if(all(old_pos == new_pos)){
-    #   print(sprintf("leaving at iteration %d",i))
-    # }
-  }
-
-
-  sanity_check <- function(flow_mat, pos){
     # We use flow_mat to have consumption
     pos_without_prod <- pos %>% `diag<-`(0)
+
+    # Country consumption
+    # consumption <- flows %>% group_by(country=from_country) %>% summarise(export=sum(value, T)) %>%
+    #   left_join(flows %>% group_by(country=to_country) %>% summarise(import=sum(value, T))) %>%
+    #   mutate(consumption=tidyr::replace_na(import, 0) - tidyr::replace_na(export, 0))
+    #
+    # consumption %>% select(country, consumption) %>%
+    #   left_join(
+    #     rowSums(pos_without_prod) %>% as.data.frame() %>% `names<-`('value') %>% mutate(country=rownames(.)) %>% tibble()
+    #   )
+
+
     nearly_equal <- function(mat1, mat2, abs_threshold=1){
       all(abs(mat1-mat2) < abs_threshold)
     }
@@ -334,8 +321,41 @@ process_iterative <- function(flows){
     return(ok)
   }
 
-  sanity_check(flow_mat, pos)
-  sanity_check(flow_mat, new_pos)
+
+  flows <- flows %>%
+    mutate(
+      # value = ifelse(from_country=="Ukraine", value*scaling, value),
+      from_country=recode(from_country, "Ukraine"="Russia")) %>%
+    mutate(value=ifelse((from_country=='Russia') & (to_country=='Ukraine'), 0, value))
+
+
+  flow_mat <- flows %>%
+    consolidate() %>%
+    netize() %>%
+    to_flow_mat()
+
+  pos = pmax(flow_mat, 0)
+  sanity_check(flows, flow_mat, pos)
+
+  n <- dim(pos)[1] # Matrix must be square
+  if(dim(pos)[1]!=dim(pos)[2]){stop("Matrix not square")}
+
+  new_pos = pos
+
+  for(i in seq(n)){
+    old_pos = new_pos
+    new_pos = distribute(new_pos)
+    if(dim(new_pos)[1]!=dim(new_pos)[2]){stop("Matrix not square")}
+    # if(all(old_pos == new_pos)){
+    #   print(sprintf("leaving at iteration %d",i))
+    # }
+  }
+
+
+
+
+  sanity_check(flows, flow_mat, pos)
+  sanity_check(flows, flow_mat, new_pos)
 
   # Shouldn't be useful anymore
   # new_pos <- cap(new_pos)

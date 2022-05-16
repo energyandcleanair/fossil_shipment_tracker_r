@@ -11,15 +11,6 @@ update_counter_new <- function(){
 
   # Pipeline gas to Europe
   flows_entsog <- entsog_new.get_flows(date_from='2020-01-01', use_cache=F)
-
-  flows_entsog <- flows_entsog %>%
-    mutate(departure_iso2=countrycode::countrycode(from_country, "country.name", "iso2c", custom_match = c("Moldavia"="MD", "LNG"="lng")),
-           destination_iso2=countrycode::countrycode(to_country, "country.name", "iso2c", custom_match = c("Moldavia"="MD", "LNG"="lng"))) %>%
-    select(date, departure_iso2, destination_iso2, value_m3, value_mwh, value_tonne) %>%
-    mutate(commodity='natural_gas')
-
-  # saveRDS(flows_entsog, "cache/tmp_flows_entsog_new.RDS")
-  # flows_entsog = readRDS("cache/tmp_flows_entsog_new.RDS")
   ok <- T
   # ok <- ok & (sum(flows_entsog$value_tonne) >= 2E8)
   # ok <- ok & all(flows_entsog$value_tonne >= -1)
@@ -48,8 +39,8 @@ update_counter_new <- function(){
 
 
   # V2: build and update prices to postgres
-  price.update_prices(production=T)
-  price.update_portprices(production=T)
+  price.update_prices(production=T, add_tail_days=7)
+  price.update_portprices(production=T, add_tail_days=7)
 
 
   # # Ask platform to update counter

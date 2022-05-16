@@ -3,6 +3,9 @@ flows <- reactive({
  read_csv("https://api.russiafossiltracker.com/v0/overland?format=csv&date_from=2020-01-01")
 })
 
+flows_entsog <- reactive({
+  read_csv("https://api.russiafossiltracker.com/v0/entsogflow?format=csv&date_from=2020-01-01")
+})
 
 prices <- reactive({
   read_csv("https://api.russiafossiltracker.com/v0/price?format=csv&date_from=2020-01-01")
@@ -17,8 +20,6 @@ gazprom_flows <- reactive({
 
 flows_iea <- reactive({
   iea.get_flows() %>%
-    filter(unit=='MWh/month') %>%
-    mutate(value_m3=value * 1000 / gcv_kWh_per_m3) %>%
     select(departure_country=partner,
            destination_country=country,
            commodity,
@@ -130,11 +131,18 @@ output$plot_pipelined_gas_yearly <- renderPlotly({
 
 
 netize <- function(d){
-  d %>%
+
+  # First group by country x partner
+  d_sum <- d %>%
     ungroup() %>%
+    group_by(source, departure_country, destination_country) %>%
+    summarise(value_m3=sum(value_m3, na.rm=T)) %>%
+    ungroup() %>%
+    tidyr::complete(source, departure_country, destination_country, fill=list(value_m3=0))
+
+  d_sum %>%
     left_join(
-      d %>%
-        ungroup() %>%
+      d_sum %>%
         select(source,
                departure_country=destination_country,
                destination_country=departure_country,
@@ -143,25 +151,26 @@ netize <- function(d){
       by=c("source", "destination_country", "departure_country")
     ) %>%
     mutate(value_m3_opposite=tidyr::replace_na(value_m3_opposite, 0)) %>%
-    mutate(value_m3=pmax(0, value_m3-value_m3_opposite)) %>%
+    # mutate(value_net=pmax(0, value_m3-value_m3_opposite)) %>%
+    mutate(value_m3=value_m3-value_m3_opposite) %>%
     select(-c(value_m3_opposite))
 }
 
 
-output$plot_flows_comparison <- renderPlotly({
-
-  year <- 2020
+build_plot_flows_comparison <- function(year=2020){
   top_n <- 27
 
   flows <- flows()
+  flows_entsog <- flows_entsog()
   flows_iea <- flows_iea()
   flows_bp <- flows_bp()
-  req(flows, flows_iea, flows_bp)
+  req(flows, flows_iea, flows_bp, flows_entsog)
 
   manual <- consumption_manual() %>%
     filter(!is.na(country))
 
   d <- bind_rows(
+    flows_entsog %>% mutate(source='ENTSOG (physical)'),
     flows %>% mutate(source='CREA'),
     flows_iea %>% mutate(source='IEA'),
     flows_bp %>% mutate(source='BP')) %>%
@@ -177,6 +186,22 @@ output$plot_flows_comparison <- renderPlotly({
     filter(year==!!year)
 
 
+
+  greps <- c("Slovak"="Slovakia",
+             "Maced"="Macedonia",
+             "Czech"="Czechia",
+             "Luxemb"="Luxemburg",
+             "Macedo"="Macedonia",
+             "Liquefied"="LNG",
+             "Russia"="Russia"
+  )
+
+  for(grep in names(greps)){
+    d[grepl(grep, d$departure_country),"departure_country"] = greps[[grep]]
+    d[grepl(grep, d$destination_country),"destination_country"] = greps[[grep]]
+  }
+
+
   sorted_importers <- d %>%
     filter(source=='CREA') %>%
     group_by(destination_country) %>%
@@ -188,7 +213,7 @@ output$plot_flows_comparison <- renderPlotly({
   data_plt <- d %>%
     # filter(lubridate::year(month)==2020) %>%
     group_by(departure_country, destination_country, source) %>%
-    summarise(value_m3=sum(value_m3)) %>%
+    summarise(value_m3=sum(value_m3, na.rm=T)) %>%
     # netize_data() %>%
     filter(destination_country %in% head(sorted_importers, top_n)) %>%
     filter(destination_country != departure_country) %>%
@@ -196,6 +221,8 @@ output$plot_flows_comparison <- renderPlotly({
 
   colourCount = length(unique(d$departure_country))
   getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+
 
 
   plt <- data_plt %>%
@@ -213,14 +240,6 @@ output$plot_flows_comparison <- renderPlotly({
                  y=value_m3/1e9,
                  fill=departure_country),
              show.legend = F) +
-    geom_line(data=manual %>% filter(year==!!year,
-                                     country %in% head(sorted_importers, top_n)) %>%
-                rename(destination_country=country) %>%
-                tidyr::crossing(source=unique(data_plt$source)) %>%
-                mutate(legend='Consumption',
-                       destination_country=factor(destination_country, head(sorted_importers, top_n))),
-              inherit.aes = F,
-              aes(x=source, y=value_m3/1e9, group=destination_country, col=legend)) +
     scale_color_manual(values=c(Consumption='red')) +
     scale_fill_manual(values = getPalette(colourCount), name=NULL) +
     labs(y='bcm', x=NULL) +
@@ -230,11 +249,34 @@ output$plot_flows_comparison <- renderPlotly({
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     theme(legend.position='none')
 
+  if(year==2020){
+    plt <- plt + geom_line(data=manual %>% filter(year==!!year,
+                                     country %in% head(sorted_importers, top_n)) %>%
+                rename(destination_country=country) %>%
+                tidyr::crossing(source=unique(data_plt$source)) %>%
+                mutate(legend='Consumption',
+                       destination_country=factor(destination_country, head(sorted_importers, top_n))),
+              inherit.aes = F,
+              aes(x=source, y=value_m3/1e9, group=destination_country, col=legend))
+  }
+
   # Add manual points
   plt <- ggplotly(plt) %>%
     plotly::config(displayModeBar = F) %>%
     plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
   return(plt)
+}
 
 
+output$plot_flows_comparison2020 <- renderPlotly({
+  build_plot_flows_comparison(year=2020)
 })
+
+output$plot_flows_comparison2021 <- renderPlotly({
+  build_plot_flows_comparison(year=2021)
+})
+
+output$plot_flows_comparison2022 <- renderPlotly({
+  build_plot_flows_comparison(year=2022)
+})
+

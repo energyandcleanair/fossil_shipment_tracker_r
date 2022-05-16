@@ -143,6 +143,19 @@ prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
 }
 
 
+# prices.add_tail <- function(p, add_tail_days){
+#   if(is.null(add_tail_days) | add_tail_days==0){
+#     return(p)
+#   }
+#
+#   p %>%
+#     group_by(commodity, country_iso2) %>%
+#     arrange(desc(date)) %>%
+#     top_n(7, w) %>%
+#     ungroup() %>%
+#     arrange(desc(country_iso2))
+# }
+
 price.check_prices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne))
   ok <- ok & all(p$eur_per_tonne >= 0)
@@ -159,15 +172,16 @@ price.check_portprices <- function(p){
   return(ok)
 }
 
-price.update_prices <- function(production=F){
+price.update_prices <- function(production=F, add_tail_days=0){
   p <- prices.get_predicted_prices(production=production)
+  # p <- prices.add_tail(p, add_tail_days=add_tail_days)
   ok <- price.check_prices(p)
   if(ok){
     db.upload_prices_to_posgres(p, production=production)
   }
 }
 
-price.update_portprices <- function(production=F){
+price.update_portprices <- function(production=F, add_tail_days=0){
   p <- prices.get_predicted_portprices(production=production)
   ok <- price.check_portprices(p)
   if(ok){
