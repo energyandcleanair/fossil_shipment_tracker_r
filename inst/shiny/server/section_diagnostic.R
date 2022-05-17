@@ -1,14 +1,14 @@
 
 flows <- reactive({
- read_csv("https://api.russiafossiltracker.com/v0/overland?format=csv&date_from=2020-01-01")
+  utils.read_csv("https://api.russiafossiltracker.com/v0/overland?format=csv&date_from=2020-01-01")
 })
 
 flows_entsog <- reactive({
-  read_csv("https://api.russiafossiltracker.com/v0/entsogflow?format=csv&date_from=2020-01-01")
+  utils.read_csv("https://api.russiafossiltracker.com/v0/entsogflow?format=csv&date_from=2020-01-01")
 })
 
 prices <- reactive({
-  read_csv("https://api.russiafossiltracker.com/v0/price?format=csv&date_from=2020-01-01")
+  utils.read_csv("https://api.russiafossiltracker.com/v0/price?format=csv&date_from=2020-01-01")
 })
 
 
@@ -53,6 +53,83 @@ consumption_manual <- reactive({
   bp.get_gas_consumption() %>%
     filter(unit=='m3') %>%
     rename(value_m3=value)
+})
+
+
+
+
+payments_detailed <- reactive({
+  url <- sprintf("%s/v0/counter?date_from=2022-01-01&format=csv", base_url)
+  payments_detailed <- utils.read_csv(url)
+  return(payments_detailed)
+})
+
+counter_last <- reactive({
+  url <- sprintf("%s/v0/counter_last?format=csv", base_url)
+  counter_last <- utils.read_csv(url)
+  return(counter_last)
+})
+
+
+output$plot_payments_detailed <- renderPlotly({
+
+  p <- payments_detailed()
+  req(p)
+
+  colourCount = length(unique(p$commodity))
+  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+  p <- p %>% rcrea::utils.running_average(7, vars_to_avg = c("value_tonne", "value_eur"))
+  plt <- ggplot(p) +
+    geom_line(aes(date, value_eur/1e6, col=commodity),
+              stat="identity") +
+    facet_wrap(~destination_region, nrow=3, scales='free_y') +
+    rcrea::theme_crea() +
+    scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
+    scale_x_date(date_labels = "%b %Y", limits=c(as.Date("2022-01-15"), max(p$date))) +
+    scale_color_manual(values = getPalette(colourCount), name=NULL) +
+    labs(x=NULL,
+         y=NULL)
+
+  plt <- ggplotly(plt) %>%
+    plotly::config(displayModeBar = F) %>%
+    plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
+  return(plt)
+
+
+})
+
+
+output$plot_pipeline_from_russia_ts <- renderPlotly({
+
+  flows <- flows()
+  req(flows)
+
+  d <- flows %>%
+    ungroup() %>%
+    filter(commodity=='natural_gas') %>%
+    filter(departure_iso2 %in% c('RU', 'BY', 'TR')) %>%
+    group_by(destination_country, date) %>%
+    summarise(value_mcm=sum(value_m3)/1e6, na.rm=T) %>%
+    rcrea::utils.running_average(7, min_values=7, vars_to_avg = "value_mcm")
+
+  colourCount = length(unique(d$destination_country))
+  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+  plt <- ggplot(d) +
+    geom_line(aes(date, value_mcm, col=destination_country)) +
+    rcrea::theme_crea() +
+    scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
+    scale_x_date(date_labels = "%b %Y") +
+    scale_color_manual(values = getPalette(colourCount), name=NULL) +
+    labs(x=NULL,
+         y="million m3") +
+    theme(legend.position = 'none')
+
+  plt <- ggplotly(plt) %>%
+    plotly::config(displayModeBar = F)
+
+  return(plt)
 })
 
 
@@ -280,3 +357,119 @@ output$plot_flows_comparison2022 <- renderPlotly({
   build_plot_flows_comparison(year=2022)
 })
 
+
+
+output$plot_monthly_oil <- renderPlotly({
+  # Moscow earned roughly $20 billion each month in 2022 from combined sales of crude and products amounting to about 8 million barrels a day, the Paris-based IEA said in its monthly market report
+
+  d <- payments_detailed()
+  req(d)
+
+  eur_per_usd <- price.eur_per_usd(date_from=min(d$date),
+                                   date_to=max(d$date))
+
+  d_oil <- d %>% filter(date>='2022-01-01',
+               commodity_group=='oil') %>%
+    left_join(eur_per_usd) %>%
+    mutate(value_usd=value_eur / eur_per_usd)
+
+
+  d_oil_world <- d_oil %>%
+    group_by(commodity, date=lubridate::floor_date(date, 'month')) %>%
+    summarise(value_usd=sum(value_usd, na.rm=T))
+
+  d_oil_eu <- d_oil %>%
+    filter(destination_region=='EU28') %>%
+    group_by(commodity, date=lubridate::floor_date(date, 'month')) %>%
+    summarise(value_usd=sum(value_usd, na.rm=T))
+
+  d_eu_share <- d_oil_eu %>%
+    left_join(d_oil_world, by=c("date", "commodity"),
+              suffix=c("_eu","_world")) %>%
+    group_by(date) %>%
+    summarise_if(is.numeric, sum) %>%
+    mutate(share = value_usd_eu / value_usd_world)
+
+  colourCount = length(unique(d_oil$commodity))
+  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+
+  plt <- ggplot(bind_rows(d_oil_world %>% mutate(region='World'),
+                          d_oil_eu %>% mutate(region='EU28'))) +
+    geom_bar(aes(date, value_usd/1e9, fill=commodity),
+             stat='identity') +
+    scale_fill_manual(values = getPalette(colourCount), name=NULL) +
+    scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
+    facet_wrap(~region) +
+    labs(y='billion USD', x=NULL) +
+    rcrea::theme_crea() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    theme(legend.position='none') +
+    geom_text(data=bind_rows(
+      d_oil_world %>%
+        group_by(date) %>%
+        summarise(value_usd=sum(value_usd)) %>%
+        mutate(region='World',
+               y=value_usd + .6e9,
+               label=sprintf("USD%.1fbn", value_usd/1e9)),
+      d_eu_share %>%
+        mutate(y=value_usd_eu + .6e9,
+               label=scales::percent(share, 1),
+               region='EU28')
+      ),
+              inherit.aes = F,
+              aes(date, y/1e9, label=label))
+
+  plt <- ggplotly(plt) %>%
+    plotly::config(displayModeBar = F) %>%
+    plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
+
+    return(plt)
+
+})
+
+
+output$plot_counter_comparison <- renderPlotly({
+
+  d_payments <- payments_detailed()
+  d_counter_last <- counter_last()
+  req(d_payments, d_counter_last)
+
+
+
+  d <- bind_rows(
+    d_payments %>%
+      filter(date>='2022-02-24') %>%
+      group_by(destination_region, commodity) %>%
+      summarise(value_eur=sum(value_eur, na.rm = T)) %>%
+      mutate(source='payments'),
+    d_counter_last %>%
+      filter(commodity!='total') %>%
+      group_by(destination_region, commodity) %>%
+      summarise(value_eur=sum(total_eur, na.rm = T)) %>%
+      mutate(source='counter'))
+
+  colourCount = length(unique(d$commodity))
+  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+
+  plt <- ggplot(d) +
+    geom_bar(aes(source, value_eur/1e9, fill=commodity),
+             stat='identity') +
+    scale_fill_manual(values = getPalette(colourCount), name=NULL) +
+    labs(y='billion USD', x=NULL) +
+    facet_wrap(~destination_region) +
+    rcrea::theme_crea() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    theme(legend.position='none') +
+    geom_text(data=d %>% group_by(destination_region, source) %>% summarise(value_eur=sum(value_eur)),
+              inherit.aes = F,
+              aes(source, value_eur/1e9 + 5, label=sprintf("%.1f", value_eur/1e9)))
+
+  plt <- ggplotly(plt) %>%
+    plotly::config(displayModeBar = F) %>%
+    plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
+
+  return(plt)
+
+})

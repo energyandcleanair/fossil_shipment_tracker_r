@@ -102,7 +102,7 @@ output$counter_loader <- renderUI({
 counter_data <- reactive({
   # db.download_counter() %>%
   #   filter(date==max(date))
-  read_csv(sprintf("%s/v0/counter_last?aggregate_by=commodity_group,destination_region&destination_region=EU28&format=csv", base_url)) %>%
+  utils.read_csv(sprintf("%s/v0/counter_last?aggregate_by=commodity_group,destination_region&destination_region=EU28&format=csv", base_url)) %>%
     select(date, commodity_group, total_eur, eur_per_day) %>%
     tidyr::pivot_wider(values_from=c(total_eur, eur_per_day), names_from="commodity_group") %>%
     rename(cumulated_coal_eur=total_eur_coal,

@@ -70,6 +70,7 @@ h1{
   margin-right: auto;
   float: unset;
   margin-bottom: 80px;
+  font-size: 18px !important;
 }
 
 .container-header {
@@ -290,6 +291,7 @@ h4 {
 
 body{
   height: 100vh;
+  font-size: 18px;
 }
 
 .container-fluid{

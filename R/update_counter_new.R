@@ -39,8 +39,8 @@ update_counter_new <- function(){
 
 
   # V2: build and update prices to postgres
-  price.update_prices(production=T, add_tail_days=7)
-  price.update_portprices(production=T, add_tail_days=7)
+  price.update_prices(production=T)
+  price.update_portprices(production=T)
 
 
   # # Ask platform to update counter

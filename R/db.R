@@ -171,7 +171,7 @@ db.upload_prices_to_posgres <- function(prices, production=F){
   p_w_country <- p %>% filter(!is.na(country_iso2) & !is.null(country_iso2))
   p_wo_country <- p %>% filter(is.na(country_iso2) | is.null(country_iso2))
 
-  ps <- split(p_w_country, (seq(nrow(p_w_country))-1) %/% 100000)
+  ps <- split(p_w_country, (seq(nrow(p_w_country))-1) %/% 10000)
   pbapply::pblapply(ps, function(p){
     dbx::dbxUpsert(db, "price", p %>% filter(!is.na(country_iso2)), where_cols=c("country_iso2", "commodity", "date"))
   })

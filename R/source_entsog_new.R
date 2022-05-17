@@ -4,7 +4,7 @@ entsog_new.get_flows <- function(date_from='2022-01-01', use_cache=T){
   flows <- read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?format=csv&date_from=%s",date_from))
 
   flows_formatted <- flows %>%
-    mutate(from_country=departure_iso2,
+    select(from_country=departure_iso2,
            to_country=destination_iso2,
            date,
            value=value_m3)
@@ -13,31 +13,26 @@ entsog_new.get_flows <- function(date_from='2022-01-01', use_cache=T){
   flows_sourced <- pbapply::pblapply(split(flows_formatted, flows_formatted$date), function(df){process_iterative(df) %>% mutate(date=unique(df$date))}) %>%
     do.call(bind_rows,.)
 
+  sum(flows_sourced$value[flows_sourced$from_country=='RU'], na.rm=T) / 1e9
+  sum(flows_formatted$value[flows_formatted$from_country=='RU']) / 1e9
+  sum(flows_sourced$value[flows_sourced$from_country==flows_sourced$to_country],na.rm=T)/1e9 == 0
+
+
+  # Add production
   flows_sourced  <- bind_rows(
     flows_sourced,
     flows_formatted %>%
       filter(from_country==to_country)
   )
 
-  sum(flows_sourced$value[flows_sourced$from_country=='RU'], na.rm=T) / 1e9
-  sum(flows_formatted$value[flows_formatted$from_country=='RU']) / 1e9
 
   flows_sourced <- flows_sourced %>%
     rename(value_m3=value) %>%
     mutate(value_tonne=value_m3*kg_per_m3/1000) %>%
     mutate(value_mwh=value_m3*gcv_kWh_per_m3/1000) %>%
-    mutate(commodity='natural_gas')
-
-  sum(flows_sourced$value[flows_sourced$from_country==flows_sourced$to_country]) == 0
-
-  # Add production
-  flows_sourced <- bind_rows(
-    flows_sourced,
-    flows_formatted %>%
-      filter(from_country==to_country) %>%
-      mutate(value_mwh=value_m3*gcv_kWh_per_m3/1000) %>%
-      mutate(commodity='natural_gas')) %>%
-    select(departure_iso2=from_country, destination_iso2=to_country, date, value_m3, value_tonne, value_mwh, commodity)
+    mutate(commodity='natural_gas') %>%
+    rename(departure_iso2=from_country,
+           destination_iso2=to_country)
 
 
   # Plotting diagnosis

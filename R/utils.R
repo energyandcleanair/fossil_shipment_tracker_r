@@ -1,3 +1,11 @@
+utils.read_csv <- function(url, ...){
+  start_time <- Sys.time()
+  res <- read_csv(url, ...)
+  end_time <- Sys.time()
+  print(sprintf("Took %s for %s", end_time-start_time, url))
+  return(res)
+}
+
 utils.recode_comtrade_commodity <- function(df){
   df$commodity[grep('crude$', df$commodity)] <- "crude_oil"
   df$commodity[grep('not crude', df$commodity)] <- "oil_products"

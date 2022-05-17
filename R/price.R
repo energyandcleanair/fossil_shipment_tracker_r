@@ -178,6 +178,8 @@ price.update_prices <- function(production=F, add_tail_days=0){
   ok <- price.check_prices(p)
   if(ok){
     db.upload_prices_to_posgres(p, production=production)
+  }else{
+    print("ERROR: prices not updated")
   }
 }
 
@@ -186,6 +188,8 @@ price.update_portprices <- function(production=F, add_tail_days=0){
   ok <- price.check_portprices(p)
   if(ok){
     db.upload_portprices_to_posgres(p, production=production)
+  }else{
+    print("ERROR: prices not updated")
   }
 }
 
