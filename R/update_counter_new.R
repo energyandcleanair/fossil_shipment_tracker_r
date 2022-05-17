@@ -10,7 +10,7 @@ update_counter_new <- function(){
   # Europe pipeline gas ------------------------------------------------------------
 
   # Pipeline gas to Europe
-  flows_entsog <- entsog_new.get_flows(date_from='2020-01-01', use_cache=F)
+  flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-10, use_cache=F)
   ok <- T
   # ok <- ok & (sum(flows_entsog$value_tonne) >= 2E8)
   # ok <- ok & all(flows_entsog$value_tonne >= -1)
@@ -34,7 +34,7 @@ update_counter_new <- function(){
   # Turkey --------------------------------------------------------
   flows_turkey <- turkey.get_flows() %>%
     mutate(value_mwh=NA)
-  db.upload_flows_to_postgres(flows_turkey, production=F)
+  # db.upload_flows_to_postgres(flows_turkey, production=F)
   db.upload_flows_to_postgres(flows_turkey, production=T)
 
 
@@ -44,8 +44,8 @@ update_counter_new <- function(){
 
 
   # # Ask platform to update counter
-  # library(httr)
-  # httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
+  library(httr)
+  httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
   #
   #
   # # Collect data

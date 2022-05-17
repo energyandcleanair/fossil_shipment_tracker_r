@@ -439,7 +439,8 @@ output$plot_counter_comparison <- renderPlotly({
 
   d <- bind_rows(
     d_payments %>%
-      filter(date>='2022-02-24') %>%
+      filter(date>='2022-02-24',
+             date <= lubridate::today()) %>%
       group_by(destination_region, commodity) %>%
       summarise(value_eur=sum(value_eur, na.rm = T)) %>%
       mutate(source='payments'),

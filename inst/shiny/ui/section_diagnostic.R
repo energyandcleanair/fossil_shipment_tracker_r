@@ -11,7 +11,7 @@ div(class="container container-diagnostic",
 
   div(class="subtitle", "Fact-checks with news"),
   div(class="",
-      span(class="", "Moscow earned $20 billion each month in 2022, selling 8 million barrels a day, 43% of this to the EU ("),
+      span(class="", '"Moscow earned $20 billion each month in 2022, selling 8 million barrels a day, 43% of this to the EU" ('),
       a(class="", href='https://www.bloomberg.com/news/articles/2022-05-12/russia-oil-revenue-up-50-this-year-despite-boycott-iea-says',
         target='_blank', "link"),
       span(class="", ")")),
@@ -46,5 +46,5 @@ div(class="container container-diagnostic",
 
   div(class="subtitle", "Counter last vs Counter"),
   div(class="", "Comparison of the two counter endpoints: one counter per day and the estimation as of now."),
-  plotlyOutput("plot_counter_comparison", height='400px') %>% withSpinner(color="#8cc9D0")
+  plotlyOutput("plot_counter_comparison", height='600px') %>% withSpinner(color="#8cc9D0")
 )

@@ -20,7 +20,8 @@ entsog_new.get_flows <- function(date_from='2022-01-01', use_cache=T){
 
   # Add production
   flows_sourced  <- bind_rows(
-    flows_sourced,
+    flows_sourced %>%
+      filter(from_country!=to_country),
     flows_formatted %>%
       filter(from_country==to_country)
   )
