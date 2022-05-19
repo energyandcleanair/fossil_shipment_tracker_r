@@ -1,5 +1,5 @@
 
-update_counter <- function(){
+update_counter2 <- function(){
 
   library(tidyverse)
   library(lubridate)
