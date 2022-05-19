@@ -1,7 +1,7 @@
 Package: russiacounter
 Type: Package
 Title: Russian cost counter for fossil fuels
-Version: 0.2.3
+Version: 0.2.4
 Authors@R: c(
     person("Hubert", "Thieriot", email = "hubert@energyandcleanair.org", role = c("cre", "aut"))
     )
