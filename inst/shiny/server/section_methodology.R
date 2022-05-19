@@ -43,6 +43,9 @@ For Europe, including Turkey, two main sources are being used for the following 
 
      <p>Eurostat data, however, is only available on a monthly basis till the end of 2021. To derive 2022 trade flows, we scale 2021 trade flows using y-o-y ratios in November-December 2021. Oil pipeline flows to the EU and China and gas pipeline flows to China are assumed to continue at 2021 levels. China’s pipeline import flows are based on latest figures given in news reports for winter 2021–22.</p>
 
+<h3>Attribution of pipelined gas to individual countries</h3>
+<p>Starting from 16 May 2022, we have implemented a new methodology to estimate pipeline gas imports from Russia to various European countries. We collect data from ENTSOG on flows between countries, at transmission interconnections for every single day. We then assume that on any given day, a country is a perfect ‘gas mixer’, that is, that all gas gets mixed before being consumed and/or re-exported. This allows us to attribute Russian gas consumption to countries that do not have direct connection with Russia. Read more about it <a href="https://energyandcleanair.org/russia-fossil-tracker-updated-methodology/" target="_blank">here</a>.<p>
+
      <h2>Pricing</h2>
      <p>Fossil fuels are sold on a variety of contracts including fixed-price, indexed to average oil prices and indexed to other spot prices. This means that the revenue to the exporter is not directly proportional to the current spot price.</p>
 
