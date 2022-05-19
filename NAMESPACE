@@ -1,5 +1,7 @@
 exportPattern("^[[:alnum:]]+")
 
+export(update_counter2)
+
 importFrom(countrycode,countrycode)
 
 
