@@ -15,7 +15,7 @@ process_old <- function(consolidated_date){
         group_by(country=from_country) %>%
         summarise(export=sum(value, na.rm=T))
     ) %>%
-    mutate(across(everything(), ~replace_na(.x, 0))) %>%
+    mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
     mutate(net_import=import-export) %>%
     arrange(desc(net_import))
 
@@ -33,7 +33,7 @@ process_old <- function(consolidated_date){
         summarise(export=sum(value, na.rm=T)),
       by=c("country", "partner")
     ) %>%
-    mutate(across(everything(), ~replace_na(.x, 0))) %>%
+    mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
     mutate(net_import=import-export,
            net_export=export-import) %>%
     arrange(country, partner)
@@ -82,7 +82,7 @@ process_old <- function(consolidated_date){
   Spa <- bind_cols(country=Ipa$country, as.data.frame(t(scale(t(Ipa[,P]), center = FALSE,
                                                               scale = colSums(t(Ipa[,P]), na.rm=T))))) %>%
     tibble() %>%
-    mutate(across(everything(), ~replace_na(.x, 0))) %>%
+    mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
     select_at(c("country", P))
 
 
@@ -163,7 +163,7 @@ to_flow_mat <- function(d){
         summarise(export=sum(value, na.rm=T)),
       by=c("country", "partner")
     ) %>%
-    mutate(across(everything(), ~replace_na(.x, 0))) %>%
+    mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
     mutate(net_import=import-export,
            net_export=export-import) %>%
     arrange(country, partner) %>%
