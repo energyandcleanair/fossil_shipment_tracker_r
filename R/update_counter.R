@@ -10,6 +10,7 @@ update_counter <- function(){
   # Europe pipeline gas ------------------------------------------------------------
 
   # Pipeline gas to Europe
+  print("=== ENTSOG ===")
   flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-10, use_cache=F)
   ok <- T
   ok <- ok & (sum(flows_entsog$value_tonne) >= as.integer(max(flows_entsog$date)-min(flows_entsog$date)) * 5e5)
@@ -21,29 +22,34 @@ update_counter <- function(){
   }
 
   # Other European overland flows ----------------------------------------------------
+  print("=== Overland EU ===")
   flows_overland_eu <- overland_eu.get_flows()
   # db.upload_flows_to_postgres(flows_overland_eu, production=F)
   db.upload_flows_to_postgres(flows_overland_eu, production=T)
 
   # China --------------------------------------------------------
+  print("=== China ===")
   flows_china <- china.get_flows() %>%
     mutate(value_mwh=NA_real_)
   # db.upload_flows_to_postgres(flows_china, production=F)
   db.upload_flows_to_postgres(flows_china, production=T)
 
   # Turkey --------------------------------------------------------
+  print("=== Turkey ===")
   flows_turkey <- turkey.get_flows() %>%
     mutate(value_mwh=NA_real_)
   # db.upload_flows_to_postgres(flows_turkey, production=F)
   db.upload_flows_to_postgres(flows_turkey, production=T)
 
 
-  # V2: build and update prices to postgres
+  # Prices ------------------------------------------------------------------
+  print("=== Prices ===")
   price.update_prices(production=T)
   price.update_portprices(production=T)
 
 
   # # Ask platform to update counter
+  print("=== Counter ===")
   library(httr)
   httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
   #
