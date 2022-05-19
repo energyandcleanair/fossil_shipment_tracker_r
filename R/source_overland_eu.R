@@ -35,7 +35,7 @@ overland_eu.get_flows <- function(){
                               oil_rail_road="crude_oil_rail_road")) %>%
     filter(value_tonne>0) %>%
     filter(!is.infinite(value_tonne)) %>%
-    mutate(value_m3=NA, value_mwh=NA) %>%
+    mutate(value_m3=NA_real_, value_mwh=NA_real_) %>%
     rename(month=date)
 
   # Split in days
