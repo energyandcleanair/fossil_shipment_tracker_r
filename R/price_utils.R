@@ -145,8 +145,9 @@ get_prices_monthly <- function(){
 price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
   eur_per_usd <- priceR::historical_exchange_rates("USD", to = "EUR",
                                                    start_date = date_from,
-                                                   end_date = date_to)
+                                                   end_date = min(date_to, lubridate::today()-1))
   eur_per_usd <- tibble(eur_per_usd) %>% `names<-`(c("date","eur_per_usd"))
+  #TODO extend til date_to
 
   if(monthly){
     eur_per_usd %>%
