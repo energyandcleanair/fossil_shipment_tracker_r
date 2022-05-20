@@ -182,7 +182,7 @@ get_ural_brent_spread <- function(){
     select(date, usd_per_bbl)
 
   # Fill with last 7 days average
-  completion <- tidyr::crossing(date = seq.Date(min(max(result$date) + lubridate::days(7), lubridate::today(tz="UTC")), lubridate::today(tz="UTC"), by="day"),
+  completion <- tidyr::crossing(date = seq.Date(max(result$date) + lubridate::days(1), max(result$date, lubridate::today(tz="UTC"))  + lubridate::days(7), by="day"),
                                 usd_per_bbl = result %>% arrange(date) %>% tail(7) %>% pull(usd_per_bbl) %>% mean())
 
   result <- bind_rows(

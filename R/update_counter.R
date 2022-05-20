@@ -49,9 +49,9 @@ update_counter2 <- function(){
 
 
   # # Ask platform to update counter
-  print("=== Counter ===")
-  library(httr)
-  httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
+  # print("=== Counter ===")
+  # library(httr)
+  # httr::POST("https://api.russiafossiltracker.com/v0/counter_update")
   #
   #
   # # Collect data
