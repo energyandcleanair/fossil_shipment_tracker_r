@@ -126,6 +126,49 @@ h1{
 }
 
 
+
+.container-mailchimp {
+  padding: 30px !important;
+  padding-bottom: 50px !important;
+  border-radius: 5px;
+  max-width: 900px !important;
+  border-top: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+
+}
+
+.container-mailchimp h2{
+  margin-bottom: 15px;
+}
+
+.container-mailchimp .indicates-required{
+  display: none;
+}
+
+.container-mailchimp .mc-field-group input{
+  width: 300px;
+}
+
+
+.container-mailchimp .button{
+  font-size: 18px !important;
+  padding: 8px 39px !important;
+  border: 1px solid transparent !important;
+  height: unset !important;
+  line-height: unset !important;
+  margin-top: 2.5rem;
+  width: unset !important;
+  margin-left: auto;
+  margin-right: auto;
+  color: #fff;
+  background-color: #8cc9d0 ;
+  border-color: #8cc9d0 ;
+}
+
+.container-mailchimp .brandingLogo {
+  display: none;
+}
+
 .container-methodology table{
     margin-left: auto;
     margin-right: auto;
