@@ -11,6 +11,7 @@ imports <- bind_rows(pipeline %>% select(departure_iso2, destination_iso2, desti
                        filter(departure_iso2 %in% c("RU"))
                      ) %>%
   filter(!is.na(commodity_group)) %>%
+  filter(destination_country != 'For orders') %>%
   group_by(destination_country, commodity_group) %>%
   summarise(value_eur=round(sum(value_eur, na.rm=T))) %>%
   ungroup() %>%
