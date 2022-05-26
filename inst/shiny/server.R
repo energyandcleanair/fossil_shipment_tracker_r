@@ -21,6 +21,7 @@ server <- function(input, output, session) {
 
     source(file.path("server", "section_counter.R"),  local = TRUE)$value
     source(file.path("server", "section_payments.R"),  local = TRUE)$value
+    source(file.path("server", "section_countries.R"),  local = TRUE)$value
 
     # source(file.path("server", "tab_trade.R"),  local = TRUE)$value
     # source(file.path("server", "tab_flows.R"),  local = TRUE)$value
