@@ -5,9 +5,7 @@ library(countrycode)
 library(dplyr)
 library(shinyURL)
 library(rclipboard)
-
-
-library(creapower)
+library(russiacounter)
 
 #####################
 # Global variables
