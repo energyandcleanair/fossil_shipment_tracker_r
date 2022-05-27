@@ -7,7 +7,10 @@ library(shinyURL)
 library(rclipboard)
 library(russiacounter)
 library(tidyverse)
-
+library(RColorBrewer)
+library(rcrea)
+library(colorRamps)
+library(readr)
 #####################
 # Global variables
 #####################
