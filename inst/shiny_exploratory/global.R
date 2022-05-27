@@ -6,6 +6,7 @@ library(dplyr)
 library(shinyURL)
 library(rclipboard)
 library(russiacounter)
+library(tidyverse)
 
 #####################
 # Global variables
