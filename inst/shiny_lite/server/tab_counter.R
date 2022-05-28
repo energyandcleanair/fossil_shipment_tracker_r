@@ -76,7 +76,7 @@ output$counter_loader <- renderUI({
 counter_data <- reactive({
   # db.download_counter() %>%
   #   filter(date==max(date))
-  read_csv("https://api.russiafossiltracker.com/v0/counter_last?aggregate_by=commodity_group,destination_region&destination_region=EU28&format=csv") %>%
+  read_csv("https://api.russiafossiltracker.com/v0/counter_last?aggregate_by=commodity_group,destination_region&destination_region=EU&use_eu=True&format=csv") %>%
     select(date, commodity_group, total_eur, eur_per_day) %>%
     tidyr::pivot_wider(values_from=c(total_eur, eur_per_day), names_from="commodity_group") %>%
     rename(cumulated_coal_eur=total_eur_coal,
