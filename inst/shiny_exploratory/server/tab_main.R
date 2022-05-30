@@ -147,7 +147,7 @@ output$selectPlotType <- renderUI({
 # Reactive Elements --------------------------------------
 
 counter_raw <- reactive({
-  read_csv("https://api.russiafossiltracker.com/v0/counter?format=csv&date_from=2022-01-01")
+  read_csv("https://api.russiafossiltracker.com/v0/counter?format=csv&date_from=2021-10-01&use_eu=True")
 })
 
 commodities_raw <- reactive({
