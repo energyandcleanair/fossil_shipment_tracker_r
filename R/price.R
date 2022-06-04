@@ -172,7 +172,7 @@ price.check_portprices <- function(p){
   return(ok)
 }
 
-price.update_prices <- function(production=F, add_tail_days=0){
+price.update_prices <- function(production=F){
   p <- prices.get_predicted_prices(production=production)
   # p <- prices.add_tail(p, add_tail_days=add_tail_days)
   ok <- price.check_prices(p)
@@ -183,7 +183,7 @@ price.update_prices <- function(production=F, add_tail_days=0){
   }
 }
 
-price.update_portprices <- function(production=F, add_tail_days=0){
+price.update_portprices <- function(production=F){
   p <- prices.get_predicted_portprices(production=production)
   ok <- price.check_portprices(p)
   if(ok){

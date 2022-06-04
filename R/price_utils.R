@@ -1,7 +1,7 @@
-fill_gaps_and_future <- function(result, n_days=7){
+fill_gaps_and_future <- function(result){
   result %>%
     ungroup() %>%
-    tidyr::complete(date = seq(min(date), max(date) + lubridate::days(n_days), by = "day")) %>%
+    tidyr::complete(date = seq(min(date), max(max(date), Sys.Date()) + lubridate::days(14), by = "day")) %>%
     arrange(desc(date)) %>%
     tidyr::fill(setdiff(names(.),"date"), .direction="up")
 }
