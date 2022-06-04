@@ -21,7 +21,6 @@ base_url <- list("development"="https://development-dot-fossil-shipment-tracker.
 
 
 flows_sources <- c("Eurostat"="eurostat")
-
 color_bys <- c("Country"="country", "Sector"="sector", "Fuel"="fuel")
 group_bys <- c("Country"="country", "Sector"="sector", "Fuel"="fuel")
 selected_countries <- c("EU", "Germany", "Italy", "France", "Finland", "United Kingdom", "Austria", "Sweden")

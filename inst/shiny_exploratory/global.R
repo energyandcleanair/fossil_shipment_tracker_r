@@ -22,6 +22,8 @@ frequency <- c(
   "Monthly"="month",
   "Yearly"="year")
 
+units <- c("eur","tonne")
+
 plot_types <- c("Area" = "area",
                 "Area (share)" = "area_pct",
                 "Lines" = "lines",

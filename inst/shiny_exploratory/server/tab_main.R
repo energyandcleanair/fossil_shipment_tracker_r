@@ -91,6 +91,13 @@ output$buttonClip <- renderUI({
 
 
 # Output Elements --------------------------------------
+output$selectUnit <- renderUI({
+  selectInput("unit", NULL,
+              multiple=F,
+              choices=units,
+              selected=units[1])
+})
+
 output$selectPreset <- renderUI({
   selectInput("preset", NULL,
               multiple=F,
@@ -164,6 +171,7 @@ data <- reactive({
   commodities_raw <- commodities_raw()
   date_from <- input$date_from
   date_to <- input$.date_to
+  unit <- input$unit
 
   req(counter_raw, colour_by, group_by, commodities, rolling_days, commodities_raw)
 
@@ -177,25 +185,37 @@ data <- reactive({
 
   data <- data %>%
     group_by(colour, group, date) %>%
-    summarise(value_eur=sum(value_eur, na.rm=T)) %>%
+    summarise(value_eur=sum(value_eur, na.rm=T),
+              value_tonne=sum(value_tonne, na.rm=T)) %>%
     tidyr::complete(colour, group, date,
-                    fill=list(value_eur=0)) %>%
+                    fill=list(value_eur=0, vaalue_tonne=0)) %>%
     rcrea::utils.running_average(rolling_days, vars_to_avg = names(.)[grepl("value_", names(.))], min_values = rolling_days)
 
+
+  data["value"] <- data[paste0("value_",unit)]
+
+  if(unit=='tonne'){
+    value_scale <- 1e3
+    unit_label <- 'ktonne'
+  }
+  if(unit=='eur'){
+    value_scale <- 1e6
+    unit_label <- 'mnEUR'
+  }
 
   # Have top importers on top
   top_groups <- data %>%
     group_by(group) %>%
-    summarise(total_eur=sum(value_eur, na.rm=T)) %>%
-    arrange(desc(total_eur)) %>%
+    summarise(total=sum(value, na.rm=T)) %>%
+    arrange(desc(total)) %>%
     mutate(i_group=row_number()) %>%
-    mutate(group_w_total=factor(sprintf("%s (%s mnEUR)", group, scales::comma(round(total_eur/1e6))))) %>%
+    mutate(group_w_total=factor(sprintf("%s (%s %s)", group, scales::comma(round(total/value_scale)), unit_label))) %>%
     mutate(group_w_total=factor(group_w_total, levels=.$group_w_total))
 
   top_colours <- data %>%
     group_by(colour) %>%
-    summarise(across(starts_with("value_"), ~sum(., na.rm=T))) %>%
-    arrange(desc(value_eur)) %>%
+    summarise(across(starts_with("value"), ~sum(., na.rm=T))) %>%
+    arrange(desc(value)) %>%
     pull(colour)
 
   data["colour"] <- factor(data[["colour"]], levels=rev(top_colours))
@@ -207,7 +227,7 @@ data <- reactive({
 
   # Add label
   data <- data %>%
-    mutate(label=sprintf("%s: %s mnEUR", colour, round(value_eur/1e6))) %>%
+    mutate(label=sprintf("%s: %s %s", colour, round(value/value_scale), unit_label)) %>%
     filter(i_group<=n_groups)
 
 
@@ -222,8 +242,18 @@ output$plot_main <- renderPlotly({
   commodities_raw <- commodities_raw()
   commodities <- input$commodities
   n_groups <- input$n_groups
+  unit <- input$unit
   req(data, plot_type, commodities_raw)
 
+
+  if(unit=='tonne'){
+    value_scale <- 1e3
+    unit_label <- 'ktonne'
+  }
+  if(unit=='eur'){
+    value_scale <- 1e6
+    unit_label <- 'mnEUR'
+  }
 
   colourCount = length(unique(data$colour))
   # getPalette = colorRampPalette(commodity_palette)
@@ -231,12 +261,12 @@ output$plot_main <- renderPlotly({
 
   if(plot_type=="lines"){
     plt <- ggplot(data) +
-      geom_line(aes(date, value_eur/1e6, col=colour, label=label)) +
+      geom_line(aes(date, value/value_scale, col=colour, label=label)) +
       facet_wrap(~group_w_total) +
       scale_color_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.1))) +
-      labs(y="million EUR / day",
+      labs(y=paste0(unit_label," / day"),
            x=NULL)
 
     plt <- ggplotly(plt, tooltip="label") %>%
@@ -249,14 +279,14 @@ output$plot_main <- renderPlotly({
   if(plot_type=="area"){
 
     plt <- ggplot(data) +
-      geom_area(aes(date, value_eur/1e6, fill=colour, label=label),
+      geom_area(aes(date, value/value_scale, fill=colour, label=label),
                stat="identity") +
       facet_wrap(~group_w_total) +
       scale_fill_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.1))) +
-      labs(y="million EUR / day",
-           x=NULL)
+      labs(y=paste0(unit_label," / day"),
+         x=NULL)
 
     plt <- ggplotly(plt, tooltip="label") %>%
       layout(
@@ -295,17 +325,17 @@ output$plot_main <- renderPlotly({
   if(plot_type=="area_pct"){
 
     data_plot <- data %>%
-      select(date, colour, group, group_w_total, value_eur) %>%
-      mutate(value_eur=tidyr::replace_na(value_eur, 0)) %>%
-      tidyr::complete(group, colour, date, fill=list(value_eur=0))
+      select(date, colour, group, group_w_total, value) %>%
+      mutate(value=tidyr::replace_na(value, 0)) %>%
+      tidyr::complete(group, colour, date, fill=list(value=0))
 
     data_plot <- data_plot %>%
       left_join(data_plot %>%
-                  mutate(value_eur=tidyr::replace_na(value_eur, 0)) %>%
+                  mutate(value=tidyr::replace_na(value, 0)) %>%
                   group_by(group, date) %>%
-                  summarise(total_date=sum(value_eur, na.rm=T))) %>%
+                  summarise(total_date=sum(value, na.rm=T))) %>%
       # filter(total_date>0) %>%
-      mutate(value_pct = tidyr::replace_na(value_eur / total_date * 100,0)) %>%
+      mutate(value_pct = tidyr::replace_na(value / total_date * 100,0)) %>%
       ungroup() %>%
       arrange(date)
       # filter(value_pct>0)
@@ -319,7 +349,7 @@ output$plot_main <- renderPlotly({
       scale_fill_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
       scale_y_continuous(limits=c(0,101), expand=expansion(mult=c(0,0))) +
-      labs(y="million EUR / day",
+      labs(y=paste0(unit_label," / day"),
            x=NULL)
 
     plt <- ggplotly(plt) %>%
@@ -333,12 +363,12 @@ output$plot_main <- renderPlotly({
 
     data_plt <- data %>%
       group_by(group, colour) %>%
-      summarise(value_eur=sum(value_eur, na.rm=T)) %>%
-      mutate(label=sprintf("%s: %s mnEUR", colour, scales::comma(round(value_eur/1e6)))) %>%
+      summarise(value=sum(value, na.rm=T)) %>%
+      mutate(label=sprintf("%s: %s %s", colour, scales::comma(round(value/value_scale)), unit_label)) %>%
       mutate(group=factor(group, levels=rev(levels(group))))
 
     plt <- ggplot(data_plt) +
-      geom_bar(aes(value_eur/1e6,
+      geom_bar(aes(value/value_scale,
                    group,
                    fill=colour,
                    label=label),
@@ -346,8 +376,8 @@ output$plot_main <- renderPlotly({
       scale_fill_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
       scale_x_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.1))) +
-      labs(x="million EUR / day",
-           y=NULL)
+      labs(y=paste0(unit_label," / day"),
+           x=NULL)
 
     plt <- ggplotly(plt, tooltip="label") %>%
       layout(

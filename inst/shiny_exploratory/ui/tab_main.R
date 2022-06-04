@@ -26,6 +26,7 @@ tabPanel("Main",
 
              # h4("Filtering"),
              uiOutput("selectCommodities"),
+             uiOutput("selectUnit"),
 
              # h4("Customise"),
              # uiOutput("selectSources"),
