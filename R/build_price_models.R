@@ -178,8 +178,6 @@ build_price_models <- function(production=F){
   saveRDS(trade_with_predictions_eu, sprintf('inst/extdata/pricing_models_eu%s.RDS',suffix))
   saveRDS(trade_with_predictions_eu, sprintf('data/pricing_models_eu%s.RDS',suffix))
 
-
-
   # Non-Europe --------------------------------------------------------------
   top_importers <- trade %>%
     filter(!EU, !is.na(country_iso), year(date)>=2017) %>%

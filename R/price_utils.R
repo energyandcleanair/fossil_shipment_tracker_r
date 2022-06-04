@@ -19,12 +19,24 @@ get_brent <- function(){
 
 
 get_ttf <- function(){
-  quantmod::getSymbols("TTF=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
-    as.data.frame() %>%
-    mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-    tibble() %>%
-    rename(ttf = contains('Close')) %>%
-    select(date, ttf) %>%
+  # quantmod::getSymbols("TTF=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
+  #   as.data.frame() %>%
+  #   mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
+  #   tibble() %>%
+  #   rename(ttf = contains('Close')) %>%
+  #   select(date, ttf) %>%
+  #   fill_gaps_and_future()
+  url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
+  result <- read_csv(url) %>%
+    mutate(date = strptime(Date, "%b %d, %Y", tz="UTC"),
+           ttf = as.numeric(Price)) %>%
+    select(date, ttf)
+
+  if(max(result$date) <= lubridate::today() - 7){
+    warning("Need to update ttf data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
+  }
+
+  result  %>%
     fill_gaps_and_future()
 }
 
