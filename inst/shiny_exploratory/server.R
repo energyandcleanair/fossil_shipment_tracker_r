@@ -11,8 +11,10 @@ server <- function(input, output, session) {
     #     }
     # })
 
+    source(file.path("server", "api.R"),  local = TRUE)
 
     source(file.path("server", "tab_main.R"),  local = TRUE)$value
+    source(file.path("server", "tab_voyages.R"),  local = TRUE)$value
     source(file.path("server", "tab_about.R"),  local = TRUE)$value
     shinyURL.server(session)
 }
