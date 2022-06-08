@@ -25,6 +25,21 @@
 #   }
 # )
 
+observeEvent(input$clearSelection, {
+  tableProxy <- dataTableProxy('.table_voyages')
+  tableProxy %>% selectRows(NULL)
+
+  proxy <- leafletProxy('map_voyages')
+  if(!is.null(prev_lines()))
+  {
+    for(i in seq(nrow(prev_lines()))){
+      proxy %>%
+        removeShape(layerId=paste0('selected_lines_', prev_lines()$id[i]))
+    }
+  }
+
+})
+
 output$selectCommodity <- renderUI({
   commodities <- c("crude_oil","oil_or_chemical","oil_products","lng","bulk","coal")
   selectInput("commodity", NULL,
@@ -154,9 +169,9 @@ output$map_voyages <- renderLeaflet({
 })
 
 
-output$table_voyages <- renderDataTable({
+output$.table_voyages <- renderDataTable({
   DT::datatable(voyages(),
-                selection = "single",
+                # selection = "single",
                 rownames = FALSE,
                 options=list(stateSave = TRUE,
                              autoWidth = TRUE,
@@ -169,47 +184,50 @@ observeEvent(input$map_voyages_shape_click, {
   id <- input$map_voyages_shape_click$id
   if(grepl("voyage_", id)){
     id <- gsub("voyage_","",id)
-    dataTableProxy("table_voyages") %>%
+    dataTableProxy(".table_voyages") %>%
       selectRows(which(as.character(voyages()$id) == id)) %>%
-      selectPage(which(as.character(voyages()[input$table_voyages_rows_all,]$id) == id) %/% input$table_voyages_state$length + 1)
+      selectPage(which(as.character(voyages()[input$.table_voyages_rows_all,]$id) == id) %/% input$.table_voyages_state$length + 1)
   }
 })
 
 
-observeEvent(input$table_voyages_rows_selected, {
-  id = voyages()[input$table_voyages_rows_selected,"id"][[1]]
-  line <- voyages_sf() %>% filter(id==!!id)
+observeEvent(input$.table_voyages_rows_selected, {
+  id = voyages()[input$.table_voyages_rows_selected,"id"][[1]]
+  lines <- voyages_sf() %>% filter(id %in% !!id)
 
   proxy <- leafletProxy('map_voyages')
 
   # Reset previously selected marker
-  if(!is.null(prev_line()))
+  if(!is.null(prev_lines()))
   {
-    proxy %>%
-      # removeShape(layerId=paste0("selected_",prev_line()$id))
-      removeShape(layerId="selected_lines")
+    for(i in seq(nrow(prev_lines()))){
+      proxy %>%
+        # removeShape(layerId=paste0("selected_",prev_line()$id))
+        removeShape(layerId=paste0('selected_lines_', prev_lines()$id[i]))
+    }
   }
 
-  if(nrow(line)>0){
-    proxy %>%
-      # addPolylines(data=line,
-      #              layerId = paste0("selected_",line$id),
-      #              color="red",
-      #              weight=5)
-      addPolylines(data=line,
-                   layerId = 'selected_lines',
-                   color="red",
-                   weight=5,
-                   group = "Selected voyages")
+  if(nrow(lines)>0){
+    for(i in seq(nrow(lines))){
+      proxy %>%
+        # addPolylines(data=line,
+        #              layerId = paste0("selected_",line$id),
+        #              color="red",
+        #              weight=5)
+        addPolylines(data=lines[i,],
+                     layerId = paste0('selected_lines_', lines$id[i]),
+                     color='red', #rev(RColorBrewer::brewer.pal(nrow(lines) + 5,"Reds"))[i],
+                     weight=5,
+                     group = "Selected voyages")
+    }
   }
 
   # set new value to reactiveVal
-  prev_line(line)
+  prev_lines(lines)
 })
 
 
 
 
-# to keep track of previously selected row
-prev_row <- reactiveVal()
-prev_line <- reactiveVal()
+# to keep track of previously selected lines
+prev_lines <- reactiveVal()

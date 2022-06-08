@@ -1,4 +1,4 @@
-tabPanel("Main",
+tabPanel("Charts",
          value="power",
 
          sidebarLayout(

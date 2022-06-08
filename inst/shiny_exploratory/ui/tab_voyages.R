@@ -16,6 +16,7 @@ tabPanel("Map",
            div(HTML("<br>")),
            # h4("Statistics"),
            # uiOutput("statistics"),
+           actionButton("clearSelection", "Clear selection"),
 
            # downloadButton(outputId="downloadGeojson","Download (.geojson)",class="btn-secondary"),
            # downloadButton(outputId="downloadCsv","Download (.csv)",class="btn-secondary")
@@ -48,7 +49,7 @@ tabPanel("Map",
              div(class="no-padding",
              leafletOutput('map_voyages', width="100%", height='calc(100vh - 550px)')
              ),
-             dataTableOutput('table_voyages') %>% withSpinner(color="#8cc9D0"),
+             dataTableOutput('.table_voyages') %>% withSpinner(color="#8cc9D0"),
                div(
                  class="row-inline",
                  height=40,
