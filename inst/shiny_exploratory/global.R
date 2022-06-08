@@ -11,6 +11,13 @@ library(RColorBrewer)
 library(rcrea)
 library(colorRamps)
 library(readr)
+library(DT)
+library(leaflet)
+library(leaflet.extras2)
+library(sf)
+library(geojsonsf)
+
+
 #####################
 # Global variables
 #####################
