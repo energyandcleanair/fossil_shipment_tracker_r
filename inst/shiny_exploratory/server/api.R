@@ -18,7 +18,7 @@ api.get_voyages <- function(date_from=NULL, aggregate_by=NULL, rolling_days=NULL
 
 api.get_voyages_sf <- function(date_from=NULL, voyage_ids=NULL){
   # Can be quite slow
-  url <- "https://api.russiafossiltracker.com/v0/voyage?date_from=2022-02-24&format=geojson&nest_in_data=False"
+  url <- sprintf("https://api.russiafossiltracker.com/v0/voyage?date_from=%s&format=geojson&nest_in_data=False", date_from)
   # url <- "http://localhost:8080/v0/voyage?date_from=2022-02-24&format=geojson&nest_in_data=False"
   tryCatch({geojsonsf::geojson_sf(url) %>%
       filter(departure_iso2=="RU",
