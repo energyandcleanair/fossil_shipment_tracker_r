@@ -2,6 +2,16 @@ output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
  </h2>
+  <p><span style="color: #8cc9d0;">Update 2022-06-16 </span>-
+       Two important improvements were implemented:
+       <ul>
+       <li>Oil leaving from Novorossiysk CPC terminal is now attributed to Kazakhstan rather than Russia;</li>
+       <li>Pipelined gas entering Greece from Turkey at Kipi/Kipoi transmission point is now assumed to come from Azerbaidjan rather than Russia.</li>
+       </ul>
+       Beside, we fixed the country attribution of two gas transmission points.
+      </p>
+
+
   <p><span style="color: #8cc9d0;">Update 2022-05-13 </span>-
        <span>This is a significant update, with four majour changes:</span>
        <ul>
