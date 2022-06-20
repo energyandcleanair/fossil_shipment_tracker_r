@@ -27,13 +27,13 @@ update_counter_new <- function(){
 
   # China --------------------------------------------------------
   flows_china <- china.get_flows() %>%
-    mutate(value_mwh=NA)
+    mutate(value_mwh=NA_real_)
   # db.upload_flows_to_postgres(flows_china, production=F)
   db.upload_flows_to_postgres(flows_china, production=T)
 
   # Turkey --------------------------------------------------------
   flows_turkey <- turkey.get_flows() %>%
-    mutate(value_mwh=NA)
+    mutate(value_mwh=NA_real_)
   # db.upload_flows_to_postgres(flows_turkey, production=F)
   db.upload_flows_to_postgres(flows_turkey, production=T)
 
