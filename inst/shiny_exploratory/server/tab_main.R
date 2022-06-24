@@ -181,18 +181,19 @@ data <- reactive({
     left_join(commodities_raw %>% select(commodity=id, commodity_name=name)) %>%
     mutate(commodiy=commodity_name) %>%
     mutate(group = !!sym(group_by),
-           colour = !!sym(colour_by))
-
-  data <- data %>%
+           colour = !!sym(colour_by)) %>%
     group_by(colour, group, date) %>%
     summarise(value_eur=sum(value_eur, na.rm=T),
               value_tonne=sum(value_tonne, na.rm=T)) %>%
     tidyr::complete(colour, group, date,
-                    fill=list(value_eur=0, vaalue_tonne=0)) %>%
-    rcrea::utils.running_average(rolling_days, vars_to_avg = names(.)[grepl("value_", names(.))], min_values = rolling_days)
-
+                    fill=list(value_eur=0, value_tonne=0))
 
   data["value"] <- data[paste0("value_",unit)]
+
+  data_prerolled <- data
+  data <- data %>%
+    rcrea::utils.running_average(rolling_days, vars_to_avg = names(.)[grepl("value", names(.))], min_values = rolling_days)
+
 
   if(unit=='tonne'){
     value_scale <- 1e3
@@ -204,7 +205,7 @@ data <- reactive({
   }
 
   # Have top importers on top
-  top_groups <- data %>%
+  top_groups <- data_prerolled %>%
     group_by(group) %>%
     summarise(total=sum(value, na.rm=T)) %>%
     arrange(desc(total)) %>%
@@ -212,7 +213,7 @@ data <- reactive({
     mutate(group_w_total=factor(sprintf("%s (%s %s)", group, scales::comma(round(total/value_scale)), unit_label))) %>%
     mutate(group_w_total=factor(group_w_total, levels=.$group_w_total))
 
-  top_colours <- data %>%
+  top_colours <- data_prerolled %>%
     group_by(colour) %>%
     summarise(across(starts_with("value"), ~sum(., na.rm=T))) %>%
     arrange(desc(value)) %>%
