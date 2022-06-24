@@ -5,6 +5,7 @@ update_counter_new <- function(){
   library(lubridate)
   library(magrittr)
   library(countrycode)
+  library(rcrea)
 
 
   # Europe pipeline gas ------------------------------------------------------------

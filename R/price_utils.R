@@ -123,6 +123,22 @@ get_jkm <- function(){
     fill_gaps_and_future()
 }
 
+get_prices_daily <- function(running_days=0){
+
+  ttf_daily <- get_ttf()
+  brent_daily <- get_brent()
+  ara_daily <- get_ara()
+  asia_lng_daily <- get_asia_lng()
+  global_coal_daily <- get_global_coal()
+
+  ttf_daily %>%
+    full_join(brent_daily) %>%
+    full_join(ara_daily) %>%
+    full_join(asia_lng_daily) %>%
+    full_join(global_coal_daily) %>%
+    mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC")) %>%
+    rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "asia_lng", "global_coal"))
+}
 
 get_prices_monthly <- function(){
 
@@ -217,8 +233,8 @@ get_espo_brent_spread <- function(){
   date_to <- lubridate::today() + lubridate::days(7)
   get_at_date <- function(target_date){
     espo_discount = tibble(date=c('1990-01-01', '2022-02-24', '2022-03-11', '2022-03-17',
-                                  '2022-04-11', '2022-05-04', '2022-05-29', as.character(date_to)),
-                           discount=c(0,0,0,20,26,30,30,39))
+                                  '2022-04-11', '2022-05-04', '2022-05-29', '2022-06-24', as.character(date_to)),
+                           discount=c(0,0,0,20,26,30,30,39,37))
     approx(as_date(espo_discount$date), espo_discount$discount, as_date(target_date))$y
   }
   dates <- seq.Date(as.Date("2022-01-01"), date_to, by="day")
