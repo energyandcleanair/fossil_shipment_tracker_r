@@ -1,3 +1,7 @@
+shipments <- reactive({
+  utils.read_csv("https://api.russiafossiltracker.com/v0/voyage?aggregate_by=departure_country,destination_country,arrival_date,commodity&format=csv&date_from=2020-01-01")
+})
+
 
 flows <- reactive({
   utils.read_csv("https://api.russiafossiltracker.com/v0/overland?format=csv&date_from=2020-01-01")
@@ -41,6 +45,12 @@ flows_bp <-  reactive({
     mutate(departure_country=recode(departure_country, `Russian Federation`='Russia'))
 })
 
+
+flows_eurostat <- reactive({
+  readRDS(system.file("extdata", "eurostat.RDS", package="russiacounter"))
+})
+
+
 flows_comtrade_eurostat <-  reactive({
   comtrade_eurostat.get_flows(use_cache=T) %>%
     filter(unit=='m3') %>%
@@ -67,8 +77,6 @@ consumption_manual <- reactive({
 })
 
 
-
-
 payments_detailed <- reactive({
   url <- sprintf("%s/v0/counter?date_from=2022-01-01&format=csv", base_url)
   payments_detailed <- utils.read_csv(url)
@@ -82,16 +90,75 @@ counter_last <- reactive({
 })
 
 
+output$plot_eurostat_lng <- renderPlotly({
+
+  eurostat <- flows_eurostat()
+  shipments <- shipments()
+  req(eurostat, shipments)
+
+  commodities <- c("lng")
+
+  d <- bind_rows(
+    eurostat %>%
+      filter(commodity %in% commodities,
+             unit=='m3',
+             partner=='Russia') %>%
+      group_by(date=lubridate::floor_date(date, 'month'),
+               country) %>%
+      summarise(value=sum(value, na.rm=T)*0.001626016,#m3 NG to m3 LNG
+                source='Eurostat'),
+
+    shipments %>%
+      filter(commodity %in% commodities,
+             departure_country=='Russia') %>%
+      group_by(date=lubridate::floor_date(arrival_date, 'month'),
+               country=destination_country) %>%
+      summarise(value=sum(value_m3, na.rm=T),
+                source='CREA')) %>%
+    filter(date >= '2021-12-01',
+           country %in% c('Belgium', 'Netherlands', 'Spain')) %>%
+    ungroup() %>%
+    tidyr::complete(date, country, source)
+
+
+  colourCount = length(unique(d$source))
+  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+  plt <- ggplot(d) +
+    geom_bar(aes(date, value/1e6, fill=source),
+             stat="identity",position='dodge') +
+    facet_wrap(~country) +
+    rcrea::theme_crea() +
+    scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
+    scale_x_datetime(date_labels = "%b %Y") +
+    scale_fill_manual(values = getPalette(colourCount), name=NULL) +
+    labs(x=NULL,
+         y='million m3 (LNG)')
+
+  plt <- ggplotly(plt) %>%
+    plotly::config(displayModeBar = F) %>%
+    plotly::layout(legend = list(orientation = "h", x=0.4, y = -0.2))
+  return(plt)
+
+
+})
+
+
 output$plot_payments_detailed <- renderPlotly({
 
   p <- payments_detailed()
   req(p)
 
+  d <- p %>%
+    group_by(date, destination_region, commodity) %>%
+    summarise_at(c("value_tonne", "value_eur"),
+                 sum, na.rm=T) %>%
+    rcrea::utils.running_average(7, vars_to_avg = c("value_tonne", "value_eur"))
+
   colourCount = length(unique(p$commodity))
   getPalette = colorRampPalette(brewer.pal(12, "Paired"))
 
-  p <- p %>% rcrea::utils.running_average(7, vars_to_avg = c("value_tonne", "value_eur"))
-  plt <- ggplot(p) +
+  plt <- ggplot(d) +
     geom_line(aes(date, value_eur/1e6, col=commodity),
               stat="identity") +
     facet_wrap(~destination_region, nrow=3, scales='free_y') +
@@ -181,6 +248,7 @@ output$plot_pipelined_gas_yearly <- renderPlotly({
   flows_bp <- flows_bp()
   req(flows, flows_iea, flows_bp)
 
+
   d <- bind_rows(
     flows %>% mutate(source='CREA'),
     flows_iea %>% mutate(source='IEA'),
@@ -191,7 +259,9 @@ output$plot_pipelined_gas_yearly <- renderPlotly({
 
     # mutate(departure_country=ifelse(departure_country==destination_country, departure_country, "Domestic production")) %>%
     filter(eu28,
-           grepl("Russia|Belarus|Turkey", departure_country)) %>%
+           grepl("Russia|Belarus|Turkey", departure_country),
+           commodity=='natural_gas',
+           lubridate::floor_date(date,'month') <= lubridate::floor_date(max(flows_iea$date),'month')) %>%
     group_by(departure_country, year=lubridate::year(date), source) %>%
     summarise_at(c("value_m3", "value_eur"), sum, na.rm=T) %>%
     filter(year >=2020)
@@ -262,7 +332,9 @@ build_plot_flows_comparison <- function(year=2020){
     flows %>% mutate(source='CREA'),
     flows_iea %>% mutate(source='IEA'),
     flows_bp %>% mutate(source='BP')) %>%
-    filter(commodity=='natural_gas') %>%
+    filter(commodity=='natural_gas',
+           lubridate::year(date)==!!year,
+           lubridate::floor_date(date, 'month') <=  lubridate::floor_date(max(flows_iea$date), 'month')) %>%
     mutate(destination_iso2=countrycode::countrycode(destination_country, "country.name", "iso2c",
                                                      custom_match = list(`Other EU`="EU"))) %>%
     mutate(eu28 = destination_iso2 %in% c("EU", countrycode::codelist$iso2c[which(countrycode::codelist$eu28=="EU")])) %>%
@@ -270,9 +342,7 @@ build_plot_flows_comparison <- function(year=2020){
     mutate(departure_country=ifelse(departure_country==destination_country, "Domestic production", departure_country)) %>%
     # filter(eu28,grepl("Russia|Belarus|Turkey", departure_country)) %>%
     group_by(departure_country, destination_country, year=lubridate::year(date), source) %>%
-    summarise_at(c("value_m3", "value_eur"), sum, na.rm=T) %>%
-    filter(year==!!year)
-
+    summarise_at(c("value_m3", "value_eur"), sum, na.rm=T)
 
 
   greps <- c("Slovak"="Slovakia",

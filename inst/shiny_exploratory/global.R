@@ -22,6 +22,11 @@ library(geojsonsf)
 # Global variables
 #####################
 
+environment <- "production"
+base_url <- list("development"="https://development-dot-fossil-shipment-tracker.ew.r.appspot.com",
+                 "production"="https://api.russiafossiltracker.com")[[environment]]
+
+
 frequency <- c(
   # "Hourly"="hour",
   "Daily"="day",

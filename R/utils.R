@@ -1,6 +1,6 @@
 utils.read_csv <- function(url, ...){
   start_time <- Sys.time()
-  res <- read_csv(url, ...)
+  res <- read_csv(url, ..., guess_max=1e6)
   end_time <- Sys.time()
   print(sprintf("Took %s for %s", end_time-start_time, url))
   return(res)
@@ -51,11 +51,15 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
                }
              }
              if(nrow(res)==0 & stop_if_no_row){
-               stop("No row returned.")
+               warning("No row returned.")
              }
              return(res)
-           }) %>% do.call(bind_rows, .)
-  }) %>% do.call(bind_rows, .)
+           }) %>%
+      Filter(function(x){nrow(x)>0}, .) %>%
+      do.call(bind_rows, .)
+  }) %>%
+    Filter(function(x){nrow(x)>0}, .) %>%
+    do.call(bind_rows, .)
 }
 
 #' Distribution of Russian pipelined gas amongst countries

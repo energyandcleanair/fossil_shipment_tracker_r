@@ -169,7 +169,7 @@ build_price_models <- function(production=F){
   trade_with_predictions_eu %>% select(-c(model)) %>%
     tidyr::unnest(data)  %>% filter(year(date)>=2016) %>%
     ggplot(aes(price_eur_per_tonne, predicted_price)) +
-    facet_wrap(~commodity, scales='free') + geom_point() + geom_abline()+ geom_smooth()
+    facet_wrap(~commodity, scales='free') + geom_point() + geom_abline() + geom_smooth()
 
   if(production){
     suffix=''
@@ -250,7 +250,7 @@ build_price_models <- function(production=F){
     ggplot(aes(date, value, col=name)) + facet_wrap(~country, scales='free_y') + geom_line()
 
   trade_w_pred_df %>% pivot_longer(matches('price')) %>%
-    filter(year(date)>=2016, commodity=='natural_gas') %>%
+    filter(year(date)>=2016, commodity=='lng') %>%
     filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
     ggplot(aes(date, value, col=name)) + facet_wrap(~country, scales='free_y') + geom_line()
 

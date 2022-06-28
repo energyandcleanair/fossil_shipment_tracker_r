@@ -86,7 +86,16 @@ h4 {
   color: #35416c !important;
 }
 
+.title {
+    color: black;
+    font-size: 1.5rem;
+    margin-top: 20px;
+}
 
+.subtitle {
+    color: black;
+    font-size: 1rem;
+}
 
 .well {
   border: none;
