@@ -14,9 +14,13 @@ tabPanel("Map",
            # h4("Presets"),
            # uiOutput("selectBerth"),
            div(HTML("<br>")),
+           uiOutput("selectMonths") %>% withSpinner(color="#8cc9D0"),
+
+           div(HTML("<br>")),
            # h4("Statistics"),
            # uiOutput("statistics"),
            actionButton("clearSelection", "Clear selection"),
+
 
            # downloadButton(outputId="downloadGeojson","Download (.geojson)",class="btn-secondary"),
            # downloadButton(outputId="downloadCsv","Download (.csv)",class="btn-secondary")
@@ -53,8 +57,6 @@ tabPanel("Map",
                div(
                  class="row-inline",
                  height=40,
-
-
                )
            )
     )

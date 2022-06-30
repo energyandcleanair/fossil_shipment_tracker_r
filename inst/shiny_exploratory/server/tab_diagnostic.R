@@ -52,15 +52,7 @@ flows_eurostat <- reactive({
 
 
 flows_comtrade_eurostat <-  reactive({
-  comtrade_eurostat.get_flows(use_cache=T) %>%
-    filter(unit=='m3') %>%
-    mutate(date=as.Date(paste0(year,"-01-01"))) %>%
-    select(departure_country=partner,
-           destination_country=country,
-           commodity,
-           value_m3=value,
-           date) %>%
-    mutate(departure_country=recode(departure_country, `Russian Federation`='Russia'))
+  readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter"))
 })
 
 
@@ -94,11 +86,23 @@ output$plot_eurostat_lng <- renderPlotly({
 
   eurostat <- flows_eurostat()
   shipments <- shipments()
-  req(eurostat, shipments)
+  comtrade_eurostat <- flows_comtrade_eurostat()
+  req(eurostat, shipments, comtrade_eurostat)
 
   commodities <- c("lng")
 
   d <- bind_rows(
+    comtrade_eurostat %>%
+      filter(commodity %in% commodities,
+             unit=='tonne',
+             partner=='Russia') %>%
+      mutate(unit='m3',
+             value=value*1000/kg_per_m3*0.001626016) %>% #tonne NG to m3 LNG
+      group_by(date=lubridate::floor_date(date, 'month'),
+               country) %>%
+      summarise(value=sum(value, na.rm=T),
+                source='Comtrade + Eurostat'),
+
     eurostat %>%
       filter(commodity %in% commodities,
              unit=='m3',
