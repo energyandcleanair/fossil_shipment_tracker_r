@@ -102,7 +102,7 @@ fill_all_voyages_sf <- function(months){
   for(month in months){
     if(!month %in% names(v)){
       v[[month]] <- api.get_voyages_sf(date_from=month,
-                                     date_to=lubridate::ceiling_date(as.Date(month), "month") - days(1)) %>%
+                                     date_to=lubridate::ceiling_date(as.Date(month), "month") - lubridate::days(1)) %>%
         mutate(quantity_unit=sprintf("%s tonne", value_tonne)) %>%
         select(id,
                status,
