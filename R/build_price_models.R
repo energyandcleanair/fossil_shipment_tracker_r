@@ -16,14 +16,14 @@ build_price_models <- function(production=F){
   # Collect prices ----------------------------------------------------------
   # Collect trade data
 
-  imp <- utils.collect_comtrade(partners="Russian Federation",
-                                reporters="all",
-                                years=seq(2016,2022),
-                                codes=c(coal_codes, oil_codes, gas_codes),
-                                frequency="monthly",
-                                stop_if_no_row=F) %>%
-    filter(trade_flow=="Imports")
-  saveRDS(imp, "cache/imp_for_building_models.RDS")
+  # imp <- utils.collect_comtrade(partners="Russian Federation",
+  #                               reporters="all",
+  #                               years=seq(2016,2022),
+  #                               codes=c(coal_codes, oil_codes, gas_codes),
+  #                               frequency="monthly",
+  #                               stop_if_no_row=F) %>%
+  #   filter(trade_flow=="Imports")
+  # saveRDS(imp, "cache/imp_for_building_models.RDS")
   imp <- readRDS("cache/imp_for_building_models.RDS")
   if(production){
     max_date <- "2022-03-01"

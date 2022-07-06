@@ -2,9 +2,14 @@ output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
  </h1>
+ <p><span style="color: #8cc9d0;">Update 2022-06-26 </span>-
+       <ul>
+       <li>We have included March 2022 trade data in our pricing model. This may impact previous commodity pricing retroactively.</li>
+       </ul>
+      </p>
   <p><span style="color: #8cc9d0;">Update 2022-06-21 </span>-
        <ul>
-       <li>We have included February 2022 trade data in our pricing model, leading to an increase of the commodity price ceilings.</li>
+       <li>We have included February 2022 trade data in our pricing model. This may impact previous commodity pricing retroactively.</li>
        </ul>
       </p>
 
