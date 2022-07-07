@@ -368,15 +368,23 @@ output$plot_main <- renderPlotly({
       mutate(label=sprintf("%s: %s %s", colour, scales::comma(round(value/value_scale)), unit_label)) %>%
       mutate(group=factor(group, levels=rev(levels(group))))
 
+    data_total <- data_plt %>%
+      group_by(group) %>%
+      summarise(value=sum(value, na.rm=T)) %>%
+      mutate(label=sprintf(" %s %s", scales::comma(round(value/value_scale)), unit_label))
+
     plt <- ggplot(data_plt) +
       geom_bar(aes(value/value_scale,
                    group,
                    fill=colour,
                    label=label),
                 stat="identity") +
+      geom_text(data=data_total, aes(x=value/value_scale, y=group, label=label),
+                hjust=2,
+                inherit.aes = F) +
       scale_fill_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
-      scale_x_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.1))) +
+      scale_x_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.15))) +
       labs(y=paste0(unit_label," / day"),
            x=NULL)
 
@@ -384,7 +392,8 @@ output$plot_main <- renderPlotly({
       layout(
         hovermode = "x unified",
         yaxis = list(title = ''),
-        xaxis = list(title = ''))
+        xaxis = list(title = '')) %>%
+      style(textposition = "right")
   }
 
   plt <- plt %>%
