@@ -21,6 +21,14 @@ observe({
 #                     selected=params[["plot_type"]])
 })
 
+observe({
+  if(!input$date_to_specified){
+    shinyjs::hide("date_to")
+  }else{
+    shinyjs::show("date_to")
+  }
+})
+
 #
 # # Other select inputs -> preset
 # observe({
@@ -170,14 +178,15 @@ data <- reactive({
   n_groups <- input$n_groups
   commodities_raw <- commodities_raw()
   date_from <- input$date_from
-  date_to <- input$.date_to
+  date_to <- input$date_to
+  date_to_specified <- input$date_to_specified
   unit <- input$unit
 
   req(counter_raw, colour_by, group_by, commodities, rolling_days, commodities_raw)
 
   data <- counter_raw %>%
     filter(commodity %in% commodities) %>%
-    filter(date>=date_from, date_to<=date_to) %>%
+    filter(date>=date_from, !date_to_specified | (date<=!!date_to)) %>%
     left_join(commodities_raw %>% select(commodity=id, commodity_name=name)) %>%
     mutate(commodiy=commodity_name) %>%
     mutate(group = !!sym(group_by),
@@ -236,7 +245,7 @@ data <- reactive({
 })
 
 
-output$plot_main <- renderPlotly({
+output$.plot_main <- renderPlotly({
 
   plot_type <- input$plot_type
   data <- data()
@@ -371,7 +380,7 @@ output$plot_main <- renderPlotly({
     data_total <- data_plt %>%
       group_by(group) %>%
       summarise(value=sum(value, na.rm=T)) %>%
-      mutate(label=sprintf(" %s %s", scales::comma(round(value/value_scale)), unit_label))
+      mutate(label=sprintf("  %s %s", scales::comma(round(value/value_scale), accuracy=1), unit_label))
 
     plt <- ggplot(data_plt) +
       geom_bar(aes(value/value_scale,
