@@ -10,7 +10,9 @@ overland_eu.get_flows <- function(){
   #TODO missing coke
 
   flows_comtrade_eurostat = db.download_flows("comtrade_eurostat")
+  # flows_comtrade_eurostat = comtrade_eurostat.get_flows(T)
   flows_eurostat_exeu = db.download_flows("eurostat_exeu")
+  # flows_comtrade_eurostat = eurostat_exeu.get_flows(T)
   flows_comtrade_eurostat_2022 = utils.expand_in_2022(flows_comtrade_eurostat, flows_eurostat_exeu)
   unique(flows_comtrade_eurostat_2022$commodity)
 
