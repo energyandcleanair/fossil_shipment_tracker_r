@@ -233,8 +233,8 @@ get_espo_brent_spread <- function(){
   date_to <- lubridate::today() + lubridate::days(7)
   get_at_date <- function(target_date){
     espo_discount = tibble(date=c('1990-01-01', '2022-02-24', '2022-03-11', '2022-03-17',
-                                  '2022-04-11', '2022-05-04', '2022-05-29', '2022-06-24', as.character(date_to)),
-                           discount=c(0,0,0,20,26,30,30,39,37))
+                                  '2022-04-11', '2022-05-04', '2022-05-29', '2022-06-24', '2022-07-08', as.character(date_to)),
+                           discount=c(0,0,20,26,30,30,39,37,25,25))
     approx(as_date(espo_discount$date), espo_discount$discount, as_date(target_date))$y
   }
   dates <- seq.Date(as.Date("2022-01-01"), date_to, by="day")
