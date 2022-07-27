@@ -298,7 +298,7 @@ output$.plot_main <- renderPlotly({
       labs(y=paste0(unit_label," / day"),
          x=NULL)
 
-    plt <- ggplotly(plt, tooltip="label") %>%
+    plt <- ggplotly(plt, tooltip=c("label")) %>%
       layout(
             hovermode = "x unified",
             yaxis = list(title = ''),

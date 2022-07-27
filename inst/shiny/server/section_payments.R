@@ -1,6 +1,6 @@
 
 payments <- reactive({
-  url <- sprintf("%s/v0/counter?date_from=2022-01-01&format=csv&aggregate_by=date,destination_region,commodity_group&rolling_days=7&use_eu=True", base_url)
+  url <- sprintf("%s/v0/counter?date_from=2022-01-01&format=csv&aggregate_by=date,destination_region,commodity_group&rolling_days=7&use_eu=True&date_to=-7", base_url)
   payments <- utils.read_csv(url)
 
   return(payments)
@@ -34,7 +34,7 @@ output$plot_payments <- renderPlotly({
     facet_wrap(~destination_region, nrow=3) +
     rcrea::theme_crea() +
     scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
-    scale_x_date(date_labels = "%b %y", limits=c(as.Date("2022-01-15"), max(p$date) - lubridate::days(5))) +
+    scale_x_date(date_labels = "%b %y", limits=c(as.Date("2022-01-15"), max(p$date))) +
     scale_color_manual(values = getPalette(colourCount), name=NULL) +
     labs(x=NULL,
          y=NULL)
