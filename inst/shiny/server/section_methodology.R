@@ -2,6 +2,11 @@ output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
  </h1>
+ <p><span style="color: #8cc9d0;">Update 2022-08-01 </span>-
+ <ul>
+       <li>We improved the shipment detection algorithm, leading to an increased amount of detected shipments, adding another EUR 3.5 billion to the counter.</li>
+       </ul>
+       </p>
   <p><span style="color: #8cc9d0;">Update 2022-07-11 </span>-
        <ul>
        <li>Estimates of June pipelined oil data was missing for Europe. We fixed it, adding another EUR 2.8 billion to the counter.</li>

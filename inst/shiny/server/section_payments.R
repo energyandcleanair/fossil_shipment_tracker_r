@@ -12,6 +12,11 @@ output$plot_payments <- renderPlotly({
   p <- payments()
   req(p)
 
+  # Palettes
+  palette = list(coal="#351c75",
+                 gas="#f6b26b",
+                 oil="#741b47")
+
 
   levels <- p %>%
     group_by(destination_region) %>%
@@ -26,16 +31,16 @@ output$plot_payments <- renderPlotly({
   #   summarise_at(c("value_tonne", "value_eur"), sum, na.rm=T)
 
   colourCount = length(unique(p$commodity_group))
-  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+  # getPalette = colorRampPalette(brewer.pal(12, "Paired"))
 
-  plt <- ggplot(p) +
-    geom_line(aes(date, value_eur/1e6, col=commodity_group),
-              stat="identity") +
+  plt <- ggplot(p %>% mutate(commodity_group=factor(commodity_group))) +
+    geom_line(aes(date, value_eur/1e6, col=commodity_group), stat="identity") +
     facet_wrap(~destination_region, nrow=3) +
     rcrea::theme_crea() +
     scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
     scale_x_date(date_labels = "%b %y", limits=c(as.Date("2022-01-15"), max(p$date))) +
-    scale_color_manual(values = getPalette(colourCount), name=NULL) +
+    # scale_color_manual(values = getPalette(colourCount), name=NULL) +
+    scale_color_manual(values=unlist(palette), name=NULL) +
     labs(x=NULL,
          y=NULL)
 
