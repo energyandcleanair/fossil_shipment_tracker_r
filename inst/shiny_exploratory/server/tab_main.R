@@ -138,19 +138,24 @@ output$selectCommodities <- renderUI({
               selected = c())
 })
 
+
 output$selectPlotType <- renderUI({
   selectInput("plot_type", "Plot Type", multiple=F, choices = plot_types, selected="area")
 })
+
 
 # output$selectYearFrom <- renderUI({
 #   selectInput("year_from", "From", multiple=F,
 #               choices = seq(2016, lubridate::year(lubridate::today())), selected="2018")
 # })
-#
+
+
 # output$selectYearTo <- renderUI({
 #   selectInput("year_to", "To", multiple=F,
 #               choices = seq(2016, lubridate::year(lubridate::today())), selected="2021")
 # })
+
+
 # output$selectYears <- renderUI({
 #   sliderTextInput("years", "Years",
 #     choices = seq(2016, lubridate::year(lubridate::today())),
@@ -267,7 +272,11 @@ output$.plot_main <- renderPlotly({
 
   colourCount = length(unique(data$colour))
   # getPalette = colorRampPalette(commodity_palette)
-  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+  if(input$colour_by %in% names(palettes)){
+    getPalette <- function(x){palettes[[input$colour_by]]}
+  }else{
+    getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+  }
 
   if(plot_type=="lines"){
     plt <- ggplot(data) +
