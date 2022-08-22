@@ -107,10 +107,11 @@ bp.get_gas_consumption <- function(){
 
   d['country'] <- d[,1]
   d %>%
-    select(country, value=`2020`) %>%
+    select_at(c('country'='Billion cubic metres', as.character(seq(2015, 2020)))) %>%
+    tidyr::pivot_longer(cols=-country, names_to='year') %>%
     mutate(unit='m3',
            value=as.numeric(value) * 1e9) %>%
     mutate(iso2=countrycode::countrycode(country, "country.name", "iso2c"),
-           year=2020) %>%
+           year=as.numeric(year)) %>%
     filter(!is.na(iso2))
 }

@@ -21,3 +21,34 @@ iea.get_flows <- function(years, remove_kipi=TRUE){
 }
 
 
+
+iea.get_gas_consumption <- function(){
+
+  f_consumption <- system.file("extdata", "iea/iea_ng_consumption.csv",
+                   package="russiacounter")
+
+  f_gcv <- system.file("extdata", "iea/iea_ng_gcv.csv",
+                               package="russiacounter")
+
+  f_consumption <- "data/iea/iea_ng_supply.csv"
+  # f_gcv <- "data/iea/iea_ng_gcv.csv"
+
+  consumption <- read_csv(f_consumption, skip=2) %>%
+    select(country=COUNTRY,
+           year=TIME,
+           value_tj=X5)
+
+  gcv <- read_csv(f_gcv, skip=2) %>%
+    filter(grepl('GCV', FLOW)) %>%
+    select(country=COUNTRY,
+           year=TIME,
+           value_kj_per_m3=X5)
+
+  consumption %>%
+    left_join(gcv) %>%
+    mutate(value = as.numeric(value_tj) * 1e9 / as.numeric(value_kj_per_m3)) %>%
+    select(-c(value_tj, value_kj_per_m3)) %>%
+    filter(!is.na(value)) %>%
+    mutate(unit='m3')
+
+}
