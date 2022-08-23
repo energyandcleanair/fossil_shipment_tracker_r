@@ -60,5 +60,11 @@ overland_eu.get_flows <- function(){
           flows$date >= '2022-08-04' &
           flows$commodity %in% c('pipeline_oil', 'oil_products_pipeline'), grepl('value_',names(flows))] = 0
 
+
+  # Coal ban after August 10. Assuming 0 for overland coal
+  flows[flows$departure_iso2 == 'RU' &
+        flows$date >= '2022-08-10' &
+        grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
+
   return(flows)
 }
