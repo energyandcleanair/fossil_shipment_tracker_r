@@ -92,26 +92,16 @@ bp.get_flows <- function(use_cache=T){
 
 
 bp.get_gas_consumption <- function(){
-  f <- system.file("extdata", "bp-stats-review-2021-all-data.xlsx",
+  f <- system.file("extdata", "bp-stats-review-2022-consolidated-dataset-panel-format.xlsx",
                    package="russiacounter")
-  # f <- "data/bp-stats-review-2021-all-data.xlsx"
-
-  sheet <- "Gas Consumption - Bcm"
 
 
 
   # natural_gas
-  d <- readxl::read_xlsx(f,
-                    sheet=sheet,
-                    range="A3:BE109")
-
-  d['country'] <- d[,1]
-  d %>%
-    select_at(c('country'='Billion cubic metres', as.character(seq(2015, 2020)))) %>%
-    tidyr::pivot_longer(cols=-country, names_to='year') %>%
-    mutate(unit='m3',
-           value=as.numeric(value) * 1e9) %>%
-    mutate(iso2=countrycode::countrycode(country, "country.name", "iso2c"),
-           year=as.numeric(year)) %>%
-    filter(!is.na(iso2))
+  readxl::read_xlsx(f) %>%
+    mutate(value=gascons_bcm*1e9,
+           iso2=countrycode::countrycode(ISO3166_alpha3, "iso3c", "iso2c"),
+           unit='m3'
+           ) %>%
+    select(country=Country, year=Year, iso2, value, unit)
 }

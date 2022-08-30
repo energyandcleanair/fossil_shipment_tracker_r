@@ -49,6 +49,8 @@ iea.get_gas_consumption <- function(){
     mutate(value = as.numeric(value_tj) * 1e9 / as.numeric(value_kj_per_m3)) %>%
     select(-c(value_tj, value_kj_per_m3)) %>%
     filter(!is.na(value)) %>%
-    mutate(unit='m3')
+    mutate(unit='m3') %>%
+    mutate(iso2=countrycode::countrycode(iconv(country, "latin1", "ASCII", sub=""), "country.name", "iso2c",
+                                         custom_match=c(`Republic of Turkiye`='TR')))
 
 }
