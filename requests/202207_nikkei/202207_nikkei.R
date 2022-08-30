@@ -2,6 +2,7 @@ library(tidyverse)
 library(lubridate)
 library(tidytext)
 
+folder <- 'requests/202207_nikkei'
 colours <- list(coal="#351c75",
                 gas="#f6b26b",
                 oil="#741b47")
@@ -62,8 +63,21 @@ ggplot(counter_month %>%
        y=NULL,
        x='mnEUR')
 
-ggsave('results/counter_month.jpg', width=12, height=6)
+ggsave(file.path(folder, 'counter_month.jpg'), width=12, height=6)
 
 
-write_csv(counter_month, 'results/counter_month.csv')
+write_csv(counter_month, file.path(folder,'counter_month.csv'))
 
+
+# Could you tell me how Russia's energy export volumes and export revenues in euro changed in the month to July 23th compared to the month to March 23th ?
+# I would greatly appreciate it if you could provide me with actual numbers for both export volumes and export revenues, so that I can include them in my articles, such as bar graphs.
+# I would appreciate it if you could give me a breakdown by gas, oil, and coal.
+comparison <- counter_month %>%
+  group_by(month, month_str, commodity_group) %>%
+  summarise_at(c('value_eur','value_tonne','value_usd'), sum, na.rm=T)
+
+write_csv(comparison, file.path(folder,'comparison_july_march.csv'))
+
+comparison_wide <- comparison %>%
+  filter(month %in% c(3,7)) %>%
+  select(month, value_eur, value_tonne)
