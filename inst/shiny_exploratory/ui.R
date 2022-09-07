@@ -12,6 +12,8 @@ ui <- navbarPage(
     id = "nav-page",
 
     source(file.path("ui", "tab_main.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_voyages.R"),  local = TRUE)$value,
+    source(file.path("ui", "tab_diagnostic.R"),  local = TRUE)$value,
     source(file.path("ui", "tab_about.R"),  local = TRUE)$value,
 
     tags$head(

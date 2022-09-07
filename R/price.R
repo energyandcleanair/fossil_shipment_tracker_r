@@ -59,21 +59,15 @@ prices.get_predicted_portprices <- function(production=F){
 }
 
 
-prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
+prices.get_predicted_prices <- function(production=F){
 
   prices_monthly <- get_prices_monthly() %>%
     arrange(desc(date)) %>%
     filter(!is.na(date))
 
-  if(!is.null(add_to_predictors)){
-    #TODO make it automatic for all predictors. Only for brent for now
-    prices_monthly <- prices_monthly %>%
-      left_join(add_to_predictors %>%
-                  group_by(date=lubridate::floor_date(date, "month")) %>%
-                  summarise(brent=mean(brent, na.rm=T)) %>%
-                  rename(add_to_brent=brent)) %>%
-      mutate(brent=brent + tidyr::replace_na(add_to_brent,0))
-  }
+  prices_daily <- get_prices_daily(running_days=30) %>%
+    arrange(desc(date)) %>%
+    filter(!is.na(date))
 
   if(production){
     suffix=''
@@ -85,7 +79,7 @@ prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
   models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu%s.RDS", suffix), package="russiacounter"))
 
   prices_eu <- models_eu %>%
-    mutate(new_data=list(prices_monthly)) %>%
+    mutate(new_data=list(prices_daily)) %>%
     group_by(commodity) %>%
     group_map(function(df, group) {
       model <- df$model[[1]]
@@ -102,7 +96,7 @@ prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
     tidyr::crossing(tibble(country_iso=codelist$iso2c[which(codelist$eu28=="EU")] ))
 
   prices_noneu  <- models_noneu %>%
-    mutate(new_data=list(prices_monthly)) %>%
+    mutate(new_data=list(prices_daily)) %>%
     group_by(commodity, country, country_iso) %>%
     group_map(function(df, group) {
       model <- df$model[[1]]
@@ -126,7 +120,7 @@ prices.get_predicted_prices <- function(add_to_predictors=NULL, production=F){
   p <- bind_rows(p,
                  p %>% filter(commodity=="crude_oil") %>% mutate(commodity="pipeline_oil"))
 
-  # Monthly -> daily
+  # Extend and fill
   days_buffer <- 8
   dates <- seq.Date(min(p$date, na.rm=T), lubridate::today() + days_buffer, by="day")
   filler <- tidyr::crossing(tibble(date=dates),

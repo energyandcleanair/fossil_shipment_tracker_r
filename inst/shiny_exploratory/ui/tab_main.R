@@ -1,4 +1,4 @@
-tabPanel("Main",
+tabPanel("Charts",
          value="power",
 
          sidebarLayout(
@@ -21,7 +21,8 @@ tabPanel("Main",
                class="row-inline",
                height=50,
                dateInput("date_from", "From", "2022-02-24", "2022-01-01", lubridate::today()),
-               dateInput(".date_to", "To", lubridate::today(), "2022-01-01", lubridate::today())
+               shinyjs::hidden(dateInput("date_to", "", NULL, "2022-01-01", lubridate::today())),
+               checkboxInput("date_to_specified", "To", value=F)
              ),
 
              # h4("Filtering"),
@@ -47,7 +48,7 @@ tabPanel("Main",
            mainPanel(
              width=10,
              # htmlOutput("power_message", class="hia-msg"),
-             plotlyOutput("plot_main", height="calc(100vh - 90px)") %>% withSpinner(color="#8cc9D0")
+             plotlyOutput(".plot_main", height="calc(100vh - 90px)") %>% withSpinner(color="#8cc9D0")
            )
          )
 )

@@ -68,10 +68,6 @@ comtrade.get_flows <- function(use_cache=T){
 
 
 
-
-
-
-
     q <- comtradr::ct_search(partners = c("Russian Federation"),
                 reporters = "All",
                 trade_direction = c("imports", "exports"),

@@ -21,6 +21,14 @@ observe({
 #                     selected=params[["plot_type"]])
 })
 
+observe({
+  if(!input$date_to_specified){
+    shinyjs::hide("date_to")
+  }else{
+    shinyjs::show("date_to")
+  }
+})
+
 #
 # # Other select inputs -> preset
 # observe({
@@ -130,19 +138,24 @@ output$selectCommodities <- renderUI({
               selected = c())
 })
 
+
 output$selectPlotType <- renderUI({
   selectInput("plot_type", "Plot Type", multiple=F, choices = plot_types, selected="area")
 })
+
 
 # output$selectYearFrom <- renderUI({
 #   selectInput("year_from", "From", multiple=F,
 #               choices = seq(2016, lubridate::year(lubridate::today())), selected="2018")
 # })
-#
+
+
 # output$selectYearTo <- renderUI({
 #   selectInput("year_to", "To", multiple=F,
 #               choices = seq(2016, lubridate::year(lubridate::today())), selected="2021")
 # })
+
+
 # output$selectYears <- renderUI({
 #   sliderTextInput("years", "Years",
 #     choices = seq(2016, lubridate::year(lubridate::today())),
@@ -170,29 +183,31 @@ data <- reactive({
   n_groups <- input$n_groups
   commodities_raw <- commodities_raw()
   date_from <- input$date_from
-  date_to <- input$.date_to
+  date_to <- input$date_to
+  date_to_specified <- input$date_to_specified
   unit <- input$unit
 
   req(counter_raw, colour_by, group_by, commodities, rolling_days, commodities_raw)
 
   data <- counter_raw %>%
     filter(commodity %in% commodities) %>%
-    filter(date>=date_from, date_to<=date_to) %>%
+    filter(date>=date_from, !date_to_specified | (date<=!!date_to)) %>%
     left_join(commodities_raw %>% select(commodity=id, commodity_name=name)) %>%
     mutate(commodiy=commodity_name) %>%
     mutate(group = !!sym(group_by),
-           colour = !!sym(colour_by))
-
-  data <- data %>%
+           colour = !!sym(colour_by)) %>%
     group_by(colour, group, date) %>%
     summarise(value_eur=sum(value_eur, na.rm=T),
               value_tonne=sum(value_tonne, na.rm=T)) %>%
     tidyr::complete(colour, group, date,
-                    fill=list(value_eur=0, vaalue_tonne=0)) %>%
-    rcrea::utils.running_average(rolling_days, vars_to_avg = names(.)[grepl("value_", names(.))], min_values = rolling_days)
-
+                    fill=list(value_eur=0, value_tonne=0))
 
   data["value"] <- data[paste0("value_",unit)]
+
+  data_prerolled <- data
+  data <- data %>%
+    rcrea::utils.running_average(rolling_days, vars_to_avg = names(.)[grepl("value", names(.))], min_values = rolling_days)
+
 
   if(unit=='tonne'){
     value_scale <- 1e3
@@ -204,7 +219,7 @@ data <- reactive({
   }
 
   # Have top importers on top
-  top_groups <- data %>%
+  top_groups <- data_prerolled %>%
     group_by(group) %>%
     summarise(total=sum(value, na.rm=T)) %>%
     arrange(desc(total)) %>%
@@ -212,7 +227,7 @@ data <- reactive({
     mutate(group_w_total=factor(sprintf("%s (%s %s)", group, scales::comma(round(total/value_scale)), unit_label))) %>%
     mutate(group_w_total=factor(group_w_total, levels=.$group_w_total))
 
-  top_colours <- data %>%
+  top_colours <- data_prerolled %>%
     group_by(colour) %>%
     summarise(across(starts_with("value"), ~sum(., na.rm=T))) %>%
     arrange(desc(value)) %>%
@@ -235,7 +250,7 @@ data <- reactive({
 })
 
 
-output$plot_main <- renderPlotly({
+output$.plot_main <- renderPlotly({
 
   plot_type <- input$plot_type
   data <- data()
@@ -257,7 +272,11 @@ output$plot_main <- renderPlotly({
 
   colourCount = length(unique(data$colour))
   # getPalette = colorRampPalette(commodity_palette)
-  getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+  if(input$colour_by %in% names(palettes)){
+    getPalette <- function(x){palettes[[input$colour_by]]}
+  }else{
+    getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+  }
 
   if(plot_type=="lines"){
     plt <- ggplot(data) +
@@ -288,7 +307,7 @@ output$plot_main <- renderPlotly({
       labs(y=paste0(unit_label," / day"),
          x=NULL)
 
-    plt <- ggplotly(plt, tooltip="label") %>%
+    plt <- ggplotly(plt, tooltip=c("label")) %>%
       layout(
             hovermode = "x unified",
             yaxis = list(title = ''),
@@ -367,15 +386,23 @@ output$plot_main <- renderPlotly({
       mutate(label=sprintf("%s: %s %s", colour, scales::comma(round(value/value_scale)), unit_label)) %>%
       mutate(group=factor(group, levels=rev(levels(group))))
 
+    data_total <- data_plt %>%
+      group_by(group) %>%
+      summarise(value=sum(value, na.rm=T)) %>%
+      mutate(label=sprintf("  %s %s", scales::comma(round(value/value_scale), accuracy=1), unit_label))
+
     plt <- ggplot(data_plt) +
       geom_bar(aes(value/value_scale,
                    group,
                    fill=colour,
                    label=label),
                 stat="identity") +
+      geom_text(data=data_total, aes(x=value/value_scale, y=group, label=label),
+                hjust=2,
+                inherit.aes = F) +
       scale_fill_manual(values=getPalette(colourCount), name=NULL) +
       rcrea::theme_crea() +
-      scale_x_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.1))) +
+      scale_x_continuous(limits=c(0,NA), expand=expansion(mult=c(0,0.15))) +
       labs(y=paste0(unit_label," / day"),
            x=NULL)
 
@@ -383,7 +410,8 @@ output$plot_main <- renderPlotly({
       layout(
         hovermode = "x unified",
         yaxis = list(title = ''),
-        xaxis = list(title = ''))
+        xaxis = list(title = '')) %>%
+      style(textposition = "right")
   }
 
   plt <- plt %>%

@@ -26,9 +26,9 @@ build_price_models <- function(production=F){
   # saveRDS(imp, "cache/imp_for_building_models.RDS")
   imp <- readRDS("cache/imp_for_building_models.RDS")
   if(production){
-    max_date <- "2022-01-01"
+    max_date <- "2022-03-01"
   }else{
-    max_date <- "2022-01-01"
+    max_date <- "2022-03-01"
   }
 
 
@@ -123,15 +123,17 @@ build_price_models <- function(production=F){
   trade %<>% mutate(country_iso = countrytable$country_iso[match(country, countrytable$country)],
                     EU = country_iso %in% codelist$iso2c[!is.na(codelist$eu28)])
 
-
+  # Clean values
+  trade <- trade %>%
+    filter((commodity!="natural_gas") | (price_eur_per_tonne<3000)) %>%
+    filter((commodity!="lng") | (price_eur_per_tonne<1500)) %>%
+    filter((commodity!="oil_products") | (price_eur_per_tonne>80)) %>%
+    filter(!is.na(price_eur_per_tonne) & !is.infinite(price_eur_per_tonne)) %>%
+    filter(netweight_kg>100 * 1000)
 
   # Europe ------------------------------------------------------------------
   trade_eu <- trade %>%
     filter(EU) %>%
-    filter((commodity!="lng") | (price_eur_per_tonne<1500)) %>%
-    filter((commodity!="oil_products") | (price_eur_per_tonne>80)) %>%
-    filter(!is.na(price_eur_per_tonne) & !is.infinite(price_eur_per_tonne)) %>%
-    filter(netweight_kg>100 * 1000) %>%
     group_by(commodity, date) %>%
     summarise(across(c(trade_value_eur, netweight_kg), sum, na.rm=T),
               across(all_of(c('world_price_eur_per_tonne', prices_monthly %>% select(is.numeric) %>% names)), unique)) %>%
@@ -167,7 +169,7 @@ build_price_models <- function(production=F){
   trade_with_predictions_eu %>% select(-c(model)) %>%
     tidyr::unnest(data)  %>% filter(year(date)>=2016) %>%
     ggplot(aes(price_eur_per_tonne, predicted_price)) +
-    facet_wrap(~commodity, scales='free') + geom_point() + geom_abline()+ geom_smooth()
+    facet_wrap(~commodity, scales='free') + geom_point() + geom_abline() + geom_smooth()
 
   if(production){
     suffix=''
@@ -182,10 +184,12 @@ build_price_models <- function(production=F){
   top_importers <- trade %>%
     filter(!EU, !is.na(country_iso), year(date)>=2017) %>%
     group_by(country, commodity) %>%
-    summarise(across(trade_value_eur, mean), n=n()) %>%
+    summarise(trade_value_eur=mean(trade_value_eur, na.rm=T),
+              n=n(),
+              last_date=max(date)) %>%
     group_by(commodity) %>%
     mutate(share = trade_value_eur/sum(trade_value_eur)) %>%
-    filter(n>10, share>.025)
+    filter(n>10, share>.025, last_date >= '2021-01-01')
 
   trade_grouped <- top_importers %>% select(-trade_value_eur) %>% left_join(trade)
   trade_grouped <- trade %>%
@@ -227,8 +231,26 @@ build_price_models <- function(production=F){
     trade_w_pred_df
 
 
+  if(trade_w_pred_df %>%
+    filter(predicted_price < 0) %>%
+    nrow() >0){
+    stop("Some predicted prices are negative")
+  }
+
+
   trade_w_pred_df %>% pivot_longer(matches('price')) %>%
     filter(year(date)>=2016, commodity=='crude_oil') %>%
+    filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
+    ggplot(aes(date, value, col=name)) + facet_wrap(~country, scales='free_y') + geom_line()
+
+
+  trade_w_pred_df %>% pivot_longer(matches('price')) %>%
+    filter(year(date)>=2016, commodity=='coal') %>%
+    filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
+    ggplot(aes(date, value, col=name)) + facet_wrap(~country, scales='free_y') + geom_line()
+
+  trade_w_pred_df %>% pivot_longer(matches('price')) %>%
+    filter(year(date)>=2016, commodity=='lng') %>%
     filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
     ggplot(aes(date, value, col=name)) + facet_wrap(~country, scales='free_y') + geom_line()
 

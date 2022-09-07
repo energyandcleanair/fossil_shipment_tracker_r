@@ -100,6 +100,9 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
 
   p <- pipeline_flows %>%
     select(commodity, departure_iso2, destination_iso2, date, value_tonne, value_mwh, value_m3)
+
+  p$updated_on <- lubridate::now()
+
   print(sprintf("=== Upload flows to postgres (%s) ===", ifelse(production,"production","development")))
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))

@@ -41,7 +41,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     # Most counties except China seem to have monthly data
     imports_from_russia <- utils.collect_comtrade(partners=comtradr::ct_country_lookup("Russia"),
                                                     reporters="all",
-                                                    years=seq(2016, 2021),
+                                                    years=seq(2016, 2022),
                                                   frequency="monthly",
                                                   codes=c(oil_codes, gas_codes, coal_codes)) %>%
       filter(!reporter %in% annual_countries)
@@ -70,7 +70,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
   }else{
     imports_world <- utils.collect_comtrade(partners="World",
                                             reporters="all",
-                                            years=seq(2016, 2021),
+                                            years=seq(2016, 2022),
                                             frequency="monthly",
                                             codes=c(oil_codes, gas_codes, coal_codes)) %>%
       filter(!reporter %in% annual_countries)
@@ -111,7 +111,7 @@ comtrade_eurostat.get_flows <- function(use_cache=F){
     names(exim) <- eurostat_codes
 
     eurostat_data <- exim %>% bind_rows(.id='code') %>%
-      filter(lubridate::year(time) %in% seq(2016,2021)) %>% filter(values != 0)
+      filter(lubridate::year(time) %in% seq(2016, 2022)) %>% filter(values != 0)
     saveRDS(eurostat_data, f_eurostat)
   }else{
     eurostat_data <- readRDS(f_eurostat)

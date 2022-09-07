@@ -16,7 +16,7 @@ eurostat.get_flows <- function(use_cache=T){
   unit_factors <- list(
     "MIO_M3"=1e6,
     "TJ_GCV"=1,
-    "THS_T"=1
+    "THS_T"=1000
   )
 
   f <- "cache/eurostat.RDS"
@@ -54,5 +54,6 @@ eurostat.get_flows <- function(use_cache=T){
     ungroup()
 
   saveRDS(data, f)
+  saveRDS(data, "inst/extdata/eurostat.RDS")
   return(data)
 }

@@ -1,7 +1,38 @@
 output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
- </h2>
+ </h1>
+ <p><span style="color: #8cc9d0;">Update 2022-08-01 </span>-
+ <ul>
+       <li>We improved the shipment detection algorithm, leading to an increased amount of detected shipments, adding another EUR 3.5 billion to the counter.</li>
+       </ul>
+       </p>
+  <p><span style="color: #8cc9d0;">Update 2022-07-11 </span>-
+       <ul>
+       <li>Estimates of June pipelined oil data was missing for Europe. We fixed it, adding another EUR 2.8 billion to the counter.</li>
+       </ul>
+      </p>
+ <p><span style="color: #8cc9d0;">Update 2022-06-26 </span>-
+       <ul>
+       <li>We have included March 2022 trade data in our pricing model. This may impact previous commodity pricing retroactively.</li>
+       </ul>
+      </p>
+  <p><span style="color: #8cc9d0;">Update 2022-06-21 </span>-
+       <ul>
+       <li>We have included February 2022 trade data in our pricing model. This may impact previous commodity pricing retroactively.</li>
+       </ul>
+      </p>
+
+  <p><span style="color: #8cc9d0;">Update 2022-06-16 </span>-
+       Two important improvements were implemented:
+       <ul>
+       <li>Oil leaving from Novorossiysk CPC terminal is now attributed to Kazakhstan rather than Russia;</li>
+       <li>Pipelined gas entering Greece from Turkey at Kipi/Kipoi transmission point is now assumed to come from Azerbaidjan rather than Russia.</li>
+       </ul>
+       Additionally, we fixed a limitation that was excluding some of the shipments that took longer than a month to reach their destination.
+      </p>
+
+
   <p><span style="color: #8cc9d0;">Update 2022-05-13 </span>-
        <span>This is a significant update, with four majour changes:</span>
        <ul>
