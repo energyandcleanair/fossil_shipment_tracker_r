@@ -11,6 +11,7 @@ update_counter_new <- function(){
 
   # Pipeline gas to Europe
   flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-10, use_cache=F)
+  flows_entsog <- entsog_new.get_flows('2020-01-01', date_to='2021-01-01', use_cache=F)
   ok <- T
   ok <- ok & (sum(flows_entsog$value_tonne) >= as.integer(max(flows_entsog$date)-min(flows_entsog$date)) * 5e5)
   # ok <- ok & all(flows_entsog$value_tonne >= -1)
