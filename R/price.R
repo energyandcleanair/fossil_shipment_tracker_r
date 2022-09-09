@@ -61,10 +61,6 @@ prices.get_predicted_portprices <- function(production=F){
 
 prices.get_predicted_prices <- function(production=F){
 
-  prices_monthly <- get_prices_monthly() %>%
-    arrange(desc(date)) %>%
-    filter(!is.na(date))
-
   prices_daily <- get_prices_daily(running_days=30) %>%
     arrange(desc(date)) %>%
     filter(!is.na(date))
@@ -166,9 +162,33 @@ price.check_portprices <- function(p){
   return(ok)
 }
 
+prices.update_constant_prices <- function(production=F){
+
+  current_p <- prices.get_predicted_prices(production=production)
+
+  date_from <- '2022-01-01'
+  date_to <- '2022-02-24'
+  dates <- unique(current_p$date)
+
+  constant_p <- current_p %>%
+    filter(date >= date_from,
+           date <= date_to) %>%
+    group_by(country_iso2, commodity) %>%
+    summarise_at('eur_per_tonne', mean, na.rm=T) %>%
+    tidyr::crossing(dates) %>%
+    mutate(type='constant')
+
+  ok <- price.check_prices(p)
+
+  if(ok){
+    db.upload_prices_to_posgres(p, production=production)
+  }else{
+    print("ERROR: prices not updated")
+  }
+}
+
 price.update_prices <- function(production=F){
   p <- prices.get_predicted_prices(production=production)
-  # p <- prices.add_tail(p, add_tail_days=add_tail_days)
   ok <- price.check_prices(p)
   if(ok){
     db.upload_prices_to_posgres(p, production=production)
@@ -187,54 +207,5 @@ price.update_portprices <- function(production=F){
   }
 }
 
-#
-# price.get_modelled_price <- function(flows_entsog, flows_comtrade_eurostat, cap_price=T){
-#
-#   flows <- bind_rows(
-#     flows_entsog %>%
-#       filter(unit=="MWh/day") %>%
-#       mutate(value=value/gcv_MWh_per_m3*kg_per_m3/1000,
-#              unit="tonne",
-#              transport="pipeline") %>%
-#       group_by(date, commodity, transport, unit, source) %>%
-#       summarise(value=sum(value)) %>%
-#       mutate(country="All"),
-#
-#     # Spread on a daily basis as opposed to a monthly one
-#     flows_comtrade_eurostat %>%
-#       filter(country=="EU") %>%
-#       filter(unit %in% c("tonne","eur")) %>%
-#       tidyr::pivot_wider(names_from="unit", names_prefix="value_", values_from="value") %>%
-#       mutate(price=value_eur/value_tonne) %>%
-#       rename(value=value_tonne) %>%
-#       mutate(unit="tonne") %>%
-#       select(-c(value_eur)) %>%
-#       filter(paste(commodity) != paste("natural_gas")) %>%
-#       right_join(
-#         tibble(date_day=seq(min(flows_comtrade_eurostat$date),
-#                             lubridate::ceiling_date(max(flows_comtrade_eurostat$date), "month") - 1, by="day")) %>%
-#           mutate(date=lubridate::floor_date(date_day, 'month'))
-#       ) %>%
-#       mutate(value=value / lubridate::days_in_month(date)) %>%
-#       mutate(date=date_day) %>%
-#       select(-c(date_day))
-#   ) %>%
-#     mutate(month=lubridate::floor_date(date, "month"))
-#
-#   # Get pricing
-#   flows_month <- flows %>%
-#     distinct(date=month, transport, commodity, price)
-#
-#   prices <- price.get_predicted_prices()
-#
-#   # Combine
-#   flows %>%
-#     select(-c(price)) %>%
-#     left_join(prices %>% rename(month=date)) %>%
-#     left_join(price_cap) %>%
-#     mutate(price_cap=tidyr::replace_na(price_cap, +Inf)) %>%
-#     mutate(value_eur=value * ifelse(cap_price, pmin(price, price_cap), price))
-# }
-#
 
 
