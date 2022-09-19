@@ -324,4 +324,3 @@ get_espo_brent_spread <- function(){
 #'     geom_line(aes(date, value_usd_per_mwh, col=commodity)) +
 #'     facet_wrap(~country, scales="free")
 #' }
-p

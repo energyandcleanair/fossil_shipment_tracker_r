@@ -26,9 +26,9 @@ build_price_models <- function(production=F){
   # saveRDS(imp, "cache/imp_for_building_models.RDS")
   imp <- readRDS("cache/imp_for_building_models.RDS")
   if(production){
-    max_date <- "2022-03-01"
+    max_date <- "2022-04-01"
   }else{
-    max_date <- "2022-03-01"
+    max_date <- "2022-04-01"
   }
 
 
