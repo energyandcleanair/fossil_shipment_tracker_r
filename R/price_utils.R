@@ -7,14 +7,30 @@ fill_gaps_and_future <- function(result){
 }
 
 get_brent <- function(){
-  quantmod::getSymbols("BZ=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
-    as.data.frame() %>%
-    mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-    tibble() %>%
-    rename(brent = contains('Close')) %>%
-    filter(!is.na(date)) %>%
-    select(date, brent) %>%
+
+  brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
+     as.data.frame() %>%
+     mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
+     tibble() %>%
+     rename(brent = contains('Close')) %>%
+     filter(!is.na(date)) %>%
+     select(date, brent)
+
+  brent_datahub <- read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv') %>%
+    select(date=Date, brent=Price) %>%
+    filter(date>='2016-01-01') %>%
+    arrange(desc(date))
+
+  bind_rows(
+    brent_yahoo,
+    brent_datahub
+  ) %>%
+    group_by(date) %>%
+    summarise_at('brent', mean, na.rm=T) %>%
+    filter(!is.na(brent)) %>%
+    arrange(desc(date)) %>%
     fill_gaps_and_future()
+
 }
 
 
@@ -46,14 +62,15 @@ get_ara <- function(){
            ara = as.numeric(Price)) %>%
     select(date, ara)
 
+  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310593&historicalSpan=3"
 
-  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310587&historicalSpan=2"
   ara_new <- jsonlite::fromJSON(url)$bars %>%
     as.data.frame() %>%
     `names<-`(c("date", "ara")) %>%
     tibble() %>%
     mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y", tz="UTC"),
-           ara = as.numeric(ara))
+           ara = as.numeric(ara)) %>%
+    arrange(desc(date))
 
   ara <- bind_rows(ara_historical,
                       ara_new %>% filter(date >= max(ara_historical$date)))
