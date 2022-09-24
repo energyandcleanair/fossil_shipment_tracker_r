@@ -23,7 +23,7 @@ flaring.get_fields <- function(gas_only=T){
 flaring.get_infrastructure <- function(){
 
   url <- "https://greeninfo-network.github.io/global-gas-infrastructure-tracker/data/data.csv?v=2.1"
-  infra <- read_csv("~/Downloads/data.csv",
+  infra <- read_csv(url,
                     col_types = cols(lat = col_number(),
                                      lng = col_number())) %>%
     filter(grepl("Russia", countries))
@@ -203,7 +203,7 @@ flaring.get_flaring_ts <- function(gas_only=T,
   flare_amounts %>%
     group_by(type, date) %>%
     summarise_at(c('bcm_est'), sum, na.rm=T) %>%
-    rcrea::utils.running_average(14, vars_to_avg = c('bcm_est')) %>%
+    rcrea::utils.running_average(14, vars_to_avg = c('bcm_est'), min_values = 10) %>%
     mutate(year=lubridate::year(date),
            date000=`year<-`(date, 2000)) %>%
     ggplot() +
@@ -235,7 +235,8 @@ flaring.get_flaring_ts <- function(gas_only=T,
 
   flare_amounts %>%
     filter(id %in% top_fields) %>%
-    rcrea::utils.running_average(14, vars_to_avg = c('bcm_est', 'count')) %>%
+    rcrea::utils.running_average(14, vars_to_avg = c('bcm_est', 'count'),
+                                 min_values=10) %>%
     mutate(year=lubridate::year(date),
            date000=`year<-`(date, 2000)) %>%
     ggplot() +
@@ -257,6 +258,14 @@ flaring.get_flaring_ts <- function(gas_only=T,
     geom_bar(aes(date, bcm_est), stat='identity') +
     # scale_x_date(date_labels = '%b') +
     facet_wrap(~id, scales='free_y')
+
+  saveRDS(flare_amounts, 'cache/flaring.RDS')
+  return(flare_amounts)
+}
+
+
+flaring.detect_anomalies <- function(flare_amounts){
+
 
 }
 
