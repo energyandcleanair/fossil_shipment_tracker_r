@@ -28,7 +28,7 @@ entsog_new.get_flows <- function(date_from='2021-11-01', use_cache=T){
 
 
   flows_sourced <- flows_sourced %>%
-    rename(value_m3=value) %>%
+    rename(value_m3=round(value, 2)) %>% # Some values are ~-1e-15
     mutate(value_tonne=value_m3*kg_per_m3/1000) %>%
     mutate(value_mwh=value_m3*gcv_kWh_per_m3/1000) %>%
     mutate(commodity='natural_gas') %>%
