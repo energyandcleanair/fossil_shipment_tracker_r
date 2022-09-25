@@ -26,9 +26,9 @@ build_price_models <- function(production=F){
   # saveRDS(imp, "cache/imp_for_building_models.RDS")
   imp <- readRDS("cache/imp_for_building_models.RDS")
   if(production){
-    max_date <- "2022-04-01"
+    max_date <- "2022-05-01"
   }else{
-    max_date <- "2022-04-01"
+    max_date <- "2022-05-01"
   }
 
 
@@ -59,7 +59,7 @@ build_price_models <- function(production=F){
     df$commodity[grep('Coal gas', df$commodity)] <- "coal_gas"
     df$commodity[grep('gases', df$commodity)] <- "natural_gas"
 
-    df %<>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas', commodity))
+    df <- df %>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas', commodity))
 
     group_cols <- if(is_import){c("reporter", "reporter_iso")}else{c("partner", "partner_iso")}
     df <- df %>%
@@ -115,12 +115,12 @@ build_price_models <- function(production=F){
     select(commodity, date, world_price_eur_per_tonne) %>%
     ungroup()
 
-  trade %<>% left_join(world_price)
+  trade <- trade %>% left_join(world_price)
 
   countrytable <- trade %>% ungroup %>% distinct(country) %>%
     mutate(country_iso = countrycode(country, 'country.name.en', 'iso2c'))
 
-  trade %<>% mutate(country_iso = countrytable$country_iso[match(country, countrytable$country)],
+  trade <- trade %>% mutate(country_iso = countrytable$country_iso[match(country, countrytable$country)],
                     EU = country_iso %in% codelist$iso2c[!is.na(codelist$eu28)])
 
   # Clean values
@@ -215,7 +215,7 @@ build_price_models <- function(production=F){
                                  'brent + lag(brent) + lag(brent, 3) + 0',
                                T ~ 'brent')
 
-      df %<>% filter(price_eur_per_tonne/world_price_eur_per_tonne < max_deviation) %>%
+      df <- df %>% filter(price_eur_per_tonne/world_price_eur_per_tonne < max_deviation) %>%
         filter(year(date)>=start_year)
       df %>% arrange(date) %>%
         lm(as.formula(paste('price_eur_per_tonne ~', independents)), data=.) -> m
