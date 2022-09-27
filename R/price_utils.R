@@ -44,7 +44,7 @@ get_ttf <- function(){
   #   fill_gaps_and_future()
   url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
   result <- read_csv(url) %>%
-    mutate(date = strptime(Date, "%b %d, %Y", tz="UTC"),
+    mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
            ttf = as.numeric(Price)) %>%
     select(date, ttf)
 
@@ -98,7 +98,7 @@ get_global_coal <- function(){
   #   select(date, global_coal=price)
   url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=0&single=true&output=csv"
   result <- read_csv(url) %>%
-    mutate(date = strptime(Date, "%b %d, %Y", tz="UTC"),
+    mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
            global_coal = as.numeric(Price)) %>%
     select(date, global_coal)
 
@@ -116,7 +116,7 @@ get_asia_lng <- function(){
   #   select(date, asia_lng=price)
   url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1027875093&single=true&output=csv"
   result <- read_csv(url) %>%
-    mutate(date = strptime(Date, "%b %d, %Y", tz="UTC"),
+    mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
            asia_lng = as.numeric(Price)) %>%
     select(date, asia_lng)
 

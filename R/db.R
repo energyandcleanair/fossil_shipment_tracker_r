@@ -155,7 +155,7 @@ db.update_counter_prices <- function(prices, test=F){
 db.upload_portprices_to_posgres <- function(portprices, production=F){
   print(sprintf("=== Uploading portprices (%s) ===", ifelse(production,"production","development")))
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
-  dbx::dbxUpsert(db, "portprice", portprices, where_cols=c("port_id", "commodity", "date"))
+  dbx::dbxUpsert(db, "portprice", portprices, where_cols=c("port_id", "commodity", "date", "scenario"))
   dbx::dbxDisconnect(db)
 }
 
@@ -163,7 +163,7 @@ db.upload_prices_to_posgres <- function(prices, production=F){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- prices %>%
-    select(country_iso2, date, commodity, eur_per_tonne) %>%
+    select(country_iso2, date, commodity, eur_per_tonne, scenario) %>%
     mutate(date = lubridate::date(date))
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
@@ -175,14 +175,16 @@ db.upload_prices_to_posgres <- function(prices, production=F){
   p_wo_country <- p %>% filter(is.na(country_iso2) | is.null(country_iso2))
 
   ps <- split(p_w_country, (seq(nrow(p_w_country))-1) %/% 10000)
+
   pbapply::pblapply(ps, function(p){
-    dbx::dbxUpsert(db, "price", p %>% filter(!is.na(country_iso2)), where_cols=c("country_iso2", "commodity", "date"))
+    dbx::dbxUpsert(db, "price", p %>% filter(!is.na(country_iso2)), where_cols=c("country_iso2", "commodity", "date", "scenario"))
   })
 
   # For those with null country, the unique constraint doesn't work
   # so we first remove existing records and replace. During that time,
   # counter calculations would be wrong, that's why we try to minimise the time
-  dbx::dbxExecute(db, "DELETE FROM price WHERE country_iso2 is null")
+  dbx::dbxExecute(db, sprintf("DELETE FROM price WHERE country_iso2 is null AND scenario = ANY(ARRAY[\'%s\'])",
+                              paste0(unique(prices$scenario), collapse="','")))
   dbx::dbxInsert(db, "price", p_wo_country)
   dbx::dbxDisconnect(db)
 }

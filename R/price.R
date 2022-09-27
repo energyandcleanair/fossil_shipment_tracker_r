@@ -55,7 +55,8 @@ prices.get_predicted_portprices <- function(production=F){
     filter(!is.na(eur_per_tonne))
 
   return(bind_rows(portprice_ural,
-                   portprice_espo))
+                   portprice_espo) %>%
+           mutate(scenario='default'))
 }
 
 
@@ -127,9 +128,77 @@ prices.get_predicted_prices <- function(production=F){
     arrange(date) %>%
     fill(eur_per_tonne) %>%
     filter(!is.na(eur_per_tonne)) %>%
-    filter(!is.na(date))
+    filter(!is.na(date)) %>%
+    mutate(scenario='default')
 
   return(p)
+}
+
+
+price.get_capped_prices <- function(production=F){
+
+
+  p <- prices.get_predicted_prices(production=production)
+
+  # Cap using 2021H1 prices, weighted average, one globally
+  caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    group_by(commodity, unit) %>%
+    summarise_at('value', sum, na.rm=T) %>%
+    tidyr::spread(unit, value) %>%
+    mutate(eur_per_tonne=eur/tonne) %>%
+    select(-c(eur, tonne)) %>%
+    mutate(commodity=recode(commodity,
+                             oil='crude_oil'))
+
+  caps <- bind_rows(caps, caps %>%
+                      filter(commodity=='crude_oil') %>%
+                      mutate(commodity='pipeline_oil'))
+
+  capped_p <- caps %>%
+    rename(max_eur_per_tonne=eur_per_tonne) %>%
+    ungroup() %>%
+    right_join(p) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne),
+      T ~ eur_per_tonne),
+           scenario='pricecap') %>%
+    select(-c(max_eur_per_tonne))
+
+  return(capped_p)
+}
+
+price.get_capped_portprices <- function(production=F){
+
+
+  p <- prices.get_predicted_portprices(production=production)
+
+  # Cap using 2021H1 prices, weighted average, one globally
+  caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    group_by(commodity, unit) %>%
+    summarise_at('value', sum, na.rm=T) %>%
+    tidyr::spread(unit, value) %>%
+    mutate(eur_per_tonne=eur/tonne) %>%
+    select(-c(eur, tonne)) %>%
+    mutate(commodity=recode(commodity,
+                            oil='crude_oil'))
+
+  caps <- bind_rows(caps, caps %>%
+                      filter(commodity=='crude_oil') %>%
+                      mutate(commodity='pipeline_oil'))
+
+  capped_p <- caps %>%
+    rename(max_eur_per_tonne=eur_per_tonne) %>%
+    ungroup() %>%
+    right_join(p) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne),
+      T ~ eur_per_tonne),
+      scenario='pricecap') %>%
+    select(-c(max_eur_per_tonne))
+
+  return(capped_p)
 }
 
 
@@ -148,16 +217,18 @@ prices.get_predicted_prices <- function(production=F){
 
 price.check_prices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne))
+  ok <- ok & !any(is.na(p$scenario))
   ok <- ok & all(p$eur_per_tonne >= 0)
-  ok <- ok & all(c("country_iso2","date","commodity","eur_per_tonne") %in% names(p))
+  ok <- ok & all(c("country_iso2","date","commodity","eur_per_tonne","scenario") %in% names(p))
   ok <- ok & nrow(p>0)
   return(ok)
 }
 
 price.check_portprices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne))
+  ok <- ok & !any(is.na(p$scenario))
   ok <- ok & all(p$eur_per_tonne >= 0)
-  ok <- ok & all(c("port_id","date","commodity","eur_per_tonne") %in% names(p))
+  ok <- ok & all(c("port_id","date","commodity","eur_per_tonne","scenario") %in% names(p))
   ok <- ok & nrow(p>0)
   return(ok)
 }
@@ -195,6 +266,14 @@ price.update_prices <- function(production=F){
   }else{
     print("ERROR: prices not updated")
   }
+
+  capped_p <- price.get_capped_prices(production=production)
+  ok <- price.check_prices(capped_p)
+  if(ok){
+    db.upload_prices_to_posgres(capped_p, production=production)
+  }else{
+    print("ERROR: capped prices not updated")
+  }
 }
 
 price.update_portprices <- function(production=F){
@@ -202,6 +281,14 @@ price.update_portprices <- function(production=F){
   ok <- price.check_portprices(p)
   if(ok){
     db.upload_portprices_to_posgres(p, production=production)
+  }else{
+    print("ERROR: prices not updated")
+  }
+
+  capped_p <- price.get_capped_portprices(production=production)
+  ok <- price.check_portprices(capped_p)
+  if(ok){
+    db.upload_portprices_to_posgres(capped_p, production=production)
   }else{
     print("ERROR: prices not updated")
   }
