@@ -8,13 +8,13 @@ fill_gaps_and_future <- function(result){
 
 get_brent <- function(){
 
-  brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
-     as.data.frame() %>%
-     mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-     tibble() %>%
-     rename(brent = contains('Close')) %>%
-     filter(!is.na(date)) %>%
-     select(date, brent)
+  # brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2022-01-01', warnings = FALSE, auto.assign = F) %>%
+  #    as.data.frame() %>%
+  #    mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
+  #    tibble() %>%
+  #    rename(brent = contains('Close')) %>%
+  #    filter(!is.na(date)) %>%
+  #    select(date, brent)
 
   brent_datahub <- read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv') %>%
     select(date=Date, brent=Price) %>%
@@ -22,7 +22,7 @@ get_brent <- function(){
     arrange(desc(date))
 
   bind_rows(
-    brent_yahoo,
+    # brent_yahoo,
     brent_datahub
   ) %>%
     group_by(date) %>%
