@@ -1,23 +1,70 @@
 library(tidyverse)
 
-counter <- read_csv('https://api.russiafossiltracker.com/v0/counter?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=-7')
-shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?pricing_scenario=default,pricecap&format=csv&date_from=2022-07-01')
+# counter <- read_csv('https://api.russiafossiltracker.com/v0/counter?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=-7')
+shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=-7')
+overland <- read_csv('https://api.russiafossiltracker.com/v0/overland?pricing_scenario=default,pricecap&keep_zeros=False&format=csv&date_from=2021-12-01&date_to=-7')
+
+
+
+# Apply price cap only to right shipments and pipeline --------------------
+# In Python, pricecap is applied regardless of ship owners or insurers or even destination
+# So here we remove the pricecap from shipments and pipelines that shouldn't be pricecapped
+
+counter_manual_shipments <-
+  shipments %>%
+    filter(!is.na(value_eur)) %>%
+    filter(commodity_origin_iso2=='RU',
+           commodity_destination_iso2!='RU') %>%
+    select(id, date=arrival_date_utc, commodity, destination_region=commodity_destination_region, ship_owner_iso2, ship_owner_region, ship_insurer_region,
+           ship_insurer_iso2, value_eur, pricing_scenario) %>%
+    mutate(date=floor_date(date, 'day')) %>%
+    tidyr::spread(pricing_scenario, value_eur) %>%
+    mutate(should_apply_pricecap=
+             (date>='2022-07-01') & # Theoretically already applied in Python
+             (date<='2022-09-30') & # Theoretically already applied in Python
+             ((!is.na(destination_region) & destination_region=='EU') |
+                (!is.na(ship_owner_iso2) & (ship_owner_region=='EU' | ship_owner_iso2 %in% c('UK','GB','NO'))) |
+                (!is.na(ship_insurer_iso2) & (ship_insurer_region=='EU' | ship_insurer_iso2 %in% c('UK','GB','NO'))))) %>%
+  mutate(pricecap=ifelse(should_apply_pricecap, pricecap, default))
+
+
+counter_manual_overland <- overland %>%
+  filter(commodity_origin_iso2=='RU') %>%
+  select(id, date, commodity, destination_region=commodity_destination_region, value_eur, pricing_scenario) %>%
+  tidyr::spread(pricing_scenario, value_eur) %>%
+  mutate(should_apply_pricecap=
+           (date>='2022-07-01') &  # Theoretically already applied in Python
+           (date<='2022-09-30') &  # Theoretically already applied in Python
+           (destination_region == 'EU')) %>%
+  mutate(pricecap=ifelse(should_apply_pricecap, pricecap, default))
+
+
+counter_manual <-
+  bind_rows(counter_manual_shipments,
+            counter_manual_overland) %>%
+  select(date, default, pricecap, destination_region, commodity) %>%
+  mutate(date=as.Date(date)) %>%
+  tidyr::gather(key='pricing_scenario', value='value_eur', -c(date, commodity, destination_region)) %>%
+  group_by(date, pricing_scenario, destination_region, commodity) %>%
+  summarise(value_eur=sum(value_eur))
+
 
 
 # Save a version for when report will be released
 if(T){
   dir.create('reports/202209_100bn/cache',F,T)
-  saveRDS(counter, 'reports/202209_100bn/cache/counter.RDS')
+  saveRDS(counter_manual, 'reports/202209_100bn/cache/counter_manual.RDS')
   saveRDS(shipments, 'reports/202209_100bn/cache/shipments.RDS')
+  saveRDS(overland, 'reports/202209_100bn/cache/overland')
 }
 
 
 # While coal imports from Russia to Europe have stopped completely and gas imports have contracted dramatically, the EU continues to import crude oil and oil products worth approximately EUR XX million per day
 start_date <- as.Date('2022-02-24')
-last_date <-  max(counter$date)
+last_date <-  max(counter_manual$date)
 period_length <- lubridate::days(14)
 
-counter %>%
+counter_manual %>%
   filter(commodity != 'coal',
          destination_region == 'EU') %>%
   mutate(period=case_when(
@@ -34,7 +81,7 @@ counter %>%
 
 
 # Setting price caps on Russian fossil fuels could have cut the EU’s import bills by EUR XX billion since the beginning of July, when the measure was first discussed at a high level at the G7 Summit.
-(diff_counter <- counter %>%
+(diff_counter <- counter_manual %>%
   filter(date>='2022-07-01',
          date<='2022-09-30',
          destination_region=='EU') %>%
@@ -45,14 +92,9 @@ counter %>%
 
 
 # Russia’s revenues from fossil fuel exports could have been slashed by XX billion, if the price caps applied to all fossil fuel cargoes carried to third countries aboard European-owned or insured ships, in addition to imports into the Union.
-shipments %>%
-  filter(arrival_date_utc>='2022-07-01',
-         arrival_date_utc<='2022-09-30',
-         (ship_owner_region=='EU' | ship_insurer_region=='EU'),
-            # ship_owner_iso2 %in% c('UK','GB','NO') | ship_insurer_iso2 %in% c('UK','GB','NO')),
-         commodity_destination_region != 'EU') %>%
-  filter(!is.na(value_eur)) %>%
-  group_by(commodity_destination_region, pricing_scenario) %>%
+counter_manual %>%
+  filter(date >= '2022-02-24') %>%
+  group_by(pricing_scenario) %>%
   summarise(value_bneur=sum(value_eur)/1e9) %>%
   tidyr::spread(pricing_scenario, value_bneur) %>%
   mutate(diff=default-pricecap) %>%
@@ -61,7 +103,7 @@ shipments %>%
 
 
 # Plots -------------------------------------------------------------------
-d <- counter %>%
+d <- counter_manual %>%
   group_by(pricing_scenario, date) %>%
   summarise(value_eur=sum(value_eur)) %>%
   rcrea::utils.running_average(30, vars_to_avg = 'value_eur') %>%
