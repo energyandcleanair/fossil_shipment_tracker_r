@@ -141,50 +141,81 @@ price.get_capped_prices <- function(production=F){
   p <- prices.get_predicted_prices(production=production)
 
   # Cap using 2021H1 prices, weighted average, one globally
-  # caps_old <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
-  #   filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
-  #   group_by(commodity, unit) %>%
-  #   summarise_at('value', sum, na.rm=T) %>%
-  #   tidyr::spread(unit, value) %>%
-  #   mutate(eur_per_tonne=eur/tonne) %>%
-  #   select(-c(eur, tonne)) %>%
-  #   mutate(commodity=recode(commodity,
-  #                            oil='crude_oil'))
-  #
-  # caps_old <- bind_rows(caps_old, caps_old %>%
-  #                     filter(commodity=='crude_oil') %>%
-  #                     mutate(commodity='pipeline_oil'))
+  caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    group_by(commodity, unit) %>%
+    summarise_at('value', sum, na.rm=T) %>%
+    tidyr::spread(unit, value) %>%
+    mutate(eur_per_tonne=eur/tonne) %>%
+    select(-c(eur, tonne)) %>%
+    mutate(commodity=recode(commodity,
+                             oil='crude_oil'))
+
+  caps <- bind_rows(caps, caps %>%
+                      filter(commodity=='crude_oil') %>%
+                      mutate(commodity='pipeline_oil'))
+
+  eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
+                                   date_to=min(max(p$date), lubridate::today()))
+
+  eur_per_usd_2021H1 <- eur_per_usd %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    summarise(eur_per_usd_base=mean(eur_per_usd))
+
+  eur_per_usd %>%
+    tidyr::crossing(eur_per_usd_2021H1) %>%
+    mutate(price_adjustment = eur_per_usd / eur_per_usd_base) %>%
+    select(date, price_adjustment) %>%
+    tidyr::crossing(caps) %>%
+    mutate(eur_per_tonne=case_when(commodity %in% c('natural_gas', 'lng') ~ eur_per_tonne,
+                                   T ~ eur_per_tonne * price_adjustment)) %>%
+    select(-c(price_adjustment)) %>%
+    rename(max_eur_per_tonne=eur_per_tonne) %>%
+    ungroup() %>%
+    right_join(p) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+           scenario='pricecap') %>%
+    select(-c(max_eur_per_tonne))
+
+
+
+
+
 
 
   # Oil: USD 50/barrel ; Price Cap - USD 55/barrel
   # Piped Gas: USD 7.3/MWh ; Price Cap - USD 15/MWh
   # LNG: USD 25/MWh ; Price Cap - USD 30/MWh
   # Coal: USD 40/ton ; Price Cap - USD 50/ton
-  ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
-  barrel_per_tonne <- 7.49
-
-  caps <- list(
-    crude_oil=55 * barrel_per_tonne,
-    natural_gas= 15 * ng_mwh_per_tonne,
-    lng= 30 * ng_mwh_per_tonne,
-    coal=50
-  )
-
-  eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                   date_to=min(max(p$date), lubridate::today()))
-
-
-  tibble(commodity=names(caps),
-         usd_per_tonne=unlist(caps)) %>%
-    tidyr::crossing(eur_per_usd) %>%
-    mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-    select(-c(usd_per_tonne, eur_per_usd)) %>%
-    right_join(p) %>%
-    mutate(eur_per_tonne=case_when(
-      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne),
-      T ~ eur_per_tonne),
-           scenario='pricecap') %>%
-    select(-c(max_eur_per_tonne))
+  # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+  # barrel_per_tonne <- 7.49
+  #
+  # caps <- list(
+  #   crude_oil=55 * barrel_per_tonne,
+  #   natural_gas= 15 * ng_mwh_per_tonne,
+  #   lng= 30 * ng_mwh_per_tonne,
+  #   coal=50
+  # )
+  #
+  # eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
+  #                                  date_to=min(max(p$date), lubridate::today()))
+  #
+  #
+  # tibble(commodity=names(caps),
+  #        usd_per_tonne=unlist(caps)) %>%
+  #   tidyr::crossing(eur_per_usd) %>%
+  #   arrange(date) %>%
+  #   tidyr::fill(eur_per_usd) %>%
+  #   mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
+  #   select(-c(usd_per_tonne, eur_per_usd)) %>%
+  #   right_join(p) %>%
+  #   mutate(eur_per_tonne=case_when(
+  #     (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+  #     T ~ eur_per_tonne),
+  #          scenario='pricecap') %>%
+  #   select(-c(max_eur_per_tonne))
 }
 
 price.get_capped_portprices <- function(production=F){
@@ -193,42 +224,71 @@ price.get_capped_portprices <- function(production=F){
   p <- prices.get_predicted_portprices(production=production)
 
   # Cap using 2021H1 prices, weighted average, one globally
-  # caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
-  #   filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
-  #   group_by(commodity, unit) %>%
-  #   summarise_at('value', sum, na.rm=T) %>%
-  #   tidyr::spread(unit, value) %>%
-  #   mutate(eur_per_tonne=eur/tonne) %>%
-  #   select(-c(eur, tonne)) %>%
-  #   mutate(commodity=recode(commodity,
-  #                           oil='crude_oil'))
-  #
-  # caps <- bind_rows(caps, caps %>%
-  #                     filter(commodity=='crude_oil') %>%
-  #                     mutate(commodity='pipeline_oil'))
+  caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    group_by(commodity, unit) %>%
+    summarise_at('value', sum, na.rm=T) %>%
+    tidyr::spread(unit, value) %>%
+    mutate(eur_per_tonne=eur/tonne) %>%
+    select(-c(eur, tonne)) %>%
+    mutate(commodity=recode(commodity,
+                            oil='crude_oil'))
 
-  caps <- list(
-    crude_oil=55 * barrel_per_tonne,
-    natural_gas= 15 * ng_mwh_per_tonne,
-    lng= 30 * ng_mwh_per_tonne,
-    coal=50
-  )
+  caps <- bind_rows(caps, caps %>%
+                      filter(commodity=='crude_oil') %>%
+                      mutate(commodity='pipeline_oil'))
 
   eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
                                    date_to=min(max(p$date), lubridate::today()))
 
+  eur_per_usd_2021H1 <- eur_per_usd %>%
+    filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
+    summarise(eur_per_usd_base=mean(eur_per_usd))
 
-  tibble(commodity=names(caps),
-         usd_per_tonne=unlist(caps)) %>%
-    tidyr::crossing(eur_per_usd) %>%
-    mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-    select(-c(usd_per_tonne, eur_per_usd)) %>%
+  eur_per_usd %>%
+    tidyr::crossing(eur_per_usd_2021H1) %>%
+    mutate(price_adjustment = eur_per_usd / eur_per_usd_base) %>%
+    select(date, price_adjustment) %>%
+    tidyr::crossing(caps) %>%
+    mutate(eur_per_tonne=case_when(commodity %in% c('natural_gas', 'lng') ~ eur_per_tonne,
+                                   T ~ eur_per_tonne * price_adjustment)) %>%
+    select(-c(price_adjustment)) %>%
+    rename(max_eur_per_tonne=eur_per_tonne) %>%
+    ungroup() %>%
     right_join(p) %>%
     mutate(eur_per_tonne=case_when(
-      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne),
+      (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
       T ~ eur_per_tonne),
       scenario='pricecap') %>%
     select(-c(max_eur_per_tonne))
+
+  # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+  # barrel_per_tonne <- 7.49
+  #
+  # caps <- list(
+  #   crude_oil=55 * barrel_per_tonne,
+  #   natural_gas= 15 * ng_mwh_per_tonne,
+  #   lng= 30 * ng_mwh_per_tonne,
+  #   coal=50
+  # )
+  #
+  # eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
+  #                                  date_to=min(max(p$date), lubridate::today()))
+  #
+  #
+  # tibble(commodity=names(caps),
+  #        usd_per_tonne=unlist(caps)) %>%
+  #   tidyr::crossing(eur_per_usd) %>%
+  #   arrange(date) %>%
+  #   tidyr::fill(eur_per_usd) %>%
+  #   mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
+  #   select(-c(usd_per_tonne, eur_per_usd)) %>%
+  #   right_join(p) %>%
+  #   mutate(eur_per_tonne=case_when(
+  #     (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+  #     T ~ eur_per_tonne),
+  #     scenario='pricecap') %>%
+  #   select(-c(max_eur_per_tonne))
 
 }
 
