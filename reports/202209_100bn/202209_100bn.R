@@ -18,7 +18,7 @@ counter_manual_shipments <-
     filter(!is.na(value_eur)) %>%
     filter(commodity_origin_iso2=='RU',
            commodity_destination_iso2!='RU') %>%
-    select(id, date=arrival_date_utc, commodity, destination_region=commodity_destination_region, destination_iso2, ship_owner_iso2, ship_owner_region, ship_insurer_region,
+    select(id, date=arrival_date_utc, commodity, commodity_group, destination_region=commodity_destination_region, destination_iso2, ship_owner_iso2, ship_owner_region, ship_insurer_region,
            ship_insurer_iso2, value_eur, pricing_scenario) %>%
     mutate(date=floor_date(date, 'day')) %>%
     tidyr::spread(pricing_scenario, value_eur) %>%
@@ -33,7 +33,7 @@ counter_manual_shipments <-
 
 counter_manual_overland <- overland %>%
   filter(commodity_origin_iso2=='RU') %>%
-  select(id, date, commodity, destination_region=commodity_destination_region, value_eur, pricing_scenario) %>%
+  select(id, date, commodity, commodity_group, destination_region=commodity_destination_region, value_eur, pricing_scenario) %>%
   tidyr::spread(pricing_scenario, value_eur) %>%
   mutate(should_apply_pricecap=
            (date>='2022-07-01') &  # Theoretically already applied in Python
@@ -46,10 +46,10 @@ counter_manual_overland <- overland %>%
 counter_manual <-
   bind_rows(counter_manual_shipments,
             counter_manual_overland) %>%
-  select(date, default, destination_region, commodity, pricecap1, pricecap2) %>%
+  select(date, default, destination_region, commodity, commodity_group, pricecap1, pricecap2) %>%
   mutate(date=as.Date(date)) %>%
-  tidyr::gather(key='pricing_scenario', value='value_eur', -c(date, commodity, destination_region)) %>%
-  group_by(date, pricing_scenario, destination_region, commodity) %>%
+  tidyr::gather(key='pricing_scenario', value='value_eur', -c(date, commodity, commodity_group, destination_region)) %>%
+  group_by(date, pricing_scenario, destination_region, commodity, commodity_group) %>%
   summarise(value_eur=sum(value_eur))
 
 # Remove coal after coal ban, pipeline lng and pipeline oil to eu
