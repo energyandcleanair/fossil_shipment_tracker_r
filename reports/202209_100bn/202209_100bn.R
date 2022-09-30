@@ -4,8 +4,8 @@ library(lubridate)
 library(ggplot2)
 
 # counter <- read_csv('https://api.russiafossiltracker.com/v0/counter?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=-7')
-shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=-7')
-overland <- read_csv('https://api.russiafossiltracker.com/v0/overland?pricing_scenario=default,pricecap&keep_zeros=False&format=csv&date_from=2021-12-01&date_to=-7')
+shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?pricing_scenario=default,pricecap&format=csv&date_from=2021-12-01&date_to=2022-09-22')
+overland <- read_csv('https://api.russiafossiltracker.com/v0/overland?pricing_scenario=default,pricecap&keep_zeros=False&format=csv&date_from=2021-12-01&date_to=2022-09-22')
 
 
 
@@ -117,39 +117,46 @@ counter_manual %>%
 
 
 # Plots -------------------------------------------------------------------
-d <- counter_manual %>%
-  filter(pricing_scenario %in% c('default', 'pricecap2')) %>%
-  group_by(pricing_scenario, date) %>%
-  summarise(value_eur=sum(value_eur)) %>%
-  rcrea::utils.running_average(30, vars_to_avg = 'value_eur') %>%
-  mutate(pricing_scenario=factor(pricing_scenario,
-                                 levels=rev(c('default', 'pricecap2')),
-                                 labels=rev(c('Without price cap', 'With price cap'))))
-ggplot(d) +
-  geom_line(aes(date, value_eur/1e6, col=pricing_scenario)) +
-  rcrea::theme_crea() +
-  labs(y='million EUR per day',
-       x=NULL,
-       title='Potential impact of price cap on Russia\'s fossil fuel revenues',
-       subtitle = '30-day running average',
-       color=NULL,
-       caption='Source: CREA analysis. Assuming a price cap starting on 1 July 2022, set with 2021H1 global prices.') +
-  scale_x_date(limits=c(as.Date('2022-01-01'), max(d$date) + lubridate::days(60))) +
-  expand_limits(y=0) +
-  scale_y_continuous(expand=expansion(mult=c(0,.05))) +
-  theme(legend.position = 'bottom') +
-  guides(color=guide_legend(nrow = 1)) +
-  ggrepel::geom_text_repel(data=d %>% filter(date==max(date)),
-            aes(date, value_eur/1e6,
-                label=sprintf('%s\nEUR %dmn / day', pricing_scenario,
-                              round(value_eur/1e6)),
-                col=pricing_scenario),
-            show.legend = F,
-            direction='x',
-            fontface='bold',
-            hjust=0,
-            nudge_x=5)
+lapply(c(7, 14, 30), function(running_days){
 
-ggsave('reports/202209_100bn/impact_pricecap.jpg', width=8, height=4)
+  d <- counter_manual %>%
+    filter(pricing_scenario %in% c('default', 'pricecap2')) %>%
+    group_by(pricing_scenario, date) %>%
+    summarise(value_eur=sum(value_eur)) %>%
+    mutate(pricing_scenario=factor(pricing_scenario,
+                                   levels=rev(c('default', 'pricecap2')),
+                                   labels=rev(c('Without price cap', 'With price cap')))) %>%
+    rcrea::utils.running_average(running_days, vars_to_avg = 'value_eur')
+
+  ggplot(d) +
+    geom_line(aes(date, value_eur/1e6, col=pricing_scenario)) +
+    rcrea::theme_crea() +
+    labs(y='million EUR per day',
+         x=NULL,
+         title='Potential impact of price cap on Russia\'s fossil fuel revenues',
+         subtitle = sprintf('%d-day running average',running_days),
+         color=NULL,
+         caption='Source: CREA analysis. Assuming a price cap starting on 1 July 2022, set with 2021H1 global prices.') +
+    scale_x_date(limits=c(as.Date('2022-01-01'), max(d$date) + lubridate::days(60))) +
+    expand_limits(y=0) +
+    scale_y_continuous(expand=expansion(mult=c(0,.05))) +
+    rcrea::scale_color_crea_d() +
+    theme(legend.position = 'bottom') +
+    guides(color=guide_legend(nrow = 1)) +
+    ggrepel::geom_text_repel(data=d %>% filter(date==max(date)),
+                             aes(date, value_eur/1e6,
+                                 label=sprintf('%s\nEUR %dmn / day', pricing_scenario,
+                                               round(value_eur/1e6)),
+                                 col=pricing_scenario),
+                             show.legend = F,
+                             # direction='x',
+                             fontface='bold',
+                             hjust=0,
+                             lineheight=1,
+                             nudge_x=5)
+
+  ggsave(sprintf('reports/202209_100bn/impact_pricecap_%dd.jpg', running_days), width=8, height=5)
+})
+
 
 
