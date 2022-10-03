@@ -394,7 +394,8 @@ utils.expand_in_2022 <- function(flows_comtrade_eurostat, flows_eurostat_exeu){
     ungroup() %>%
     mutate(year=lubridate::year(date)) %>%
     filter(year %in% c(2021),
-           month(date) %in% c(1, 2, 3, 4, 5, 6, 7, 8)) %>%
+           # month(date) %in% c(1, 2, 3, 4, 5, 6, 7, 8, )
+           ) %>%
     left_join(ratios) %>%
     mutate(date=date+lubridate::years(1),
            value=value*ratio_1*ratio_2*ratio_3) %>%
