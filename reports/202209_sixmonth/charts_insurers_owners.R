@@ -1,7 +1,7 @@
 # Insurers
 library(tidyverse)
 
-insurers <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-02-24&date_to=2022-08-24&aggregate_by=ship_insurer_country,commodity,commodity_destination_iso2&commodity_origin_iso2=RU&format=csv') %>%
+insurers <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-02-24&date_to=2022-08-24&aggregate_by=ship_insurer_country,commodity,commodity_destination_iso2&commodity_origin_iso2=RU&format=csv&commodity_grouping=split_gas') %>%
   filter(!is.na(commodity_group),
          commodity_destination_iso2 != 'RU') %>%
   mutate(ship_insurer_country=tidyr::replace_na(ship_insurer_country, "Unknown"))
@@ -48,7 +48,7 @@ ggplot(insurers_share, aes(stringr::str_to_title(commodity_group), share, fill=s
        x=NULL,
        y='Share of tonnage')
 
-ggsave('reports/202209_sixmonth/ship_owners_ts.jpg', width=10, height=6)
+ggsave('reports/202209_sixmonth/ship_insurers.jpg', width=10, height=6)
 
 # Owners ------------------------------------------------------------------
 
@@ -75,7 +75,7 @@ top_owners <- owner_ts %>%
   pull(ship_owner_country)
 
 ggplot(owner_ts %>%
-         # filter(commodity_group=='oil') %>%
+         # filter(commodity=='crude_oil') %>%
          filter(ship_owner_country %in% top_owners) %>%
          mutate(ship_owner_country=factor(ship_owner_country, top_owners))) +
   geom_line(aes(date, value / 1000, col=ship_owner_country),
@@ -90,3 +90,21 @@ ggplot(owner_ts %>%
        caption='Source: CREA analysis. Shipment from Russia to other countries only.')
 
 ggsave('reports/202209_sixmonth/ship_owners_ts.jpg', width=10, height=6)
+
+
+
+
+# Extracting missing companies --------------------------------------------
+
+v <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2021-12-01&format=csv')
+
+v %>%
+  filter(is.na(ship_owner_country),
+         !is.na(commodity_group),
+         !is.na(ship_owner)) %>%
+  group_by(ship_owner, ship_owner_imo) %>%
+  summarise(value=sum(value_tonne)) %>%
+  arrange(desc(value)) %>%
+  select(-c(value)) %>%
+  write_csv('missing_owners.csv')
+
