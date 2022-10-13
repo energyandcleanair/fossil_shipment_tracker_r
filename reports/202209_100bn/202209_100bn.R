@@ -65,7 +65,7 @@ counter_manual <-
                              & commodity == 'lng_pipeline', 0, value_eur))
 
 # Save a version for when report will be released
-if(T){
+if(F){
   dir.create('reports/202209_100bn/cache',F,T)
   saveRDS(counter_manual, 'reports/202209_100bn/cache/counter_manual.RDS')
   saveRDS(shipments, 'reports/202209_100bn/cache/shipments.RDS')
