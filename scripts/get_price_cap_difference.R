@@ -168,7 +168,7 @@ lapply(c(7, 14, 30), function(running_days){
     filter(!is.na(date)) %>%
     rcrea::utils.running_average(running_days, vars_to_avg = 'value_eur')
 
-  ggplot(d) +
+  plt <- ggplot(d) +
     geom_line(aes(date, value_eur/1e6, col=pricing_scenario), show.legend = F) +
     rcrea::theme_crea() +
     labs(y='million EUR per day',
@@ -178,7 +178,8 @@ lapply(c(7, 14, 30), function(running_days){
          color=NULL,
          caption=paste0('MCOP: price cap based on Marginal Cost of Production.\n',
                          '2021H1: price cap based on average prices in the first half of 2021.\n',
-                         'Source: CREA analysis. Assuming a price cap starting on 1 July 2022 on EU imports and EU+UK+NO owned or insured ships.')) +
+                        'Assuming a price cap starting on 1 July 2022 on EU imports and EU+UK+NO owned or insured ships.\n',
+                         'Source: CREA analysis.')) +
     scale_x_date(limits=c(as.Date('2022-01-01'), max(d$date) + lubridate::days(60))) +
     expand_limits(y=0) +
     scale_y_continuous(expand=expansion(mult=c(0,.05))) +
@@ -200,10 +201,31 @@ lapply(c(7, 14, 30), function(running_days){
                              segment.colour = NA
                              # min.segment.length=5
                              )
+  plt2 <- add_logo(plt)
 
-  ggsave(sprintf('scripts/price_cap/impact_pricecap_%dd.png', running_days), width=8, height=5)
+  ggsave(sprintf('scripts/price_cap/impact_pricecap_%dd.png', running_days), width=8, height=5, plot = plt2)
 })
 
+
+add_logo <- function(plt){
+  library(cowplot)
+  library(magick)
+
+  img <- image_read("crea_logo.svg")
+
+  # Set the canvas where you are going to draw the plot and the image
+  ggdraw() +
+    # Draw the plot in the canvas setting the x and y positions, which go from 0,0
+    # (lower left corner) to 1,1 (upper right corner) and set the width and height of
+    # the plot. It's advisable that x + width = 1 and y + height = 1, to avoid clipping
+    # the plot
+    draw_plot(plt,x = 0, y = 0, width = 1, height = 1) +
+    # Draw image in the canvas using the same concept as for the plot. Might need to
+    # play with the x, y, width and height values to obtain the desired result
+    draw_image(img,x = 0.895, y = 0, vjust=0.15, width = 0.1, height = 0.1)
+
+  }
+}
 
 # Data --------------------------------------------------------------------
 counter_manual %>%
