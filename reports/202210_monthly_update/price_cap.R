@@ -141,16 +141,16 @@ scenarios <- list(
   default = 'Without price cap',
   pricecap_2021H1_1 = 'Pricecap: 2021H1 - EU imports only',
   pricecap_2021H1_2 = 'Pricecap: 2021H1 - EU imports + EU/GB/NO ships',
-  pricecap_andrei_1 = 'Pricecap: MCOP - EU imports only',
-  pricecap_andrei_2 = 'Pricecap: MCOP - EU imports + EU/GB/NO ships'
+  pricecap_andrei_1 = 'Pricecap: SRMC - EU imports only',
+  pricecap_andrei_2 = 'Pricecap: SRMC - EU imports + EU/GB/NO ships'
 )
 
 scenarios_short <- list(
   default = 'Without price cap',
   pricecap_2021H1_1 = 'With 2021H1 price cap',
   pricecap_2021H1_2 = 'With 2021H1 price cap',
-  pricecap_andrei_1 = 'With MCOP price cap',
-  pricecap_andrei_2 = 'With MCOP price cap'
+  pricecap_andrei_1 = 'With SRMC price cap',
+  pricecap_andrei_2 = 'With SRMC price cap'
 )
 
 
@@ -195,7 +195,7 @@ lapply(c(7, 14, 30), function(running_days){
          title='Potential impact of price cap on Russia\'s fossil fuel revenues',
          subtitle = sprintf('%d-day running average',running_days),
          color=NULL,
-         caption=paste0('MCOP: price cap based on Marginal Cost of Production.\n',
+         caption=paste0('SRMC: price cap based on Short Run Marginal Cost.\n',
                         '2021H1: price cap based on average prices in the first half of 2021.\n',
                         'Assuming a price cap starting on 1 July 2022 on EU imports and EU+UK+NO owned or insured ships.\n',
                         'Source: CREA analysis.')) +
