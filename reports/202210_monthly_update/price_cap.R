@@ -94,6 +94,17 @@ counter_manual <-
   summarise(value_eur=sum(value_eur)) %>%
   ungroup()
 
+# Add filters to match counter
+# Remove coal after coal ban, pipeline lng and pipeline oil to eu
+counter_manual <- counter_manual %>%
+  mutate(value_eur = replace(value_eur, date >= '2022-08-11'
+                             & commodity == 'coal'
+                             & destination_region == 'EU', 0)) %>%
+  mutate(value_eur = replace(value_eur, date >= '2022-09-01'
+                             & commodity == 'pipeline_oil'
+                             & destination_region == 'EU', 0)) %>%
+  mutate(value_eur = if_else(date >= '2022-06-06'
+                             & commodity == 'lng_pipeline', 0, value_eur))
 
 # Diagnostic plot
 counter_manual %>%
@@ -103,20 +114,6 @@ counter_manual %>%
   rcrea::utils.running_average(14, vars_to_avg = 'value_eur') %>%
   ggplot() + geom_line(aes(date, value_eur, col=pricing_scenario)) +
   facet_wrap(~commodity)
-
-
-# Remove coal after coal ban, pipeline lng and pipeline oil to eu
-counter_manual <-
-  counter_manual %>%
-  mutate(value_eur = replace(value_eur, date >= '2022-08-11'
-                             & commodity == 'coal'
-                             & destination_region == 'EU', 0)) %>%
-  mutate(value_eur = if_else(date >= '2022-06-06'
-                             & commodity == 'lng_pipeline', 0, value_eur))
-
-
-
-
 
 
 # Setting price caps on Russian fossil fuels could have cut the EU’s import bills by EUR XX billion since the beginning of July, when the measure was first discussed at a high level at the G7 Summit.
@@ -179,6 +176,8 @@ add_logo <- function(plt){
 
 lapply(c(7, 14, 30), function(running_days){
 
+
+
   d <- counter_manual %>%
     filter(pricing_scenario %in% c('default', 'pricecap_2021H1_2', 'pricecap_andrei_2')) %>%
     group_by(pricing_scenario, date) %>%
@@ -186,6 +185,19 @@ lapply(c(7, 14, 30), function(running_days){
     mutate(pricing_scenario=recode(pricing_scenario, !!!scenarios_short)) %>%
     filter(!is.na(date)) %>%
     rcrea::utils.running_average(running_days, vars_to_avg = 'value_eur')
+
+  # Create a separate dataframe for the legend
+  d_last <- d %>% filter(date==max(date))
+  d_average_since_1july <- counter_manual %>%
+    filter(pricing_scenario %in% c('default', 'pricecap_2021H1_2', 'pricecap_andrei_2')) %>%
+    filter(date >= '2022-07-01') %>%
+    mutate(pricing_scenario=recode(pricing_scenario, !!!scenarios_short)) %>%
+    group_by(pricing_scenario, date) %>%
+    summarise(value_eur=sum(value_eur, na.rm=T)) %>%
+    group_by(pricing_scenario) %>%
+    summarise(value_eur=mean(value_eur, na.rm=T)) %>%
+    left_join(d_last %>% rename(y=value_eur))
+
 
   plt <- ggplot(d) +
     geom_line(aes(date, value_eur/1e6, col=pricing_scenario), show.legend = F) +
@@ -195,8 +207,7 @@ lapply(c(7, 14, 30), function(running_days){
          title='Potential impact of price cap on Russia\'s fossil fuel revenues',
          subtitle = sprintf('%d-day running average',running_days),
          color=NULL,
-         caption=paste0('SRMC: price cap based on Short Run Marginal Cost.\n',
-                        '2021H1: price cap based on average prices in the first half of 2021.\n',
+         caption=paste0('SRMC: price cap based on Short Run Marginal Cost | 2021H1: price cap based on average prices in the first half of 2021.\n',
                         'Assuming a price cap starting on 1 July 2022 on EU imports and EU+UK+NO owned or insured ships.\n',
                         'Source: CREA analysis.')) +
     scale_x_date(limits=c(as.Date('2022-01-01'), max(d$date) + lubridate::days(60))) +
@@ -205,8 +216,8 @@ lapply(c(7, 14, 30), function(running_days){
     rcrea::scale_color_crea_d(palette='dramatic') +
     theme(legend.position = 'bottom') +
     guides(color=guide_legend(nrow = 1)) +
-    ggrepel::geom_text_repel(data=d %>% filter(date==max(date)),
-                             aes(date, value_eur/1e6,
+    ggrepel::geom_text_repel(data=d_average_since_1july,
+                             aes(date, y/1e6,
                                  label=sprintf('%s\nEUR %dmn / day', pricing_scenario,
                                                round(value_eur/1e6)),
                                  col=pricing_scenario),
@@ -220,11 +231,22 @@ lapply(c(7, 14, 30), function(running_days){
                              segment.colour = NA
                              # min.segment.length=5
     )
-  plt2 <- add_logo(plt)
+  # plt2 <- add_logo(plt)
 
-  ggsave(sprintf('reports/202210_monthly_update/impact_pricecap_%dd.png', running_days), width=8, height=5, plot = plt2)
+  ggsave(sprintf('reports/202210_monthly_update/impact_pricecap_%dd.png', running_days), width=8, height=5, plot = plt)
 })
 
+# How much is saved?
+counter_manual %>%
+  filter(pricing_scenario %in% c('default', 'pricecap_2021H1_2', 'pricecap_andrei_2')) %>%
+  filter(date >= '2022-07-01') %>%
+  # mutate(pricing_scenario=recode(pricing_scenario, !!!scenarios_short)) %>%
+  group_by(pricing_scenario) %>%
+  summarise(value_eur=sum(value_eur, na.rm=T)) %>%
+  spread(pricing_scenario, value_eur) %>%
+  mutate(saved_andre_2_bn=(default-pricecap_andrei_2)/1e9,
+         saved_andre_2_share=scales::percent((default-pricecap_andrei_2)/default)) %>%
+  write_csv('reports/202210_monthly_update/saved.csv')
 
 
 
