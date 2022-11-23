@@ -29,7 +29,7 @@ v1 <- v %>%
          status=='completed',
          commodity %in% c('crude_oil', 'oil_products', 'oil_or_chemical')
   ) %>%
-  group_by(date=arrival_date, commodity_group_name, commodity_origin_country) %>%
+  group_by(date=as.Date(arrival_date), commodity_group_name, commodity_origin_country) %>%
   summarise(value=sum(value_tonne, na.rm=T)) %>%
   ungroup() %>%
   tidyr::complete(date=seq(min(.$date), max(.$date), by='day'), commodity_origin_country, commodity_group_name, fill=list(value=0))
@@ -46,7 +46,7 @@ ggplot(v1 %>% rcrea::utils.running_average(14)) +
   geom_line(aes(date, value/1000, col=commodity_origin_country)) +
   facet_wrap(~commodity_group_name, scales='free_y') +
   rcrea::theme_crea() +
-  scale_x_datetime(limits=c(as.POSIXct('2022-01-01'), NA)) +
+  scale_x_date(limits=c(as.Date('2022-01-01'), NA)) +
   rcrea::scale_color_crea_d(palette='dramatic') +
   labs(title='Shipments from Turkey and Russia to the Netherlands',
        subtitle='Thousand tonnes per day, 14-day running average',
@@ -61,14 +61,14 @@ ggsave('requests/202211_Nieuwsuur/shipments_to_nl.jpg', width=8, height=6)
 
 
 # Shipments from Russia to Turkey
-v_tr <-read_csv('https://api.russiafossiltracker.com/v0/voyage?commodity_destination_iso2=TR&commodity_origin_iso2=RU,&arrival_date_from=2021-01-01&format=csv&aggregate_by=arrival_date,commodity,commodity_origin_iso2,status&commodity_grouping=split_gas_oil&date_to=-4')
+v_tr <-read_csv('https://api.russiafossiltracker.com/v0/voyage?commodity_destination_iso2=TR&commodity_origin_iso2=RU,&arrival_date_from=2021-12-01&format=csv&aggregate_by=arrival_date,commodity,commodity_origin_iso2,status&commodity_grouping=split_gas_oil&date_to=-4')
 
 v_tr1 <- v_tr %>%
   filter(!is.na(arrival_date),
          status=='completed',
          commodity %in% c('crude_oil', 'oil_products', 'oil_or_chemical')
   ) %>%
-  group_by(date=arrival_date, commodity_group_name, commodity_origin_country) %>%
+  group_by(date=as.Date(arrival_date), commodity_group_name, commodity_origin_country) %>%
   summarise(value=sum(value_tonne, na.rm=T)) %>%
   ungroup() %>%
   tidyr::complete(date=seq(min(.$date), max(.$date), by='day'), commodity_origin_country, commodity_group_name, fill=list(value=0))
@@ -85,7 +85,7 @@ ggplot(v_tr1 %>% rcrea::utils.running_average(14)) +
   geom_line(aes(date, value/1000, col=commodity_origin_country), show.legend = F) +
   facet_wrap(~commodity_group_name, scales='free_y') +
   rcrea::theme_crea() +
-  scale_x_datetime(limits=c(as.POSIXct('2022-01-01'), NA)) +
+  scale_x_date(limits=c(as.Date('2022-01-01'), NA)) +
   rcrea::scale_color_crea_d(palette='dramatic') +
   labs(title='Shipments from Russia to Turkey',
        subtitle='Thousand tonnes per day, 14-day running average',
