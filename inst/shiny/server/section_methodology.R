@@ -2,6 +2,17 @@ output$methodology <- renderUI({
   HTML('<h1><span>Methodology</span>
 
  </h1>
+ <p><span style="color: #8cc9d0;">Update 2022-09-26 </span>-
+ <ul>
+       <li>We have now included May data from COMTRADE and EUROSTAT, leading to an increase of the price ceiling adopted in our models. The counter been updated retroactively for trends to be consistent.</li>
+       </ul>
+       </p>
+
+ <p><span style="color: #8cc9d0;">Update 2022-09-25 </span>-
+ <ul>
+       <li>We fixed a bug that was resulting in certain shipments double-counting. The bug did not affect our September report, but did affect the counter after that.</li>
+       </ul>
+       </p>
  <p><span style="color: #8cc9d0;">Update 2022-08-01 </span>-
  <ul>
        <li>We improved the shipment detection algorithm, leading to an increased amount of detected shipments, adding another EUR 3.5 billion to the counter.</li>

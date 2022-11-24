@@ -4,6 +4,7 @@ eurostat.get_flows <- function(use_cache=T){
     "G3000"="gas_all",
     "G3200"="lng",
     "O4100_TOT"="crude_oil",
+    "O4600"="oil_products",
     "2210"="lignite",
     "2111"="coal")
 

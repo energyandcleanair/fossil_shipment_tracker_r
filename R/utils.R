@@ -19,7 +19,7 @@ utils.recode_comtrade_commodity <- function(df){
 utils.collect_comtrade <- function(partners, reporters, years, codes, frequency="monthly", trade_flow='all', stop_if_no_row=T){
   # Max 5 reporters at a time and one year
 
-  if(partners=="World" & reporters=="all" & (frequency=="monthly")){
+  if(all(partners=="World") & all(reporters=="all") & (frequency=="monthly")){
     start_dates <- lapply(years, function(y) paste0(y, c("-01","-06","-11"))) %>% unlist
     end_dates <- lapply(years, function(y) paste0(y, c("-05","-10","-12"))) %>% unlist
   }else{
