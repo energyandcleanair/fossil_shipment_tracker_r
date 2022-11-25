@@ -13,7 +13,7 @@ update_counter_new <- function(){
   # Europe pipeline gas ------------------------------------------------------------
 
   # Pipeline gas to Europe
-  flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-14,
+  flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-21,
                                        use_cache=F)
 
   ok <- T
