@@ -153,7 +153,9 @@ db.update_counter_prices <- function(prices, test=F){
 }
 
 db.upload_portprices_to_posgres <- function(portprices, production=F){
+
   print(sprintf("=== Uploading portprices (%s) ===", ifelse(production,"production","development")))
+  portprices$updated_on <- lubridate::now()
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   dbx::dbxUpsert(db, "portprice", portprices, where_cols=c("port_id", "commodity", "date", "scenario"))
   dbx::dbxDisconnect(db)
@@ -165,6 +167,8 @@ db.upload_prices_to_posgres <- function(prices, production=F){
   p <- prices %>%
     select(country_iso2, date, commodity, eur_per_tonne, scenario) %>%
     mutate(date = lubridate::date(date))
+
+  p$updated_on <- lubridate::now()
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
