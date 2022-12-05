@@ -23,6 +23,7 @@ Imports:
     gsubfn,
     mongolite,
     comtradr,
+    creahelpers,
     entsog,
     eurostat,
     comtradr,
@@ -31,5 +32,6 @@ Imports:
     dbx,
     RPostgres
 Remotes:
-    energyandcleanair/entsog
+    energyandcleanair/entsog,
+    energyandcleanair/creahelpers
 RoxygenNote: 7.1.1
