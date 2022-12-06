@@ -6,18 +6,13 @@ entsog_new.get_flows <- function(date_from='2021-11-01', date_to=NULL, use_cache
     date_to <-as.character(lubridate::today() + lubridate::days(1))
   }
 
-  flows <- read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?type=crossborder,production&format=csv&date_from=%s&date_to=%s",date_from,date_to))
+  flows <- read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?type=crossborder,production&format=csv&date_from=%s&date_to=%s", date_from, date_to))
 
   flows_formatted <- flows %>%
     select(from_country=commodity_origin_iso2,
            to_country=commodity_destination_iso2,
            date,
            value=value_m3)
-
-  if(!is.null(date_to)){
-    flows_formatted <- flows_formatted %>%
-      filter(date <= date_to)
-  }
 
   # Distribute to source country using our iterative method
   flows_sourced <- pbapply::pblapply(split(flows_formatted, flows_formatted$date),

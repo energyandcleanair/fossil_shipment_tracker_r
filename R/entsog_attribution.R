@@ -321,13 +321,12 @@ process_iterative <- function(flows){
     return(ok)
   }
 
-
   flows <- flows %>%
     mutate(
-      # value = ifelse(from_country=="Ukraine", value*scaling, value),
-      from_country=recode(from_country, "Ukraine"="Russia")) %>%
+      # Ukraine considered as a pure transit country
+      from_country=recode(from_country, "Ukraine"="Russia"),
+      to_country=recode(to_country, "Ukraine"="Russia")) %>%
     mutate(value=ifelse((from_country=='Russia') & (to_country=='Ukraine'), 0, value))
-
 
   flow_mat <- flows %>%
     consolidate() %>%
