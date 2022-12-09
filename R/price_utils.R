@@ -13,17 +13,29 @@ get_brent <- function(){
     filter(date>='2016-01-01') %>%
     arrange(desc(date))
 
-  brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2022-01-01', warnings = FALSE, auto.assign = F) %>%
-    as.data.frame() %>%
-    mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-    tibble() %>%
-    rename(brent = contains('Close')) %>%
-    filter(!is.na(date)) %>%
-    select(date, brent)
+  brent_eia <- eia::eia_series(
+    id="PET.RBRTE.D",
+    start = max(brent_datahub$date),
+    end = NULL,
+    tidy = TRUE,
+    cache = TRUE,
+    key = Sys.getenv('EIA_KEY')
+  ) %>%
+    tidyr::unnest(data) %>%
+    select(date, brent=value)
+
+
+#   brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2022-12-01', warnings = FALSE, auto.assign = F) %>%
+#     as.data.frame() %>%
+#     mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
+#     tibble() %>%
+#     rename(brent = contains('Close')) %>%
+#     filter(!is.na(date)) %>%
+#     select(date, brent)
 
   bind_rows(
     brent_datahub,
-    brent_yahoo
+    brent_eia
   ) %>%
     group_by(date) %>%
     summarise_at('brent', mean, na.rm=T) %>%
