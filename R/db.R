@@ -193,6 +193,54 @@ db.upload_prices_to_posgres <- function(prices, production=F){
   dbx::dbxDisconnect(db)
 }
 
+db.upload_prices_new_to_posgres <- function(prices, production=F){
+  print(sprintf("=== Uploading prices new (%s) ===", ifelse(production,"production","development")))
+
+  p <- prices
+  p$updated_on <- lubridate::now()
+
+  list_cols <- c('destination_iso2s',
+                 'departure_port_ids',
+                 'ship_owner_iso2s',
+                 'ship_insurer_iso2s')
+
+  list_cols_bigint <- c('departure_port_ids')
+  list_cols_text <- setdiff(list_cols, list_cols_bigint)
+
+  format_array <- function(list) {
+    if(length(list)==0){return('{NULL}')}
+    unlist(list) %>%
+      paste0(., collapse = ", ") %>%
+      paste0('{', ., "}")
+  }
+
+
+  # Replacing list(NULL) with something dbx can upload
+  # We'll replace it by NULL below
+  for(col in list_cols){
+    p[[col]] = unlist(lapply(p[[col]], format_array))
+  }
+
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+  dbx::dbxUpsert(db, "price_new", as.data.frame(p),
+                 batch_size = 10000,
+                 where_cols=c("commodity", "date", "scenario",
+                              "destination_iso2s", "departure_port_ids",
+                              "ship_insurer_iso2s", "ship_owner_iso2s"))
+
+
+  lapply(list_cols_bigint, function(col){
+    dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
+
+  lapply(list_cols_text, function(col){
+    dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::text]", col, col))})
+
+  # Remove old pricing that may not have been erased by the upsert
+  dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")
+
+  dbx::dbxDisconnect(db)
+}
+
 db.upload_flows <- function(flows,
                             source){
   fs <- db.get_gridfs()

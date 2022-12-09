@@ -1,8 +1,26 @@
+prices.get_prices_new <- function(production = F){
+  # This function gets all prices in one dataframe,
+  # those 'default' ones, the ones specific to port,
+  # and the capped one by ship_onwer / insurer / destination
+
+  # Get default values
+  p <- prices.get_predicted_prices(production = production)
+  pp <- prices.get_predicted_portprices(production = production)
+
+  # Get price cap values
+  pc <- prices.get_capped_prices(production = production)
+
+  all_prices <- bind_rows(p,
+                          pp,
+                          pc)
+
+  return(all_prices)
+}
+
 prices.get_predicted_portprices <- function(production=F){
 
   # Ports
   ports <- read_csv("https://api.russiafossiltracker.com/v0/port?format=csv&iso2=RU")
-  # ports <- read_csv("http://127.0.0.1:8080/v0/port?format=csv&iso2=RU")
 
   ports_ural <- ports %>%
     filter(iso2=="RU", check_departure) %>%
@@ -30,7 +48,6 @@ prices.get_predicted_portprices <- function(production=F){
     select(date, eur_per_tonne) %>%
     mutate(commodity="crude_oil")
 
-
   spread_espo <- get_espo_brent_spread() %>%
     select(date, add_brent=usd_per_bbl)
 
@@ -48,15 +65,22 @@ prices.get_predicted_portprices <- function(production=F){
     crossing(price_ural) %>%
     filter(!is.na(eur_per_tonne))
 
-
   portprice_espo <- ports_espo %>%
     select(port_id=id) %>%
     crossing(price_espo) %>%
     filter(!is.na(eur_per_tonne))
 
-  return(bind_rows(portprice_ural,
+  pp <- bind_rows(portprice_ural,
                    portprice_espo) %>%
-           mutate(scenario='default'))
+           mutate(scenario='default')
+
+  # Nest country to match new price table structure
+  pp_formatted <- pp %>%
+    group_by(date, commodity, eur_per_tonne, scenario) %>%
+    summarise(departure_port_ids=list(port_id)) %>%
+    ungroup()
+
+  return(pp_formatted)
 }
 
 
@@ -131,19 +155,29 @@ prices.get_predicted_prices <- function(production=F){
     filter(!is.na(date)) %>%
     mutate(scenario='default')
 
-  return(p)
+
+  # Nest country to match new price table structure
+  p_formatted <- p %>%
+    filter(!is.na(country_iso2)) %>%
+    group_by(date, commodity, eur_per_tonne, scenario) %>%
+    summarise(destination_iso2s=list(country_iso2)) %>%
+    bind_rows(p %>%
+                filter(is.na(country_iso2)) %>%
+                ungroup()) %>%
+    ungroup() %>%
+    select(-c(country_iso2))
+
+
+  return(p_formatted)
 }
 
 
-price.get_capped_prices <- function(production=F, version='2021H1'){
-
-
-  p <- prices.get_predicted_prices(production=production)
+prices.get_price_caps <- function(p, version){
 
   if(version=='2021H1'){
 
     # Cap using 2021H1 prices, weighted average, one globally
-    caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
+    precaps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
       filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
       group_by(commodity, unit) %>%
       summarise_at('value', sum, na.rm=T) %>%
@@ -151,9 +185,9 @@ price.get_capped_prices <- function(production=F, version='2021H1'){
       mutate(eur_per_tonne=eur/tonne) %>%
       select(-c(eur, tonne)) %>%
       mutate(commodity=recode(commodity,
-                               oil='crude_oil'))
+                              oil='crude_oil'))
 
-    caps <- bind_rows(caps, caps %>%
+    precaps <- bind_rows(precaps, precaps %>%
                         filter(commodity=='crude_oil') %>%
                         mutate(commodity='pipeline_oil'))
 
@@ -164,50 +198,22 @@ price.get_capped_prices <- function(production=F, version='2021H1'){
       filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
       summarise(eur_per_usd_base=mean(eur_per_usd))
 
-
-    # Export price caps
-    # caps %>%
-    #   tidyr::crossing(eur_per_usd_2021H1) %>%
-    #   mutate(usd_per_tonne=eur_per_tonne/eur_per_usd_base) %>%
-    #   mutate(value=case_when(commodity %in% c('natural_gas', 'lng') ~ eur_per_tonne,
-    #                                  T ~ usd_per_tonne),
-    #          currency=case_when(commodity %in% c('natural_gas', 'lng') ~ 'EUR',
-    #                             T ~ 'USD')) %>%
-    #   select(commodity, value, currency) %>%
-    #   mutate(scenario='2021H1') %>%
-    #   write_csv('scripts/price_cap/price_cap.csv')
-
-
-
-    return(eur_per_usd %>%
+    caps <- eur_per_usd %>%
       tidyr::crossing(eur_per_usd_2021H1) %>%
       mutate(price_adjustment = eur_per_usd / eur_per_usd_base) %>%
       select(date, price_adjustment) %>%
-      tidyr::crossing(caps) %>%
+      tidyr::crossing(precaps) %>%
       mutate(eur_per_tonne=case_when(commodity %in% c('natural_gas', 'lng') ~ eur_per_tonne,
                                      T ~ eur_per_tonne * price_adjustment)) %>%
       select(-c(price_adjustment)) %>%
-      rename(max_eur_per_tonne=eur_per_tonne) %>%
-      ungroup() %>%
-      right_join(p) %>%
-      mutate(eur_per_tonne=case_when(
-        (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-        T ~ eur_per_tonne),
-             scenario='pricecap') %>%
-      select(-c(max_eur_per_tonne)))
+      rename(max_eur_per_tonne=eur_per_tonne)
   }
 
   if(version=='andrei'){
-
-    # Oil: USD 50/barrel ; Price Cap - USD 55/barrel
-    # Piped Gas: USD 7.3/MWh ; Price Cap - USD 15/MWh
-    # LNG: USD 25/MWh ; Price Cap - USD 30/MWh
-    # Coal: USD 40/ton ; Price Cap - USD 50/ton
-
     ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
     barrel_per_tonne <- 7.49
 
-    caps <- list(
+    precaps <- list(
       crude_oil=55 * barrel_per_tonne,
       natural_gas= 15 * ng_mwh_per_tonne,
       lng= 30 * ng_mwh_per_tonne,
@@ -217,28 +223,97 @@ price.get_capped_prices <- function(production=F, version='2021H1'){
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
                                      date_to=min(max(p$date), lubridate::today()))
 
-    return(tibble(commodity=names(caps),
-           usd_per_tonne=unlist(caps)) %>%
+    caps <- tibble(commodity=names(precaps),
+                 usd_per_tonne=unlist(precaps)) %>%
       tidyr::crossing(eur_per_usd) %>%
       arrange(date) %>%
       tidyr::fill(eur_per_usd) %>%
       mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-      select(-c(usd_per_tonne, eur_per_usd)) %>%
-      right_join(p) %>%
-      mutate(eur_per_tonne=case_when(
-        (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-        T ~ eur_per_tonne),
-             scenario='pricecap') %>%
-      select(-c(max_eur_per_tonne)))
+      select(-c(usd_per_tonne, eur_per_usd))
   }
 
+  if(version=='official'){
+    ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+    barrel_per_tonne <- 7.49
 
+    precaps <- list(
+      crude_oil=55 * barrel_per_tonne,
+      natural_gas= 15 * ng_mwh_per_tonne,
+      lng= 30 * ng_mwh_per_tonne,
+      coal=50
+    )
 
+    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
+                                     date_to=min(max(p$date), lubridate::today()))
 
+    caps <- tibble(commodity=names(precaps),
+                 usd_per_tonne=unlist(precaps)) %>%
+      tidyr::crossing(eur_per_usd) %>%
+      arrange(date) %>%
+      tidyr::fill(eur_per_usd) %>%
+      mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
+      select(-c(usd_per_tonne, eur_per_usd))
+  }
+
+  return(ungroup(caps))
 }
 
-price.get_capped_portprices <- function(production=F){
+prices.get_capped_prices <- function(production=F, version='official'){
 
+  scenario <- 'pricecap'
+  p <- prices.get_predicted_prices(production=production)
+  pp <- prices.get_predicted_portprices(production = production)
+  caps <- prices.get_price_caps(p=p, version=version)
+
+  eu_27 <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
+  destination_iso2 <- eu_27
+  ship_owner_iso2s <- c(eu_27)
+  ship_insurer_iso2s <- c(eu_27)
+  date_start <- c('2022-12-06')
+
+  # Create one version per destination_iso2, with no ship constraint
+  pc_destination <- caps %>%
+      right_join(p) %>%
+    tidyr::unnest(destination_iso2s, keep_empty = T) %>%
+      mutate(eur_per_tonne=case_when(
+        (date >= date_start) & (destination_iso2s %in% destination_iso2) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+        T ~ eur_per_tonne)) %>%
+    group_by(across(-destination_iso2s)) %>%
+    summarise(across(destination_iso2s, as.list))
+
+  # Create a ship constraint: regardless of destination
+  pc_ship <- pc_destination %>%
+    mutate(eur_per_tonne=case_when(
+           (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+           T ~ eur_per_tonne),
+           ship_owner_iso2s=list(ship_owner_iso2s),
+           ship_insurer_iso2s=list(ship_insurer_iso2s))
+
+  ppc_ship <- caps %>%
+    right_join(pp) %>%
+    tidyr::unnest(departure_port_ids, keep_empty = T) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      ship_owner_iso2s=list(ship_owner_iso2s),
+      ship_insurer_iso2s=list(ship_insurer_iso2s)) %>%
+    group_by(across(-departure_port_ids)) %>%
+    summarise(across(departure_port_ids, as.list))
+
+
+  pc <- bind_rows(ppc_ship,
+                  pc_destination,
+                  pc_ship
+                  ) %>%
+    ungroup() %>%
+    select(-c(max_eur_per_tonne)) %>%
+    mutate(scenario=!!scenario)
+
+  return(pc)
+}
+
+
+prices.get_capped_portprices <- function(production=F){
 
   p <- prices.get_predicted_portprices(production=production)
 
@@ -330,7 +405,16 @@ price.check_prices <- function(p){
   ok <- ok & !any(is.na(p$scenario))
   ok <- ok & all(p$eur_per_tonne >= 0)
   ok <- ok & all(c("country_iso2","date","commodity","eur_per_tonne","scenario") %in% names(p))
-  ok <- ok & nrow(p>0)
+  ok <- ok & nrow(p) > 0
+  return(ok)
+}
+
+price.check_prices_new <- function(p){
+  ok <- !any(is.na(p$eur_per_tonne))
+  ok <- ok & !any(is.na(p$scenario))
+  ok <- ok & all(p$eur_per_tonne >= 0)
+  ok <- ok & all(c("destination_iso2s", "departure_port_ids", "ship_owner_iso2s", "ship_insurer_iso2s", "date","commodity","eur_per_tonne","scenario") %in% names(p))
+  ok <- ok & nrow(p) >0
   return(ok)
 }
 
@@ -339,7 +423,7 @@ price.check_portprices <- function(p){
   ok <- ok & !any(is.na(p$scenario))
   ok <- ok & all(p$eur_per_tonne >= 0)
   ok <- ok & all(c("port_id","date","commodity","eur_per_tonne","scenario") %in% names(p))
-  ok <- ok & nrow(p>0)
+  ok <- ok & nrow(p) > 0
   return(ok)
 }
 
@@ -377,7 +461,7 @@ price.update_prices <- function(production=F){
     print("ERROR: prices not updated")
   }
 
-  capped_p <- price.get_capped_prices(production=production)
+  capped_p <- prices.get_capped_prices(production=production)
   ok <- price.check_prices(capped_p)
   if(ok){
     db.upload_prices_to_posgres(capped_p, production=production)
@@ -395,10 +479,21 @@ price.update_portprices <- function(production=F){
     print("ERROR: prices not updated")
   }
 
-  capped_p <- price.get_capped_portprices(production=production)
+  capped_p <- prices.get_capped_portprices(production=production)
   ok <- price.check_portprices(capped_p)
   if(ok){
     db.upload_portprices_to_posgres(capped_p, production=production)
+  }else{
+    print("ERROR: prices not updated")
+  }
+}
+
+price.update_prices_new <- function(production=F){
+
+  p <- prices.get_prices_new(production=production)
+  ok <- price.check_prices_new(p)
+  if(ok){
+    db.upload_prices_new_to_posgres(p, production=production)
   }else{
     print("ERROR: prices not updated")
   }
