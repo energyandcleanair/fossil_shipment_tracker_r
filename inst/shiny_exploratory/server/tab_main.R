@@ -242,7 +242,10 @@ data <- reactive({
 
   # Add label
   data <- data %>%
-    mutate(label=sprintf("%s: %s %s  (%s)", colour, round(value/value_scale), unit_label, strftime(date, '%Y-%m-%d'))) %>%
+    mutate(label=ifelse(colour==data$colour[[1]],
+                        sprintf("%s\n%s: %s %s", strftime(date, '%Y-%m-%d'), colour, round(value/value_scale), unit_label),
+                        sprintf("%s: %s %s", colour, round(value/value_scale), unit_label)
+                        )) %>%
     filter(i_group<=n_groups)
 
 
