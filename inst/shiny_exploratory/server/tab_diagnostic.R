@@ -96,8 +96,8 @@ output$plot_eurostat_lng <- renderPlotly({
       filter(commodity %in% commodities,
              unit=='tonne',
              partner=='Russia') %>%
-      mutate(unit='m3',
-             value=value*1000/kg_per_m3*0.001626016) %>% #tonne NG to m3 LNG
+      # mutate(unit='m3',
+      #        value=value*1000/kg_per_m3*0.001626016) %>% #tonne NG to m3 LNG
       group_by(date=lubridate::floor_date(date, 'month'),
                country) %>%
       summarise(value=sum(value, na.rm=T),
@@ -109,7 +109,8 @@ output$plot_eurostat_lng <- renderPlotly({
              partner=='Russia') %>%
       group_by(date=lubridate::floor_date(date, 'month'),
                country) %>%
-      summarise(value=sum(value, na.rm=T)*0.001626016,#m3 NG to m3 LNG
+      summarise(value=sum(value, na.rm=T)*7.35E-4,
+                #see conversion factors here: https://ec.europa.eu/eurostat/documents/3859598/5885369/NRG-2004-EN.PDF.pdf/b3c4b86f-8e88-4ca6-9188-b95320900b3f?t=1414781129000, page 182
                 source='Eurostat'),
 
     shipments %>%
@@ -117,7 +118,7 @@ output$plot_eurostat_lng <- renderPlotly({
              departure_country=='Russia') %>%
       group_by(date=lubridate::floor_date(arrival_date, 'month'),
                country=destination_country) %>%
-      summarise(value=sum(value_m3, na.rm=T),
+      summarise(value=sum(value_tonne, na.rm=T),
                 source='CREA')) %>%
     filter(date >= '2021-12-01',
            country %in% c('Belgium', 'Netherlands', 'Spain')) %>%
@@ -129,15 +130,15 @@ output$plot_eurostat_lng <- renderPlotly({
   getPalette = colorRampPalette(brewer.pal(12, "Paired"))
 
   plt <- ggplot(d) +
-    geom_bar(aes(date, value/1e6, fill=source),
+    geom_bar(aes(as.Date(date), value/1e3, fill=source),
              stat="identity",position='dodge') +
     facet_wrap(~country) +
     rcrea::theme_crea() +
     scale_y_continuous(limits=c(0, NA), expand=expansion(mult=c(0, 0.1))) +
-    scale_x_datetime(date_labels = "%b %Y") +
+    scale_x_date(date_labels = "%b %Y") +
     scale_fill_manual(values = getPalette(colourCount), name=NULL) +
     labs(x=NULL,
-         y='million m3 (LNG)')
+         y='thousand tonnes')
 
   plt <- ggplotly(plt) %>%
     plotly::config(displayModeBar = F) %>%
