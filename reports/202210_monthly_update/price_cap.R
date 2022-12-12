@@ -4,6 +4,7 @@ library(lubridate)
 library(ggplot2)
 library(russiacounter)
 
+
 # To reduce query size beneath limit, we select only required fields
 shipment_fields <- 'id,commodity_origin_iso2,commodity_destination_iso2,value_eur,value_tonne,arrival_date_utc,commodity,commodity_group,commodity_destination_region,destination_iso2,ship_owner_iso2,ship_owner_region,ship_insurer_region,ship_insurer_iso2,pricing_scenario'
 
@@ -12,8 +13,8 @@ overland <- read_csv('https://api.russiafossiltracker.com/v0/overland?keep_zeros
 
 
 price_caps <- bind_rows(
-  price.get_capped_prices(version='2021H1') %>% mutate(scenario='pricecap_2021H1'),
-  price.get_capped_prices(version='andrei') %>% mutate(scenario='pricecap_andrei')
+  prices.get_capped_prices(version='2021H1') %>% mutate(scenario='pricecap_2021H1'),
+  prices.get_capped_prices(version='andrei') %>% mutate(scenario='pricecap_andrei')
 ) %>%
   filter(date >= min(shipments$arrival_date_utc),
          date <= max(shipments$arrival_date_utc))
