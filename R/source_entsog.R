@@ -8,9 +8,6 @@ entsog.get_flows <- function(date_from="2021-01-01", use_cache=T){
   operators <- entsog::operators()
   interconnections <- entsog::interconnections()
 
-#   operators_russia <- operators %>%
-#     filter(operatorCountryLabel=="Russia")
-
   # Russia exports
   interconnections_russia_exports <-
     interconnections %>% filter(fromCountryKey %in% c("RU", "BY"))
