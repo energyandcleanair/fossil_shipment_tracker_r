@@ -23,14 +23,14 @@ eurostat.get_flows <- function(use_cache=T){
   f <- "cache/eurostat.RDS"
   if(use_cache && file.exists(f)){ return(readRDS(f)) }
 
-  gas_import <- eurostat::get_eurostat("nrg_ti_gasm")
-  gas_export <- eurostat::get_eurostat("nrg_te_gasm") %>% mutate(values=values*-1)
+  gas_import <- eurostat::get_eurostat("nrg_ti_gasm", update_cache=T)
+  gas_export <- eurostat::get_eurostat("nrg_te_gasm", update_cache=T) %>% mutate(values=values*-1)
 
-  oil_import <- eurostat::get_eurostat("nrg_ti_oilm")
-  oil_export <- eurostat::get_eurostat("nrg_te_oilm") %>% mutate(values=values*-1)
+  oil_import <- eurostat::get_eurostat("nrg_ti_oilm", update_cache=T)
+  oil_export <- eurostat::get_eurostat("nrg_te_oilm", update_cache=T) %>% mutate(values=values*-1)
 
-  coal_import <- eurostat::get_eurostat("nrg_122m") %>% rename(siec=product)
-  coal_export <- eurostat::get_eurostat("nrg_132m") %>% rename(siec=product) %>% mutate(values=values*-1)
+  coal_import <- eurostat::get_eurostat("nrg_122m", update_cache=T) %>% rename(siec=product)
+  coal_export <- eurostat::get_eurostat("nrg_132m", update_cache=T) %>% rename(siec=product) %>% mutate(values=values*-1)
 
   data <- bind_rows(gas_import, gas_export,
                     oil_import, oil_export,
