@@ -281,13 +281,19 @@ prices.get_capped_prices <- function(production=F, version='official'){
     group_by(across(-destination_iso2s)) %>%
     summarise(across(destination_iso2s, as.list))
 
-  # Create a ship constraint: regardless of destination
-  pc_ship <- pc_destination %>%
+  # Create a ship constraint (owner): regardless of destination and insurer
+  pc_ship_owner <- pc_destination %>%
     mutate(eur_per_tonne=case_when(
            (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
            T ~ eur_per_tonne),
-           ship_owner_iso2s=list(ship_owner_iso2s),
-           ship_insurer_iso2s=list(ship_insurer_iso2s))
+           ship_owner_iso2s=list(ship_owner_iso2s))
+
+  # Create a ship constraint (insurer): regardless of destination and owner
+  pc_ship_insurer <- pc_destination %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      ship_insurer_iso2s=list(ship_insurer_iso2s))
 
   ppc_ship <- caps %>%
     right_join(pp) %>%
