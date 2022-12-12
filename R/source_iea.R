@@ -1,7 +1,9 @@
 iea.get_flows <- function(years, remove_kipi=TRUE){
-  f <- system.file("extdata", "Export_GTF_IEA_202204.xls",
+  f <- system.file("extdata", "iea/Export_GTF_IEA_202209.xls",
                    package="russiacounter")
-  # f <- "data/iea/Export_GTF_IEA_202202.xls"
+
+  custom_match = c("Republic of Türkiye"="TR",
+                   "Liquefied Natural Gas"="lng")
 
   readxl::read_xls(f) %>%
     tidyr::pivot_longer(cols=-c(Borderpoint, Exit, `...3`, Entry,	`MAXFLOW (Mm3/h)`),
@@ -10,9 +12,16 @@ iea.get_flows <- function(years, remove_kipi=TRUE){
     mutate(value_m3=value*1E6,
            month=lubridate::floor_date(as.Date(as.numeric(month), origin = "1900-01-01"), 'month')) %>%
     filter(!remove_kipi | (Borderpoint != 'Kipi')) %>%
-    mutate(value_mwh=value * gcv_MWh_per_m3) %>%
+    mutate(value_mwh=value_m3 * gcv_MWh_per_m3) %>%
+    mutate(departure_iso2=countrycode::countrycode(Exit, 'country.name', 'iso2c',
+                                                    custom_match = custom_match),
+           destination_iso2=countrycode::countrycode(Entry, 'country.name', 'iso2c',
+                                                     custom_match = custom_match),
+           ) %>%
     select(country=Entry,
            partner=Exit,
+           departure_iso2,
+           destination_iso2,
            month,
            value_m3,
            value_mwh) %>%
@@ -21,6 +30,37 @@ iea.get_flows <- function(years, remove_kipi=TRUE){
 }
 
 
+iea.get_detailed_flows <- function(years, remove_kipi=TRUE){
+  f <- system.file("extdata", "iea/Export_GTF_IEA_202209.xls",
+                   package="russiacounter")
+
+  custom_match = c("Republic of Türkiye"="TR",
+                   "Liquefied Natural Gas"="lng")
+
+  readxl::read_xls(f) %>%
+    tidyr::pivot_longer(cols=-c(Borderpoint, Exit, `...3`, Entry,	`MAXFLOW (Mm3/h)`),
+                        values_transform=list(value=as.numeric),
+                        names_to="month") %>%
+    mutate(value_m3=value*1E6,
+           month=lubridate::floor_date(as.Date(as.numeric(month), origin = "1900-01-01"), 'month')) %>%
+    filter(!remove_kipi | (Borderpoint != 'Kipi')) %>%
+    mutate(value_mwh=value_m3 * gcv_MWh_per_m3) %>%
+    mutate(departure_iso2=countrycode::countrycode(Exit, 'country.name', 'iso2c',
+                                                   custom_match = custom_match),
+           destination_iso2=countrycode::countrycode(Entry, 'country.name', 'iso2c',
+                                                     custom_match = custom_match),
+    ) %>%
+    select(country=Entry,
+           partner=Exit,
+           departure_iso2,
+           destination_iso2,
+           point=Borderpoint,
+           month,
+           value_m3,
+           value_mwh) %>%
+    mutate(source="IEA",
+           commodity=ifelse(partner=='Liquefied Natural Gas', 'lng', 'natural_gas'))
+}
 
 iea.get_gas_consumption <- function(){
 
@@ -36,13 +76,13 @@ iea.get_gas_consumption <- function(){
   consumption <- read_csv(f_consumption, skip=2) %>%
     select(country=COUNTRY,
            year=TIME,
-           value_tj=X5)
+           value_tj=`...5`)
 
   gcv <- read_csv(f_gcv, skip=2) %>%
     filter(grepl('GCV', FLOW)) %>%
     select(country=COUNTRY,
            year=TIME,
-           value_kj_per_m3=X5)
+           value_kj_per_m3=`...5`)
 
   consumption %>%
     left_join(gcv) %>%
