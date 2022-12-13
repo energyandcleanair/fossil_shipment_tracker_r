@@ -34,7 +34,7 @@ price.get_predicted_portprices <- function(production=F){
   # Discounts
   brent <- russiacounter::get_brent()
 
-  eur_per_usd <- russiacounter::price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+  eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
   tonne_per_bbl <- 0.138
 
   spread_ural <- russiacounter::get_ural_brent_spread() %>%

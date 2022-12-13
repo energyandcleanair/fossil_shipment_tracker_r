@@ -1,7 +1,7 @@
 fill_gaps_and_future <- function(result){
   result %>%
     ungroup() %>%
-    tidyr::complete(date = seq(min(date), max(max(date), Sys.Date()) + lubridate::days(14), by = "day")) %>%
+    tidyr::complete(date = seq(lubridate::date(min(date)), max(lubridate::date(max(date)), Sys.Date()) + lubridate::days(14), by = "day")) %>%
     arrange(desc(date)) %>%
     tidyr::fill(setdiff(names(.),"date"), .direction="up")
 }
@@ -13,16 +13,26 @@ get_brent <- function(){
     filter(date>='2016-01-01') %>%
     arrange(desc(date))
 
-  brent_eia <- eia::eia_series(
+
+  brent_eia <- tryCatch({eia::eia_series(
     id="PET.RBRTE.D",
-    start = max(brent_datahub$date),
+    start = lubridate::year(max(brent_datahub$date)),
     end = NULL,
     tidy = TRUE,
     cache = TRUE,
     key = Sys.getenv('EIA_KEY')
   ) %>%
     tidyr::unnest(data) %>%
-    select(date, brent=value)
+    select(date, brent=value) %>%
+    filter(date >= '2016-01-01')}, error=function(e){return(NULL)})
+
+  temp <- tempfile(fileext = '.xls')
+  download.file('https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls',temp)
+  brent_eia_xls <- readxl::read_xls(temp, sheet = 'Data 1', skip = 3, col_names = c('date', 'brent')) %>%
+    mutate(date=as.Date(date)) %>%
+    filter(date >= '2016-01-01') %>%
+    arrange(desc(date))
+  unlink(temp)
 
 
 #   brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2022-12-01', warnings = FALSE, auto.assign = F) %>%
@@ -35,7 +45,8 @@ get_brent <- function(){
 
   bind_rows(
     brent_datahub,
-    brent_eia
+    brent_eia,
+    brent_eia_xls
   ) %>%
     group_by(date) %>%
     summarise_at('brent', mean, na.rm=T) %>%
