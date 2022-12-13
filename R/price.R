@@ -1,14 +1,15 @@
-prices.get_prices_new <- function(production = F){
+price.get_prices_new <- function(production = F){
+
   # This function gets all prices in one dataframe,
   # those 'default' ones, the ones specific to port,
   # and the capped one by ship_onwer / insurer / destination
 
   # Get default values
-  p <- prices.get_predicted_prices(production = production)
-  pp <- prices.get_predicted_portprices(production = production)
+  p <- price.get_predicted_prices(production = production)
+  pp <- price.get_predicted_portprices(production = production)
 
   # Get price cap values
-  pc <- prices.get_capped_prices(production = production)
+  pc <- price.get_capped_prices(production = production)
 
   all_prices <- bind_rows(p,
                           pp,
@@ -17,10 +18,10 @@ prices.get_prices_new <- function(production = F){
   return(all_prices)
 }
 
-prices.get_predicted_portprices <- function(production=F){
+price.get_predicted_portprices <- function(production=F){
 
   # Ports
-  ports <- read_csv("https://api.russiafossiltracker.com/v0/port?format=csv&iso2=RU")
+  ports <- read_csv("https://api.russiafossiltracker.com/v0/port?format=csv&iso2=RU", show_col_type=F)
 
   ports_ural <- ports %>%
     filter(iso2=="RU", check_departure) %>%
@@ -84,7 +85,7 @@ prices.get_predicted_portprices <- function(production=F){
 }
 
 
-prices.get_predicted_prices <- function(production=F){
+price.get_predicted_prices <- function(production=F){
 
   prices_daily <- get_prices_daily(running_days=30) %>%
     arrange(desc(date)) %>%
@@ -172,7 +173,7 @@ prices.get_predicted_prices <- function(production=F){
 }
 
 
-prices.get_price_caps <- function(p, version){
+price.get_price_caps <- function(p, version){
 
   if(version=='2021H1'){
 
@@ -237,10 +238,10 @@ prices.get_price_caps <- function(p, version){
     barrel_per_tonne <- 7.49
 
     precaps <- list(
-      crude_oil=55 * barrel_per_tonne,
-      natural_gas= 15 * ng_mwh_per_tonne,
-      lng= 30 * ng_mwh_per_tonne,
-      coal=50
+      crude_oil= 1e6, #55 * barrel_per_tonne,
+      natural_gas= 1e6, #15 * ng_mwh_per_tonne,
+      lng= 1e6, #30 * ng_mwh_per_tonne,
+      coal= 1e6 #50
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
@@ -258,12 +259,12 @@ prices.get_price_caps <- function(p, version){
   return(ungroup(caps))
 }
 
-prices.get_capped_prices <- function(production=F, version='official'){
+price.get_capped_prices <- function(production=F, version='official'){
 
   scenario <- 'pricecap'
-  p <- prices.get_predicted_prices(production=production)
-  pp <- prices.get_predicted_portprices(production = production)
-  caps <- prices.get_price_caps(p=p, version=version)
+  p <- price.get_predicted_prices(production=production)
+  pp <- price.get_predicted_portprices(production = production)
+  caps <- price.get_price_caps(p=p, version=version)
 
   eu_27 <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
   destination_iso2 <- eu_27
@@ -275,14 +276,21 @@ prices.get_capped_prices <- function(production=F, version='official'){
   pc_destination <- caps %>%
       right_join(p) %>%
     tidyr::unnest(destination_iso2s, keep_empty = T) %>%
-      mutate(eur_per_tonne=case_when(
+    mutate(eur_per_tonne=case_when(
         (date >= date_start) & (destination_iso2s %in% destination_iso2) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-        T ~ eur_per_tonne)) %>%
-    group_by(across(-destination_iso2s)) %>%
-    summarise(across(destination_iso2s, as.list))
+        T ~ eur_per_tonne),
+        # Not to have NULL nested with other countries
+        destination_is_null=is.null(destination_iso2s) | is.na(destination_iso2s)) %>%
+    # To nest more together
+    mutate(eur_per_tonne=round(eur_per_tonne, 3)) %>%
+    group_by(across(-c(destination_iso2s, max_eur_per_tonne))) %>%
+    summarise(across(destination_iso2s, list)) %>%
+    select(-c(destination_is_null)) %>%
+    ungroup()
 
   # Create a ship constraint (owner): regardless of destination and insurer
   pc_ship_owner <- pc_destination %>%
+    left_join(caps) %>%
     mutate(eur_per_tonne=case_when(
            (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
            T ~ eur_per_tonne),
@@ -290,26 +298,35 @@ prices.get_capped_prices <- function(production=F, version='official'){
 
   # Create a ship constraint (insurer): regardless of destination and owner
   pc_ship_insurer <- pc_destination %>%
+    left_join(caps) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
       T ~ eur_per_tonne),
       ship_insurer_iso2s=list(ship_insurer_iso2s))
 
-  ppc_ship <- caps %>%
+  # Port prices for ship_owner
+  ppc_ship_owner <- caps %>%
     right_join(pp) %>%
-    tidyr::unnest(departure_port_ids, keep_empty = T) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
       T ~ eur_per_tonne),
-      ship_owner_iso2s=list(ship_owner_iso2s),
-      ship_insurer_iso2s=list(ship_insurer_iso2s)) %>%
-    group_by(across(-departure_port_ids)) %>%
-    summarise(across(departure_port_ids, as.list))
+      ship_owner_iso2s=list(ship_owner_iso2s))
+
+  # Port prices for ship_insurer
+  ppc_ship_insurer <- caps %>%
+    right_join(pp) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      ship_insurer_iso2s=list(ship_insurer_iso2s))
 
 
-  pc <- bind_rows(ppc_ship,
+  pc <- bind_rows(ppc_ship_owner,
+                  ppc_ship_insurer,
                   pc_destination,
-                  pc_ship
+                  pc_ship_owner,
+                  pc_ship_insurer,
+                  pp
                   ) %>%
     ungroup() %>%
     select(-c(max_eur_per_tonne)) %>%
@@ -319,9 +336,9 @@ prices.get_capped_prices <- function(production=F, version='official'){
 }
 
 
-prices.get_capped_portprices <- function(production=F){
+price.get_capped_portprices <- function(production=F){
 
-  p <- prices.get_predicted_portprices(production=production)
+  p <- price.get_predicted_portprices(production=production)
 
   # Cap using 2021H1 prices, weighted average, one globally
   caps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
@@ -393,7 +410,7 @@ prices.get_capped_portprices <- function(production=F){
 }
 
 
-# prices.add_tail <- function(p, add_tail_days){
+# price.add_tail <- function(p, add_tail_days){
 #   if(is.null(add_tail_days) | add_tail_days==0){
 #     return(p)
 #   }
@@ -424,6 +441,7 @@ price.check_prices_new <- function(p){
   return(ok)
 }
 
+
 price.check_portprices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne))
   ok <- ok & !any(is.na(p$scenario))
@@ -433,70 +451,10 @@ price.check_portprices <- function(p){
   return(ok)
 }
 
-prices.update_constant_prices <- function(production=F){
-
-  current_p <- prices.get_predicted_prices(production=production)
-
-  date_from <- '2022-01-01'
-  date_to <- '2022-02-24'
-  dates <- unique(current_p$date)
-
-  constant_p <- current_p %>%
-    filter(date >= date_from,
-           date <= date_to) %>%
-    group_by(country_iso2, commodity) %>%
-    summarise_at('eur_per_tonne', mean, na.rm=T) %>%
-    tidyr::crossing(dates) %>%
-    mutate(type='constant')
-
-  ok <- price.check_prices(p)
-
-  if(ok){
-    db.upload_prices_to_posgres(p, production=production)
-  }else{
-    print("ERROR: prices not updated")
-  }
-}
-
-price.update_prices <- function(production=F){
-  p <- prices.get_predicted_prices(production=production)
-  ok <- price.check_prices(p)
-  if(ok){
-    db.upload_prices_to_posgres(p, production=production)
-  }else{
-    print("ERROR: prices not updated")
-  }
-
-  capped_p <- prices.get_capped_prices(production=production)
-  ok <- price.check_prices(capped_p)
-  if(ok){
-    db.upload_prices_to_posgres(capped_p, production=production)
-  }else{
-    print("ERROR: capped prices not updated")
-  }
-}
-
-price.update_portprices <- function(production=F){
-  p <- prices.get_predicted_portprices(production=production)
-  ok <- price.check_portprices(p)
-  if(ok){
-    db.upload_portprices_to_posgres(p, production=production)
-  }else{
-    print("ERROR: prices not updated")
-  }
-
-  capped_p <- prices.get_capped_portprices(production=production)
-  ok <- price.check_portprices(capped_p)
-  if(ok){
-    db.upload_portprices_to_posgres(capped_p, production=production)
-  }else{
-    print("ERROR: prices not updated")
-  }
-}
 
 price.update_prices_new <- function(production=F){
 
-  p <- prices.get_prices_new(production=production)
+  p <- price.get_prices_new(production=production)
   ok <- price.check_prices_new(p)
   if(ok){
     db.upload_prices_new_to_posgres(p, production=production)

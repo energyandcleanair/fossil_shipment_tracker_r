@@ -8,7 +8,7 @@ fill_gaps_and_future <- function(result){
 
 get_brent <- function(){
 
-  brent_datahub <- read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv') %>%
+  brent_datahub <- read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv', show_col_type=F) %>%
     select(date=Date, brent=Price) %>%
     filter(date>='2016-01-01') %>%
     arrange(desc(date))
@@ -55,7 +55,7 @@ get_ttf <- function(){
   #   select(date, ttf) %>%
   #   fill_gaps_and_future()
   url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
-  result <- read_csv(url) %>%
+  result <- read_csv(url, show_col_type=F) %>%
     mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
            ttf = as.numeric(Price)) %>%
     select(date, ttf)

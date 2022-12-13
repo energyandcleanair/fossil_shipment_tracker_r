@@ -208,7 +208,7 @@ db.upload_prices_new_to_posgres <- function(prices, production=F){
   list_cols_text <- setdiff(list_cols, list_cols_bigint)
 
   format_array <- function(list) {
-    if(length(list)==0){return('{NULL}')}
+    if(length(list)==0 | all(is.na(list))){return('{NULL}')}
     unlist(list) %>%
       paste0(., collapse = ", ") %>%
       paste0('{', ., "}")
@@ -233,7 +233,7 @@ db.upload_prices_new_to_posgres <- function(prices, production=F){
     dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
 
   lapply(list_cols_text, function(col){
-    dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::text]", col, col))})
+    dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
 
   # Remove old pricing that may not have been erased by the upsert
   dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")

@@ -1,10 +1,6 @@
 exportPattern("^[[:alnum:]]+")
 
-export(update_counter2)
-
 importFrom(countrycode,countrycode)
-
-
 importFrom(dplyr,all_vars)
 importFrom(dplyr,across)
 importFrom(dplyr,any_vars)

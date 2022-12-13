@@ -13,8 +13,8 @@ overland <- read_csv('https://api.russiafossiltracker.com/v0/overland?keep_zeros
 
 
 price_caps <- bind_rows(
-  prices.get_capped_prices(version='2021H1') %>% mutate(scenario='pricecap_2021H1'),
-  prices.get_capped_prices(version='andrei') %>% mutate(scenario='pricecap_andrei')
+  price.get_capped_prices(version='2021H1') %>% mutate(scenario='pricecap_2021H1'),
+  price.get_capped_prices(version='andrei') %>% mutate(scenario='pricecap_andrei')
 ) %>%
   filter(date >= min(shipments$arrival_date_utc),
          date <= max(shipments$arrival_date_utc))
