@@ -5,15 +5,13 @@ price.get_prices_new <- function(production = F){
   # and the capped one by ship_onwer / insurer / destination
 
   # Get default values
-  p <- price.get_predicted_prices(production = production)
-  pp <- price.get_predicted_portprices(production = production)
+  # p <- price.get_predicted_prices(production = production)
+  # pp <- price.get_predicted_portprices(production = production)
 
   # Get price cap values
-  pc <- price.get_capped_prices(production = production)
+  p_default <- price.get_capped_prices(production = production, version='default')
 
-  all_prices <- bind_rows(p,
-                          pp,
-                          pc)
+  all_prices <- bind_rows(p_default)
 
   return(all_prices)
 }
@@ -234,14 +232,11 @@ price.get_price_caps <- function(p, version){
   }
 
   if(version=='official'){
-    ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
-    barrel_per_tonne <- 7.49
+    # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+    barrel_per_tonne <- 1 / 0.138
 
     precaps <- list(
-      crude_oil= 1e6, #55 * barrel_per_tonne,
-      natural_gas= 1e6, #15 * ng_mwh_per_tonne,
-      lng= 1e6, #30 * ng_mwh_per_tonne,
-      coal= 1e6 #50
+      crude_oil= 60 * barrel_per_tonne
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
@@ -259,17 +254,18 @@ price.get_price_caps <- function(p, version){
   return(ungroup(caps))
 }
 
-price.get_capped_prices <- function(production=F, version='official'){
+price.get_capped_prices <- function(production=F, scenario='default', version='official'){
 
-  scenario <- 'pricecap'
   p <- price.get_predicted_prices(production=production)
   pp <- price.get_predicted_portprices(production = production)
   caps <- price.get_price_caps(p=p, version=version)
 
-  eu_27 <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
-  destination_iso2 <- eu_27
-  ship_owner_iso2s <- c(eu_27)
-  ship_insurer_iso2s <- c(eu_27)
+  eu <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
+  g7 <- c('CA','FR','DE','IT','JP','GB','US','UK')
+  eu_g7 <- c(eu, g7)
+  destination_iso2 <- eu_g7
+  ship_owner_iso2s <- c(eu_g7)
+  ship_insurer_iso2s <- c(eu_g7)
   date_start <- c('2022-12-06')
 
   # Create one version per destination_iso2, with no ship constraint
