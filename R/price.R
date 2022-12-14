@@ -11,6 +11,13 @@ price.get_prices_new <- function(production = F){
   # Get price cap values
   p_default <- price.get_capped_prices(production = production, version='default')
 
+  # Fill old values with NULL, because some endpoints expect a pricing_scenario
+  p_default <- p_default %>%
+    tidyr::complete(date=seq(as.Date('2015-01-01'), max(p_default$date), by='day'),
+                    scenario,
+                    commodity,
+                    fill=list(eur_per_tonne=NA))
+
   all_prices <- bind_rows(p_default)
 
   return(all_prices)
