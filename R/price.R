@@ -231,7 +231,7 @@ price.get_price_caps <- function(p, version){
       select(-c(usd_per_tonne, eur_per_usd))
   }
 
-  if(version=='official'){
+  if(version=='default'){
     # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
     barrel_per_tonne <- 1 / 0.138
 
@@ -254,7 +254,7 @@ price.get_price_caps <- function(p, version){
   return(ungroup(caps))
 }
 
-price.get_capped_prices <- function(production=F, scenario='default', version='official'){
+price.get_capped_prices <- function(production=F, scenario='default', version='default'){
 
   p <- price.get_predicted_prices(production=production)
   pp <- price.get_predicted_portprices(production = production)
