@@ -58,3 +58,29 @@ eurostat.get_flows <- function(use_cache=T){
   saveRDS(data, "inst/extdata/eurostat.RDS")
   return(data)
 }
+
+
+eurostat.get_gas_flows <- function(use_cache=T){
+
+  gas_consumption <- eurostat::get_eurostat("nrg_cb_gasm", update_cache=!use_cache)
+  gas_consumption %>%
+    filter(unit=='MIO_M3',
+           siec=="G3000") %>%
+    mutate(type=recode(nrg_bal,
+      IC_OBS='consumption',
+      IPRD='production',
+      IMP='imports',
+      EXP='minus_exports',
+      STK_CHG_MG='storage_drawdown',
+      .default=NA_character_,
+      )) %>%
+    filter(!is.na(type)) %>%
+    mutate(values=ifelse(type %in% c('minus_exports', 'storage_drawdown'), -values, values)) %>%
+    select(iso2=geo, date=time, value=values, type) %>%
+    mutate(value_m3=value*1e6,
+           unit='m3',
+           iso2=recode(iso2, 'UK'='GB'),
+           country=countrycode::countrycode(iso2, 'iso2c', 'country.name')) %>%
+    filter(!is.na(country)) %>%
+    select(-c(value))
+}

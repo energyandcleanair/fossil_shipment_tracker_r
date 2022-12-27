@@ -8,6 +8,8 @@ entsog_new.get_flows <- function(date_from='2021-11-01', date_to=NULL, use_cache
 
   flows <- read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?type=crossborder,production&format=csv&date_from=%s&date_to=%s", date_from, date_to))
 
+  flows <- flows %>% filter(destination_iso2!='RU')
+
   flows_formatted <- flows %>%
     select(from_country=commodity_origin_iso2,
            to_country=commodity_destination_iso2,

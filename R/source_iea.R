@@ -70,7 +70,7 @@ iea.get_gas_consumption <- function(){
   f_gcv <- system.file("extdata", "iea/iea_ng_gcv.csv",
                                package="russiacounter")
 
-  f_consumption <- "data/iea/iea_ng_supply.csv"
+  # f_consumption <- "data/iea/iea_ng_supply.csv"
   # f_gcv <- "data/iea/iea_ng_gcv.csv"
 
   consumption <- read_csv(f_consumption, skip=2) %>%
@@ -91,6 +91,7 @@ iea.get_gas_consumption <- function(){
     filter(!is.na(value)) %>%
     mutate(unit='m3') %>%
     mutate(iso2=countrycode::countrycode(iconv(country, "latin1", "ASCII", sub=""), "country.name", "iso2c",
-                                         custom_match=c(`Republic of Turkiye`='TR')))
+                                         custom_match=c(`Republic of Turkiye`='TR')),
+           country=countrycode::countrycode(iso2, 'iso2c', 'country.name')) # To homogenise
 
 }

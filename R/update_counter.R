@@ -40,6 +40,6 @@ update_counter <- function(){
 
 
   # V2: build and update prices to postgres
-  price.update_prices_new(production=T)
+  price.update_prices(production=T)
 
 }
