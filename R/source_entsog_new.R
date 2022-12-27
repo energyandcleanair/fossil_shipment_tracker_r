@@ -6,7 +6,15 @@ entsog_new.get_flows <- function(date_from='2021-11-01', date_to=NULL, use_cache
     date_to <-as.character(lubridate::today() + lubridate::days(1))
   }
 
-  flows <- read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?type=crossborder,production&format=csv&date_from=%s&date_to=%s", date_from, date_to))
+  years <- seq(lubridate::year(date_from), lubridate::year(date_to))
+
+  flows <- lapply(years, function(year){
+    date_from_ <- max(date_from, paste0(year, '-01-01'))
+    date_to_ <- min(date_to, paste0(year, '-12-31'))
+    read_csv(sprintf("https://api.russiafossiltracker.com/v0/entsogflow?type=crossborder,production&format=csv&date_from=%s&date_to=%s",
+                     date_from_, date_to_))
+  }) %>%
+    bind_rows()
 
   flows <- flows %>% filter(destination_iso2!='RU')
 
