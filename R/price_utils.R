@@ -211,11 +211,31 @@ get_prices_monthly <- function(){
 }
 
 price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
-  eur_per_usd <- priceR::historical_exchange_rates("USD", to = "EUR",
-                                                   start_date = date_from,
-                                                   end_date = min(date_to, lubridate::today()-1))
-  eur_per_usd <- tibble(eur_per_usd) %>% `names<-`(c("date","eur_per_usd"))
-  #TODO extend til date_to
+
+
+  get_from_priceR <- function(date_from, date_to){
+    priceR::historical_exchange_rates("USD", to = "EUR",
+                                      start_date = date_from,
+                                      end_date = min(date_to, lubridate::today()-1)) %>%
+      tibble() %>%
+      `names<-`(c("date","eur_per_usd"))
+  }
+
+  get_from_wsj <- function(date_from, date_to){
+    url <- sprintf("https://www.wsj.com/market-data/quotes/fx/USDEUR/historical-prices/download?MOD_VIEW=page&num_rows=90000&range_days=90000&startDate=%s&endDate=%s", strftime(as.Date(date_from), '%m/%d/%Y'), strftime(as.Date(date_to), '%m/%d/%Y'))
+    readr::read_csv(url) %>%
+      mutate(date=as.Date(Date, '%m/%d/%y')) %>%
+      select(date, eur_per_usd=Close)
+  }
+
+  eur_per_usd <- tryCatch({get_from_priceR(date_from, date_to)},
+                          error=function(error){
+                          return(get_from_wsj(date_from, date_to))})
+
+  # Fill values
+  eur_per_usd <- eur_per_usd %>%
+    tidyr::complete(date=seq.Date(min(.$date), max(.$date, as.Date(date_to)), by='day')) %>%
+    tidyr::fill(eur_per_usd)
 
   if(monthly){
     eur_per_usd %>%
