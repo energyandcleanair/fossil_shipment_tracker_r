@@ -413,44 +413,12 @@ price.get_capped_portprices <- function(production=F){
 }
 
 
-# price.add_tail <- function(p, add_tail_days){
-#   if(is.null(add_tail_days) | add_tail_days==0){
-#     return(p)
-#   }
-#
-#   p %>%
-#     group_by(commodity, country_iso2) %>%
-#     arrange(desc(date)) %>%
-#     top_n(7, w) %>%
-#     ungroup() %>%
-#     arrange(desc(country_iso2))
-# }
-
 price.check_prices <- function(p){
-  ok <- !any(is.na(p$eur_per_tonne))
+  ok <- !any(is.na(p$eur_per_tonne) & (p$date >= '2018-01-01'))
   ok <- ok & !any(is.na(p$scenario))
-  ok <- ok & all(p$eur_per_tonne >= 0)
-  ok <- ok & all(c("country_iso2","date","commodity","eur_per_tonne","scenario") %in% names(p))
-  ok <- ok & nrow(p) > 0
-  return(ok)
-}
-
-price.check_prices <- function(p){
-  ok <- !any(is.na(p$eur_per_tonne))
-  ok <- ok & !any(is.na(p$scenario))
-  ok <- ok & all(p$eur_per_tonne >= 0)
+  ok <- ok & (min(p$eur_per_tonne, na.rm=T) >= 0)
   ok <- ok & all(c("destination_iso2s", "departure_port_ids", "ship_owner_iso2s", "ship_insurer_iso2s", "date","commodity","eur_per_tonne","scenario") %in% names(p))
   ok <- ok & nrow(p) >0
-  return(ok)
-}
-
-
-price.check_portprices <- function(p){
-  ok <- !any(is.na(p$eur_per_tonne))
-  ok <- ok & !any(is.na(p$scenario))
-  ok <- ok & all(p$eur_per_tonne >= 0)
-  ok <- ok & all(c("port_id","date","commodity","eur_per_tonne","scenario") %in% names(p))
-  ok <- ok & nrow(p) > 0
   return(ok)
 }
 

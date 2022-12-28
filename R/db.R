@@ -153,7 +153,7 @@ db.update_counter_prices <- function(prices, test=F){
 }
 
 db.upload_prices_to_posgres <- function(prices, production=F){
-  print(sprintf("=== Uploading prices new (%s) ===", ifelse(production,"production","development")))
+  print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- prices
   p$updated_on <- lubridate::now()
