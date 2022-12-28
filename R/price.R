@@ -1,4 +1,4 @@
-price.get_prices_new <- function(production = F){
+price.get_prices <- function(production = F){
 
   # This function gets all prices in one dataframe,
   # those 'default' ones, the ones specific to port,
@@ -435,7 +435,7 @@ price.check_prices <- function(p){
   return(ok)
 }
 
-price.check_prices_new <- function(p){
+price.check_prices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne))
   ok <- ok & !any(is.na(p$scenario))
   ok <- ok & all(p$eur_per_tonne >= 0)
@@ -455,12 +455,12 @@ price.check_portprices <- function(p){
 }
 
 
-price.update_prices_new <- function(production=F){
+price.update_prices <- function(production=F){
 
-  p <- price.get_prices_new(production=production)
-  ok <- price.check_prices_new(p)
+  p <- price.get_prices(production=production)
+  ok <- price.check_prices(p)
   if(ok){
-    db.upload_prices_new_to_posgres(p, production=production)
+    db.upload_prices_to_posgres(p, production=production)
   }else{
     print("ERROR: prices not updated")
   }
