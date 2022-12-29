@@ -1,4 +1,8 @@
 /inst/*/rsconnect/
+results/
+requests/
+reports/
+map/
 
 # History files
 .Rhistory

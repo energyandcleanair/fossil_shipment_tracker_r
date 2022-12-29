@@ -96,6 +96,8 @@ price.get_predicted_prices <- function(production=F){
     arrange(desc(date)) %>%
     filter(!is.na(date))
 
+  #Note: models where trained with datetime, so need to keep it as datetime
+
   if(production){
     suffix=''
   }else{
@@ -120,7 +122,7 @@ price.get_predicted_prices <- function(production=F){
     arrange(desc(date))
 
   prices_eu <- prices_eu %>%
-    tidyr::crossing(tibble(country_iso=codelist$iso2c[which(codelist$eu28=="EU")] ))
+    tidyr::crossing(tibble(iso2=codelist$iso2c[which(codelist$eu28=="EU")] ))
 
   prices_noneu  <- models_noneu %>%
     mutate(new_data=list(prices_daily)) %>%
