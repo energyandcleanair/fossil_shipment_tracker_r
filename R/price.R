@@ -124,7 +124,7 @@ price.get_predicted_prices <- function(production=F){
 
   prices_noneu  <- models_noneu %>%
     mutate(new_data=list(prices_daily)) %>%
-    group_by(commodity, country, country_iso) %>%
+    group_by(commodity, country, iso2) %>%
     group_map(function(df, group) {
       model <- df$model[[1]]
       new_data <- df$new_data[[1]] %>% arrange(date)
@@ -137,7 +137,7 @@ price.get_predicted_prices <- function(production=F){
 
   p <- bind_rows(prices_eu,
                  prices_noneu) %>%
-    dplyr::select(country_iso2=country_iso,
+    dplyr::select(country_iso2=iso2,
                   date,
                   commodity,
                   eur_per_tonne=price_eur_per_tonne) %>%
