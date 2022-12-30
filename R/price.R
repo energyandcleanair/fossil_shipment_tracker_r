@@ -5,11 +5,9 @@ price.get_prices <- function(production = F){
   # and the capped one by ship_onwer / insurer / destination
 
   # Get default values
-  # p <- price.get_predicted_prices(production = production)
-  # pp <- price.get_predicted_portprices(production = production)
-
-  # Get price cap values
-  p_default <- price.get_capped_prices(production = production, version='default')
+  p_default <- price.get_capped_prices(production = production, scenario='default', version='default')
+  p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1')
+  p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30')
 
   # Fill old values with NULL, because some endpoints expect a pricing_scenario
   p_default <- p_default %>%
@@ -18,7 +16,9 @@ price.get_prices <- function(production = F){
                     commodity,
                     fill=list(eur_per_tonne=NA))
 
-  all_prices <- bind_rows(p_default)
+  all_prices <- bind_rows(p_default,
+                          p_2021H1,
+                          p_usd30)
 
   return(all_prices)
 }
@@ -260,6 +260,26 @@ price.get_price_caps <- function(p, version){
       select(-c(usd_per_tonne, eur_per_usd))
   }
 
+  if(version=='usd30'){
+    # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+    barrel_per_tonne <- 1 / 0.138
+
+    precaps <- list(
+      crude_oil= 30 * barrel_per_tonne
+    )
+
+    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
+                                     date_to=min(max(p$date), lubridate::today()))
+
+    caps <- tibble(commodity=names(precaps),
+                   usd_per_tonne=unlist(precaps)) %>%
+      tidyr::crossing(eur_per_usd) %>%
+      arrange(date) %>%
+      tidyr::fill(eur_per_usd) %>%
+      mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
+      select(-c(usd_per_tonne, eur_per_usd))
+  }
+
   return(ungroup(caps))
 }
 
@@ -426,7 +446,6 @@ price.check_prices <- function(p){
 
 
 price.update_prices <- function(production=F){
-
   p <- price.get_prices(production=production)
   ok <- price.check_prices(p)
   if(ok){
