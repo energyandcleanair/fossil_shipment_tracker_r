@@ -43,6 +43,8 @@ importFrom(dplyr,vars)
 importFrom(dplyr, group_modify)
 importFrom(dplyr,"%>%")
 
+importFrom(forecast, forecast)
+
 importFrom(lubridate,"hour<-")
 importFrom(lubridate,"day<-")
 importFrom(lubridate,day)

@@ -59,6 +59,73 @@ eurostat.get_flows <- function(use_cache=T){
   return(data)
 }
 
+eurostat.get_overland_flows <- function(date_from='2015-01-01', split_in_days=T){
+
+  flows_raw <- read_csv(sprintf('https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-058213/M.EU+AT+BE+BG+CY+CZ+DE+DK+EE+ES+FI+FR+GR+HR+HU+IE+IT+LT+LU+LV+MT+NL+PL+PT+RO+SE+SI+SK.RU.2701+2704+2705+2706+2709+2710+2711+271111+271121.1+2.1+2+3+4+5+7+8+9+0.QUANTITY_IN_TONS/?format=SDMX-CSV&startPeriod=%s&endPeriod=%s&lang=en&label=both',
+                                strftime(as.Date(date_from),'%Y-%m'),
+                                strftime(lubridate::today(),'%Y-%m')
+                                ))
+
+  to_code <- function(x){sub("\\:.*", "", x)}
+  to_label <- function(x){sub(".*\\:", "", x)}
+  flows <-  flows_raw %>%
+    select(date=TIME_PERIOD,
+           reporter,
+           partner,
+           commodity_code=product,
+           flow,
+           transport=transport_mode,
+           unit=indicators,
+           value_tonne=OBS_VALUE) %>%
+    mutate_at(c('reporter', 'partner', 'commodity_code'), to_code) %>%
+    mutate_at(c('flow', 'transport'), to_label) %>%
+    mutate(partner=ifelse(partner=="RU", "Russia", "World")) %>%
+    filter(flow=='IMPORT',
+           grepl('TONS', unit)) %>%
+    mutate(commodity=recode(commodity_code, !!!hs_commodities))
+
+  # Recode transport
+  flows$transport[grep('Fixed', flows$transport)] <- "pipeline"
+  flows$transport[grep('Sea|water', flows$transport)] <- "seaborne"
+  flows$transport[grep('Rail|Road', flows$transport)] <- "rail_road"
+  flows$date <- as.Date(paste0(flows$date,"-01"))
+  # We ignore others (#TODO investigate a bit further Inland Waterway)
+  flows$transport[!grepl('pipeline|seaborne|rail_road', flows$transport)] <- "other"
+
+  flows <- flows %>%
+    filter(grepl('^natural_gas|gas_all|^coal|oil|oil_products|lng|^coke', commodity),
+           !is.na(value_tonne)) %>%
+    ungroup()
+
+
+  flows <- flows %>%
+    filter(partner=="Russia") %>%
+    filter(transport %in% c('pipeline', 'rail_road')) %>%
+    mutate(departure_iso2="RU") %>%
+    mutate(commodity=paste(commodity, transport, sep="_")) %>%
+    mutate(commodity = recode(commodity,
+                              oil_pipeline="pipeline_oil",
+                              oil_rail_road="crude_oil_rail_road")) %>%
+    group_by(departure_iso2, destination_iso2=reporter, commodity, date) %>%
+    summarise_at(c('value_tonne'), sum, na.rm=T) %>%
+    ungroup()
+
+
+  if(split_in_days){
+    # Split in days
+    flows <- flows %>%
+      left_join(
+        tibble(date=seq(min(flows$date), max(flows$date) + lubridate::days_in_month(max(flows$date)) - 1, by="day")) %>%
+          mutate(weight=1/lubridate::days_in_month(date),
+                 month=lubridate::floor_date(date, "month"))) %>%
+      mutate(value_tonne=value_tonne*weight
+      ) %>%
+      arrange(desc(date)) %>%
+      select(-c(weight, month))
+  }
+
+  return(flows)
+}
 
 eurostat.get_gas_flows <- function(use_cache=T){
 

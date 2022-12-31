@@ -6,13 +6,43 @@
 #' @examples
 overland_eu.get_flows <- function(){
 
+  flows <- eurostat.get_overland_flows(split_in_days=F) %>%
+    filter(destination_iso2 != 'EU') %>%
+    filter(!grepl("gas|lng", commodity))
+
+  flows <- utils.add_forecast(flows)
+
+  flows <- flows %>%
+    utils.split_month_in_days(value_cols=c('value_tonne')) %>%
+    mutate(value_m3=NA_real_,
+           value_mwh=NA_real_)
+
+  # Russia’s Transneft says oil flows halted to the Czech Republic, Slovakia and Hungary over payment issue.
+  # From august 4
+  flows[flows$departure_iso2 == 'RU' &
+          flows$destination_iso2 %in% c('SK', 'HR', 'CZ') &
+          flows$date >= '2022-08-04' &
+          flows$commodity %in% c('pipeline_oil', 'oil_products_pipeline'), grepl('value_',names(flows))] = 0
+
+
+  # Coal ban after August 10. Assuming 0 for overland coal
+  flows[flows$departure_iso2 == 'RU' &
+          flows$date >= '2022-08-10' &
+          grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
+
+  return(flows)
+}
+
+overland_eu.get_flows_old <- function(){
+
   trade_share <- utils.get_transport_share()
   #TODO missing coke
 
   flows_comtrade_eurostat = db.download_flows("comtrade_eurostat")
-  # flows_comtrade_eurostat = comtrade_eurostat.get_flows(T)
+  # flows_comtrade_eurostat = comtrade_eurostat.get_flows(F)
   flows_eurostat_exeu = db.download_flows("eurostat_exeu")
-  # flows_comtrade_eurostat = eurostat_exeu.get_flows(T)
+  # flows_eurostat_exeu = eurostat_exeu.get_flows(F)
+
   flows_comtrade_eurostat_2022 = utils.expand_in_2022(flows_comtrade_eurostat, flows_eurostat_exeu)
   unique(flows_comtrade_eurostat_2022$commodity)
 
@@ -63,8 +93,9 @@ overland_eu.get_flows <- function(){
 
   # Coal ban after August 10. Assuming 0 for overland coal
   flows[flows$departure_iso2 == 'RU' &
-        flows$date >= '2022-08-10' &
-        grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
+          flows$date >= '2022-08-10' &
+          grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
 
   return(flows)
 }
+

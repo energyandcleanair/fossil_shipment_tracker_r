@@ -8,6 +8,7 @@ update_counter <- function(){
   library(rcrea)
   library(pbapply)
   library(eurostat)
+  library(forecast)
 
 
   # Price should come first, as many endpoints rely on this to be complete
