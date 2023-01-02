@@ -19,10 +19,10 @@ overland_eu.get_flows <- function(){
 
   # Russia’s Transneft says oil flows halted to the Czech Republic, Slovakia and Hungary over payment issue.
   # From august 4
-  flows[flows$departure_iso2 == 'RU' &
-          flows$destination_iso2 %in% c('SK', 'HR', 'CZ') &
-          flows$date >= '2022-08-04' &
-          flows$commodity %in% c('pipeline_oil', 'oil_products_pipeline'), grepl('value_',names(flows))] = 0
+  # flows[flows$departure_iso2 == 'RU' &
+  #         flows$destination_iso2 %in% c('SK', 'HR', 'CZ') &
+  #         flows$date >= '2022-08-04' &
+  #         flows$commodity %in% c('pipeline_oil', 'oil_products_pipeline'), grepl('value_',names(flows))] = 0
 
 
   # Coal ban after August 10. Assuming 0 for overland coal
