@@ -13,8 +13,7 @@ china.get_flows_natural_gas <- function(){
   #http://www.xinhuanet.com/english/2021-08/10/c_1310119621.htm
   #https://news.cgtn.com/news/2022-01-18/China-Russia-pipeline-delivers-15b-cubic-meters-of-natural-gas--16V6fC0jWQo/index.html
 
-    tibble(partner='China',
-           commodity='natural_gas',
+    tibble(commodity='natural_gas',
            value_m3=c(10e9/365),
            value_tonne=c(10e9/1000/365*0.7168),
     ) %>%
