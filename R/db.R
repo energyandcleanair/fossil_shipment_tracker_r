@@ -152,6 +152,13 @@ db.update_counter_prices <- function(prices, test=F){
   # db.upload_prices_to_posgres(prices=p_postgres)
 }
 
+db.upload_scenario_names <- function(scenario_names, production=T){
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+  dbx::dbxUpsert(db, "price_scenario", as.data.frame(scenario_names),
+                 where_cols=c("id"))
+  dbx::dbxDisconnect(db)
+}
+
 db.upload_prices_to_posgres <- function(prices, production=F){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 

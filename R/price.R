@@ -27,6 +27,11 @@ price.get_prices <- function(production = F){
   return(all_prices)
 }
 
+price.get_scenario_names <- function(){
+  tibble(id=c('default', '2021H1', 'usd20', 'usd30', 'usd40'),
+         name=c('Default', '2021H1 prices', 'USD20/bbl', 'USD30/bbl', 'USD40/bbl'))
+}
+
 price.get_predicted_portprices <- function(production=F){
 
   # Ports
@@ -456,6 +461,9 @@ price.update_prices <- function(production=F){
   }else{
     print("ERROR: prices not updated")
   }
+
+  scenario_names <- price.get_scenario_names()
+  db.upload_scenario_names(scenario_names, production=production)
 }
 
 
