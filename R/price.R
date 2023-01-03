@@ -7,7 +7,9 @@ price.get_prices <- function(production = F){
   # Get default values
   p_default <- price.get_capped_prices(production = production, scenario='default', version='default')
   p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1')
+  p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20')
   p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30')
+  p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40')
 
   # Fill old values with NULL, because some endpoints expect a pricing_scenario
   p_default <- p_default %>%
@@ -18,7 +20,9 @@ price.get_prices <- function(production = F){
 
   all_prices <- bind_rows(p_default,
                           p_2021H1,
-                          p_usd30)
+                          p_usd20,
+                          p_usd30,
+                          p_usd40)
 
   return(all_prices)
 }
@@ -260,12 +264,11 @@ price.get_price_caps <- function(p, version){
       select(-c(usd_per_tonne, eur_per_usd))
   }
 
-  if(version=='usd30'){
-    # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
+  if(grepl('usd[0-9]+$', version)){
     barrel_per_tonne <- 1 / 0.138
-
+    cap_usd <- as.numeric(sub('usd','',version))
     precaps <- list(
-      crude_oil= 30 * barrel_per_tonne
+      crude_oil= cap_usd * barrel_per_tonne
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
