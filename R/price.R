@@ -29,7 +29,7 @@ price.get_prices <- function(production = F){
 
 price.get_scenario_names <- function(){
   tibble(id=c('default', '2021H1', 'usd20', 'usd30', 'usd40'),
-         name=c('Default', '2021H1 prices', 'USD20/bbl', 'USD30/bbl', 'USD40/bbl'))
+         name=c('USD60/bbl (actual)', '2021H1 prices', 'USD20/bbl', 'USD30/bbl', 'USD40/bbl'))
 }
 
 price.get_predicted_portprices <- function(production=F){
@@ -183,7 +183,6 @@ price.get_predicted_prices <- function(production=F){
                 ungroup()) %>%
     ungroup() %>%
     select(-c(country_iso2))
-
 
   return(p_formatted)
 }
