@@ -300,8 +300,8 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
   g7 <- c('CA','FR','DE','IT','JP','GB','US','UK')
   eu_g7 <- c(eu, g7)
   destination_iso2 <- eu_g7
-  ship_owner_iso2s <- c(eu_g7)
-  ship_insurer_iso2s <- c(eu_g7)
+  ship_owner_iso2s <- eu_g7
+  ship_insurer_iso2s <- eu_g7
   date_start <- c('2022-12-06')
 
   # Create one version per destination_iso2, with no ship constraint
@@ -336,6 +336,14 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
       T ~ eur_per_tonne),
       ship_insurer_iso2s=list(ship_insurer_iso2s))
 
+  # Port prices for destinations
+  ppc_destination <- caps %>%
+    right_join(pp) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      destination_iso2s=list(destination_iso2))
+
   # Port prices for ship_owner
   ppc_ship_owner <- caps %>%
     right_join(pp) %>%
@@ -355,6 +363,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   pc <- bind_rows(ppc_ship_owner,
                   ppc_ship_insurer,
+                  ppc_destination,
                   pc_destination,
                   pc_ship_owner,
                   pc_ship_insurer,
