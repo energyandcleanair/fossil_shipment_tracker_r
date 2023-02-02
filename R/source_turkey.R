@@ -22,7 +22,7 @@ turkey.get_flows <- function(){
     mutate(
       date=time,
       value_m3 = GPIPELINE * 1e6,
-      value_tonne = GPIPELINE * kg_per_m3/1000)
+      value_tonne = GPIPELINE * 1e6 * kg_per_m3/1000)
 
   flows <- flows %>%
     select(date, value_m3, value_tonne) %>%
