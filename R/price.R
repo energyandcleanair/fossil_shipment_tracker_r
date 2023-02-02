@@ -9,6 +9,7 @@ price.get_prices <- function(production = F){
   p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1')
   p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20')
   p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30')
+  p_usd35 <- price.get_capped_prices(production = production, scenario='usd35', version='usd35')
   p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40')
 
   # Fill old values with NULL, because some endpoints expect a pricing_scenario
@@ -296,6 +297,8 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
   pp <- price.get_predicted_portprices(production = production)
   caps <- price.get_price_caps(p=p, version=version)
 
+  commodities <- read_csv('https://api.russiafossiltracker.com/v0/commodity?format=csv')
+  seaborne_commodities <- commodities %>% filter(transport == 'seaborne') %>% pull(id)
   eu <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
   g7 <- c('CA','FR','DE','IT','JP','GB','US','UK')
   eu_g7 <- c(eu, g7)
@@ -322,6 +325,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Create a ship constraint (owner): regardless of destination and insurer
   pc_ship_owner <- pc_destination %>%
+    filter(commodity %in% seaborne_commodities) %>%
     left_join(caps) %>%
     mutate(eur_per_tonne=case_when(
            (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
@@ -330,6 +334,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Create a ship constraint (insurer): regardless of destination and owner
   pc_ship_insurer <- pc_destination %>%
+    filter(commodity %in% seaborne_commodities) %>%
     left_join(caps) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
@@ -338,6 +343,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Port prices for destinations
   ppc_destination <- caps %>%
+    filter(commodity %in% seaborne_commodities) %>%
     right_join(pp) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
@@ -346,6 +352,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Port prices for ship_owner
   ppc_ship_owner <- caps %>%
+    filter(commodity %in% seaborne_commodities) %>%
     right_join(pp) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
@@ -354,6 +361,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Port prices for ship_insurer
   ppc_ship_insurer <- caps %>%
+    filter(commodity %in% seaborne_commodities) %>%
     right_join(pp) %>%
     mutate(eur_per_tonne=case_when(
       (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
