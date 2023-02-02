@@ -15,12 +15,14 @@ turkey.get_flows <- function(){
     filter(geo=="TR") %>%
     filter(partner=="RU") %>%
     filter(unit=="MIO_M3") %>%
-    filter(lubridate::year(time) %in% seq(2018,2022)) %>%
+    filter(lubridate::year(time) %in% seq(2018,2023)) %>%
     filter(values != 0) %>%
+    tidyr::spread(siec, values) %>%
+    mutate(GPIPELINE=G3000-coalesce(G3200, 0)) %>%
     mutate(
       date=time,
-      value_m3 = values * 1e6,
-      value_tonne = value_m3 * kg_per_m3/1000)
+      value_m3 = GPIPELINE * 1e6,
+      value_tonne = GPIPELINE * kg_per_m3/1000)
 
   flows <- flows %>%
     select(date, value_m3, value_tonne) %>%
