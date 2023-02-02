@@ -17,7 +17,7 @@ china.get_flows_natural_gas <- function(){
            value_m3=c(10e9/365),
            value_tonne=c(10e9/1000/365*0.7168),
     ) %>%
-      tidyr::crossing(tibble(date=seq.Date(as.Date("2022-01-01"), lubridate::today(), by="day"))) %>%
+      tidyr::crossing(tibble(date=seq.Date(as.Date("2021-01-01"), lubridate::today(), by="day"))) %>%
       mutate(departure_iso2='RU',
              destination_iso2='CN')
 }
