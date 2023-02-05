@@ -255,7 +255,7 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
     #   dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
 
     # Remove old pricing that may not have been erased by the upsert
-    dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")
+    # dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")
 
     dbx::dbxDisconnect(db)
   }
