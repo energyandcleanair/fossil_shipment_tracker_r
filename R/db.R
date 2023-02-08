@@ -217,7 +217,7 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
   p <- prices
   p$updated_on <- lubridate::now()
 
-  if(rebuild){
+
     list_cols <- c('destination_iso2s',
                    'departure_port_ids',
                    'ship_owner_iso2s',
@@ -241,6 +241,14 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
     }
 
     db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+
+    if(!rebuild){
+      buffer_days <- 14
+      max_date <- dbx::dbxSelect(db, "SELECT max(date) from price_new;")
+      p <- p %>%
+        filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
+    }
+
     dbx::dbxUpsert(db, "price_new", as.data.frame(p),
                    batch_size = 10000,
                    where_cols=c("commodity", "date", "scenario",
@@ -258,7 +266,6 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
     # dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")
 
     dbx::dbxDisconnect(db)
-  }
 }
 
 db.upload_flows <- function(flows,
