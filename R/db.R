@@ -200,10 +200,10 @@ db.upload_scenario_names <- function(scenario_names, production=T){
 #   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 #
 #   RPostgres::dbBegin(db)
-#   RPostgres::dbExecute(db,  "TRUNCATE TABLE price_new_tmp")
+#   RPostgres::dbExecute(db,  "TRUNCATE TABLE price_tmp")
 #   pbapply::pblapply(split(p, (seq(nrow(p))-1) %/% chunk_size),
 #                     function(p_chunk){
-#                       RPostgres::dbWriteTable(db, "price_new_tmp", as.data.frame(p_chunk), append=T)
+#                       RPostgres::dbWriteTable(db, "price_tmp", as.data.frame(p_chunk), append=T)
 #                     })
 #   RPostgres::dbCommit()
 #
@@ -244,12 +244,12 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
 
     if(!rebuild){
       buffer_days <- 14
-      max_date <- dbx::dbxSelect(db, "SELECT max(date) from price_new;")
+      max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
       p <- p %>%
         filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
     }
 
-    dbx::dbxUpsert(db, "price_new", as.data.frame(p),
+    dbx::dbxUpsert(db, "price", as.data.frame(p),
                    batch_size = 10000,
                    where_cols=c("commodity", "date", "scenario",
                                 "destination_iso2s", "departure_port_ids",
@@ -257,13 +257,13 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
 
 
     # lapply(list_cols_bigint, function(col){
-    #   dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
+    #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
     #
     # lapply(list_cols_text, function(col){
-    #   dbx::dbxExecute(db, sprintf("UPDATE price_new SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
+    #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
 
     # Remove old pricing that may not have been erased by the upsert
-    # dbx::dbxExecute(db, "DELETE FROM price_new p USING (SELECT max(updated_on) as updated_on FROM price_new) p2 WHERE p.updated_on < p2.updated_on")
+    # dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
 
     dbx::dbxDisconnect(db)
 }
