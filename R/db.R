@@ -211,7 +211,7 @@ db.upload_scenario_names <- function(scenario_names, production=T){
 
 
 
-db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
+db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F,buffer_days=14){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- prices
@@ -243,7 +243,6 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
     db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
     if(!rebuild){
-      buffer_days <- 14
       max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
       p <- p %>%
         filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
@@ -263,7 +262,9 @@ db.upload_prices_to_posgres <- function(prices, rebuild=T, production=F){
     #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
 
     # Remove old pricing that may not have been erased by the upsert
-    # dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
+    if(rebuild){
+      dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
+    }
 
     dbx::dbxDisconnect(db)
 }
