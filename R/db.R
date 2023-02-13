@@ -159,72 +159,22 @@ db.upload_scenario_names <- function(scenario_names, production=T){
   dbx::dbxDisconnect(db)
 }
 
-#
-# db.upload_prices_to_posgres_v2 <- function(prices, production=F){
-#   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
-#
-#   p <- prices
-#   p <- p_bkp
-#   p$updated_on <- lubridate::now()
-#
-#   list_cols_bigint <- c('departure_port_ids')
-#   list_cols <- c('destination_iso2s',
-#                  'departure_port_ids',
-#                  'ship_owner_iso2s',
-#                  'ship_insurer_iso2s')
-#
-#   list_cols_text <- setdiff(list_cols, list_cols_bigint)
-#
-#   prepare_for_db <- function(p){
-#
-#     format_array <- function(list) {
-#       # if(length(list)==0 | all(is.na(list))){return('{NULL}')}
-#       if(length(list)==0 | all(is.na(list))){return(NA)}
-#       unlist(list) %>%
-#         paste0(., collapse = ", ") %>%
-#         paste0('{', ., "}")
-#     }
-#
-#
-#     # Replacing list(NULL) with something dbx can upload
-#     # We'll replace it by NULL below
-#     for(col in list_cols){
-#       print(col)
-#       p[[col]] = unlist(lapply(p[[col]], format_array))
-#     }
-#     return(p)
-#   }
-#   chunk_size=10000
-#   p <- prepare_for_db(p)
-#
-#   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
-#
-#   RPostgres::dbBegin(db)
-#   RPostgres::dbExecute(db,  "TRUNCATE TABLE price_tmp")
-#   pbapply::pblapply(split(p, (seq(nrow(p))-1) %/% chunk_size),
-#                     function(p_chunk){
-#                       RPostgres::dbWriteTable(db, "price_tmp", as.data.frame(p_chunk), append=T)
-#                     })
-#   RPostgres::dbCommit()
-#
-# }
 
-
-
-db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F,buffer_days=14){
+db.rebuild_price_table <- function(p, production=F){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
-  p <- prices
+  p <- p_bkp
   p$updated_on <- lubridate::now()
 
+  list_cols_bigint <- c('departure_port_ids')
+  list_cols <- c('destination_iso2s',
+                 'departure_port_ids',
+                 'ship_owner_iso2s',
+                 'ship_insurer_iso2s')
 
-    list_cols <- c('destination_iso2s',
-                   'departure_port_ids',
-                   'ship_owner_iso2s',
-                   'ship_insurer_iso2s')
+  list_cols_text <- setdiff(list_cols, list_cols_bigint)
 
-    list_cols_bigint <- c('departure_port_ids')
-    list_cols_text <- setdiff(list_cols, list_cols_bigint)
+  prepare_for_db <- function(p){
 
     format_array <- function(list) {
       if(length(list)==0 | all(is.na(list))){return('{NULL}')}
@@ -234,39 +184,89 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F,buffer_d
         paste0('{', ., "}")
     }
 
+
     # Replacing list(NULL) with something dbx can upload
     # We'll replace it by NULL below
     for(col in list_cols){
+      print(col)
       p[[col]] = unlist(lapply(p[[col]], format_array))
     }
+    return(p)
+  }
 
-    db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+  chunk_size=10000
+  p <- prepare_for_db(p)
 
-    if(!rebuild){
-      max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
-      p <- p %>%
-        filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
-    }
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
-    dbx::dbxUpsert(db, "price", as.data.frame(p),
-                   batch_size = 10000,
-                   where_cols=c("commodity", "date", "scenario",
-                                "destination_iso2s", "departure_port_ids",
-                                "ship_insurer_iso2s", "ship_owner_iso2s"))
+  RPostgres::dbBegin(db)
+  RPostgres::dbExecute(db,  "TRUNCATE TABLE price")
+  pbapply::pblapply(split(p, (seq(nrow(p))-1) %/% chunk_size),
+                    function(p_chunk){
+                      RPostgres::dbWriteTable(db, "price", as.data.frame(p_chunk), append=T)
+                    })
+  RPostgres::dbCommit(db)
+
+}
 
 
-    # lapply(list_cols_bigint, function(col){
-    #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
-    #
-    # lapply(list_cols_text, function(col){
-    #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
 
-    # Remove old pricing that may not have been erased by the upsert
-    if(rebuild){
-      dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
-    }
+db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=14){
+  print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
-    dbx::dbxDisconnect(db)
+  p <- prices
+  p$updated_on <- lubridate::now()
+
+
+  list_cols <- c('destination_iso2s',
+                 'departure_port_ids',
+                 'ship_owner_iso2s',
+                 'ship_insurer_iso2s')
+
+  list_cols_bigint <- c('departure_port_ids')
+  list_cols_text <- setdiff(list_cols, list_cols_bigint)
+
+  format_array <- function(list) {
+    if(length(list)==0 | all(is.na(list))){return('{NULL}')}
+    # if(length(list)==0 | all(is.na(list))){return(NA)}
+    unlist(list) %>%
+      paste0(., collapse = ", ") %>%
+      paste0('{', ., "}")
+  }
+
+  # Replacing list(NULL) with something dbx can upload
+  # We'll replace it by NULL below
+  for(col in list_cols){
+    p[[col]] = unlist(lapply(p[[col]], format_array))
+  }
+
+  db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
+
+  if(!rebuild){
+    max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
+    p <- p %>%
+      filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
+  }
+
+  dbx::dbxUpsert(db, "price", as.data.frame(p),
+                 batch_size = 10000,
+                 where_cols=c("commodity", "date", "scenario",
+                              "destination_iso2s", "departure_port_ids",
+                              "ship_insurer_iso2s", "ship_owner_iso2s"))
+
+
+  # lapply(list_cols_bigint, function(col){
+  #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::bigint]", col, col))})
+  #
+  # lapply(list_cols_text, function(col){
+  #   dbx::dbxExecute(db, sprintf("UPDATE price SET %s = NULL WHERE %s = array[NULL::varchar]", col, col))})
+
+  # Remove old pricing that may not have been erased by the upsert
+  if(rebuild){
+    dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
+  }
+
+  dbx::dbxDisconnect(db)
 }
 
 db.upload_flows <- function(flows,
