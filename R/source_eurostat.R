@@ -110,6 +110,10 @@ eurostat.get_overland_flows <- function(date_from='2015-01-01', split_in_days=T)
     summarise_at(c('value_tonne'), sum, na.rm=T) %>%
     ungroup()
 
+  # Fill with zeros until last date
+  flows <- flows %>%
+    tidyr::complete(departure_iso2, destination_iso2, commodity, date,
+                    fill = list(value_tonne=0))
 
   if(split_in_days){
     # Split in days
