@@ -58,7 +58,7 @@ china.get_flows_pipeline_oil <- function(){
   # Capping: "The estimated ESPO oil pipeline capacity for deliveries to mainland China for Russian oil is approximately 35 MMt/y"
   # max_value_tonne = 35e6/365
 
-  shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-01-01&commodity=crude_oil&aggregate_by=arrival_month,commodity&commodity_destination_iso2=CN&commodity_origin_iso2=RU&format=csv') %>%
+  shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-01-01&commodity=crude_oil&aggregate_by=arrival_month,commodity&commodity_destination_iso2=CN&commodity_origin_iso2=RU&format=csv&bypass_maintenance=true') %>%
     select(month=arrival_month, value_shipment_tonne_month=value_tonne)
 
   total <- read_csv(system.file("extdata","china/china_imports_wind.csv", package="russiacounter")) %>%
