@@ -30,6 +30,13 @@ overland_eu.get_flows <- function(){
           flows$date >= '2022-08-10' &
           grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
 
+
+  # Germany stopping pipeline oil at the end of the year
+  flows[flows$destination_iso2 == 'DE' &
+          flows$date >= '2023-01-01' &
+          grepl('oil', flows$commodity), grepl('value_',names(flows))] = 0
+
+
   return(flows)
 }
 

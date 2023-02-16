@@ -439,7 +439,7 @@ utils.add_forecast <- function(flows){
         mutate(date=as.Date(paste('01', index), '%d %b %Y')) %>%
         select(date, value_tonne=value) %>%
         # Cap at latest observed value! Very conservative
-        mutate(value_tonne = pmin(value_tonne, tail(df$value_tonne,1)))
+        mutate(value_tonne = pmax(pmin(value_tonne, tail(df$value_tonne,1)),0))
     }, error=function(error){
       # If failed, we just assume constant value
       return(tibble(
