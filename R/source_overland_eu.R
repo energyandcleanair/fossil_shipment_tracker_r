@@ -25,17 +25,23 @@ overland_eu.get_flows <- function(){
   #         flows$commodity %in% c('pipeline_oil', 'oil_products_pipeline'), grepl('value_',names(flows))] = 0
 
 
+  #HEURISTIC
   # Coal ban after August 10. Assuming 0 for overland coal
   flows[flows$departure_iso2 == 'RU' &
           flows$date >= '2022-08-10' &
           grepl('coal|coke', flows$commodity), grepl('value_',names(flows))] = 0
 
 
+  #HEURISTIC
   # Germany stopping pipeline oil at the end of the year
   flows[flows$destination_iso2 == 'DE' &
           flows$date >= '2023-01-01' &
           grepl('oil', flows$commodity), grepl('value_',names(flows))] = 0
 
+  #HEURISTIC
+  # Stop oil products to EU after 2023-02-05
+  flows[flows$date >= '2023-02-05' &
+          grepl('oil_products', flows$commodity), grepl('value_',names(flows))] = 0
 
   return(flows)
 }
