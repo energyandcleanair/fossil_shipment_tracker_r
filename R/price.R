@@ -168,7 +168,7 @@ price.get_predicted_prices <- function(production=F){
     full_join(filler, by=c("commodity","country_iso2","date")) %>%
     group_by(country_iso2, commodity) %>%
     arrange(date) %>%
-    fill(eur_per_tonne) %>%
+    tidyr::fill(eur_per_tonne) %>%
     filter(!is.na(eur_per_tonne)) %>%
     filter(!is.na(date)) %>%
     mutate(scenario='default')
