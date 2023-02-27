@@ -47,7 +47,7 @@ overland_eu.get_flows <- function(){
   # Russia halts oil supplies to Poland via Druzhba pipeline
   # https://english.alarabiya.net/business/energy/2023/02/25/Russia-halts-oil-supplies-to-Poland-via-he-Druzhba-pipeline
   flows[flows$date >= '2023-02-25' &
-          flows$destination_iso2 %in% c('PL', 'HU', 'CZ', 'SK', 'DE') &
+          flows$destination_iso2 %in% c('PL', 'DE') &
           grepl('pipeline_oil', flows$commodity), grepl('value_',names(flows))] = 0
 
 
