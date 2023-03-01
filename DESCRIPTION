@@ -21,7 +21,6 @@ Imports:
     metathis,
     magrittr,
     gsubfn,
-    mongolite,
     comtradr,
     entsog,
     eurostat,
