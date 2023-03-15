@@ -468,3 +468,7 @@ utils.split_month_in_days <- function(df, value_cols){
     arrange(desc(date)) %>%
     select(-c(weight, month))
 }
+
+utils.get_eu_iso2s <- function(){
+  codelist$iso2c[!is.na(codelist$eu28) & codelist$eu28!="NA"]
+}

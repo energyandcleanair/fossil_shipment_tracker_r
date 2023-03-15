@@ -220,7 +220,7 @@ price_models.get_trade <- function(refresh_comtrade=T){
   imp_cleaned <- clean_comtrade(imp, is_import=T) %>% rename(country=reporter, iso2=reporter_iso2)
   exp_cleaned <- clean_comtrade(exp, is_import=F) %>% rename(country=partner, iso2=partner_iso2)
 
-  eu_iso2s <- codelist$iso2c[!is.na(codelist$eu28)]
+  eu_iso2s <- utils.get_eu_iso2s()
 
   # Combine: take source with max flow for that month
   trade <- bind_rows(imp_cleaned, exp_cleaned) %>%
@@ -267,7 +267,7 @@ price_models.remove_trade_outliers <- function(trade){
 price_models.keep_complete_trade <- function(trade){
 
   min_share <- 0.3 # Share of respondents for any given date
-  eu_iso2s <- codelist$iso2c[!is.na(codelist$eu28)]
+  eu_iso2s <- utils.get_eu_iso2s()
 
   # For EU, we only consider whole of EU and assume every reporting is complete enough
   trade <- trade %>%
