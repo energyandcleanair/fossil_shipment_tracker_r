@@ -20,7 +20,8 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
     group_by(commodity, date) %>%
     summarise(across(c(trade_value_eur, netweight_kg), sum, na.rm=T),
               across(all_of(c('world_price_eur_per_tonne', prices_monthly %>% select(where(is.numeric)) %>% names)), unique)) %>%
-    mutate(price_eur_per_tonne = trade_value_eur/(netweight_kg/1000))
+    mutate(price_eur_per_tonne = trade_value_eur/(netweight_kg/1000)) %>%
+    mutate(date=as.Date(date))
 
   trade_with_predictions_eu <- trade_eu %>%
     group_by(commodity) %>%
@@ -29,7 +30,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       start_year = ifelse(group$commodity=='natural_gas', 2016, ifelse(group$commodity=='lng', 2018, 2015))
       independents = case_when(group$commodity=='coal' ~ 'ara',
                                group$commodity=='natural_gas' ~
-                                 'brent+ttf*date*abs(month(date)-9)',
+                                 'brent + ttf + lag(ttf)',
                                group$commodity=='lng' ~ 'ttf + lag(ttf)',
                                grepl('oil', group$commodity) ~
                                  'brent + lag(brent) + lag(brent, 3) + 0',
@@ -42,7 +43,8 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       tibble_row(data=list(as.data.frame(df %>% mutate(predicted_price = predict(m, df)))),
                  model=list(m),
                  commodity=group$commodity,
-                 price_ceiling = max(df$price_eur_per_tonne))
+                 price_ceiling = max(df$price_eur_per_tonne),
+                 price_floor = min(df$price_eur_per_tonne),)
     }) %>% do.call(bind_rows, .)
 
   if(!is.null(diagnostic_folder)){
@@ -51,13 +53,13 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       tidyr::unnest(data)  %>% pivot_longer(c(price_eur_per_tonne, predicted_price, price_ceiling)) %>% filter(year(date)>=2016) %>%
       ggplot(aes(date, value, col=name)) +
       facet_wrap(~commodity) + geom_line()
-    ggsave(file.path(diagnostic_folder, 'pricing_model_eu.png'), plot=plt)
+    ggsave(file.path(diagnostic_folder, 'pricing_model_eu.png'), plot=plt, width=12, height=8)
 
     plt <- trade_with_predictions_eu %>% select(-c(model)) %>%
       tidyr::unnest(data)  %>% filter(year(date)>=2016) %>%
       ggplot(aes(price_eur_per_tonne, predicted_price)) +
       facet_wrap(~commodity, scales='free') + geom_point() + geom_abline() + geom_smooth()
-    ggsave(file.path(diagnostic_folder, 'pricing_model_eu_diagnostics.png'), plot=plt)
+    ggsave(file.path(diagnostic_folder, 'pricing_model_eu_diagnostics.png'), plot=plt, width=12, height=8)
   }
 
   suffix <- ifelse(production, '', '_development')
@@ -84,7 +86,8 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
     summarise(across(c(trade_value_eur, netweight_kg), sum, na.rm=T),
               across(all_of(c('world_price_eur_per_tonne', prices_monthly %>% select(is.numeric) %>% names)), unique)) %>%
     mutate(price_eur_per_tonne = trade_value_eur/(netweight_kg/1000)) %>%
-    bind_rows(trade_grouped)
+    bind_rows(trade_grouped) %>%
+    mutate(date=as.Date(date))
 
   trade_with_predictions <- trade_grouped %>%
     group_by(commodity, country, iso2) %>%
@@ -109,7 +112,8 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       tibble_row(data=list(as.data.frame(df %>% mutate(predicted_price = predict(m, df)))),
                  model=list(m),
                  group,
-                 price_ceiling = max(df$world_price_eur_per_tonne))
+                 price_ceiling = max(df$world_price_eur_per_tonne),
+                 price_floor = min(df$world_price_eur_per_tonne),)
     }) %>% do.call(bind_rows, .)
 
   trade_with_predictions %>% select(-c(model)) %>%

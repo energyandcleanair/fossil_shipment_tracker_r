@@ -114,10 +114,8 @@ price.get_predicted_prices <- function(production=F, prices_daily_30day=NULL){
 
   prices_daily_30day <- prices_daily_30day %>%
     arrange(desc(date)) %>%
-    filter(!is.na(date))
-
-
-  #Note: models where trained with datetime, so need to keep it as datetime
+    filter(!is.na(date)) %>%
+    mutate(date=as.Date(date))
 
   if(production){
     suffix=''
@@ -136,7 +134,7 @@ price.get_predicted_prices <- function(production=F, prices_daily_30day=NULL){
       new_data <- df$new_data[[1]] %>% arrange(date)
       if(is.null(model)){ return(NULL) }
       new_data$price_eur_per_tonne <- predict(model, new_data)
-      new_data$price_eur_per_tonne <- pmin(new_data$price_eur_per_tonne, df$price_ceiling)
+      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
       new_data$price_ceiling <- df$price_ceiling
       tibble(group, new_data)
     }) %>% do.call(bind_rows, .) %>%
@@ -153,7 +151,7 @@ price.get_predicted_prices <- function(production=F, prices_daily_30day=NULL){
       new_data <- df$new_data[[1]] %>% arrange(date)
       if(is.null(model)){ return(NULL) }
       new_data$price_eur_per_tonne <- predict(model, new_data)
-      new_data$price_eur_per_tonne <- pmin(new_data$price_eur_per_tonne, df$price_ceiling)
+      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
       new_data$price_ceiling <- df$price_ceiling
       tibble(group, new_data)
     }) %>% do.call(bind_rows, .)

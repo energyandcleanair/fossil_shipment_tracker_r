@@ -21,7 +21,7 @@ price_models_eurostat.get_predicted_prices <- function(production=F){
       new_data <- df$new_data[[1]] %>% arrange(date)
       if(is.null(model)){ return(NULL) }
       new_data$price_eur_per_tonne <- predict(model, new_data)
-      new_data$price_eur_per_tonne <- pmin(new_data$price_eur_per_tonne, df$price_ceiling)
+      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
       new_data$price_ceiling <- df$price_ceiling
       tibble(group, new_data)
     }) %>% do.call(bind_rows, .) %>%
@@ -103,7 +103,8 @@ price_models_eurostat.build <- function(production=F, refresh_trade=T, diagnosti
       tibble_row(data=list(as.data.frame(df %>% mutate(predicted_price = predict(m, df)))),
                  model=list(m),
                  commodity=group$commodity,
-                 price_ceiling = max(df$price_eur_per_tonne))
+                 price_ceiling = max(df$price_eur_per_tonne),
+                 price_floor = min(df$price_eur_per_tonne))
     }) %>% do.call(bind_rows, .)
 
 
