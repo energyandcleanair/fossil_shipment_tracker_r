@@ -6,8 +6,8 @@ library(pbapply)
 library(tidytext)
 
 countries <- c("Russian Federation", "India", "Turkey", "Malaysia", "Egypt", "China", "United Arab Emirates")
-# flows_crea <- read_csv(sprintf('https://api.russiafossiltracker.com/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
-flows_crea <- read_csv(sprintf('http://localhost:8080/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
+flows_crea <- read_csv(sprintf('https://api.russiafossiltracker.com/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
+# flows_crea <- read_csv(sprintf('http://localhost:8080/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
 flows_kpler_laundromat <- kpler.get_laundromat_flows()
 
 flows_kpler_fmt <- flows_kpler_laundromat %>%
