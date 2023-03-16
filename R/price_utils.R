@@ -163,6 +163,24 @@ get_jkm <- function(){
     fill_gaps_and_future()
 }
 
+get_refinery_margin <- function(){
+  url <- "https://data.nasdaq.com/api/v3/datasets/BP/OIL_REF_MARG.csv"
+  refinery <- read_csv(url) %>%
+    rename(date=Date,
+           refining_heavy = `USGC Heavy Sour Coking`,
+           refining_medium = `Singapore Medium Sour Hydrocracking`,
+           refining_light= `NWE Light Sweet Cracking`)
+
+  refinery %>%
+    mutate(date = lubridate::floor_date(date, "month")) %>%
+    group_by(date) %>%
+    summarise(refining_heavy = mean(refining_heavy, na.rm=TRUE),
+              refining_medium = mean(refining_medium, na.rm=TRUE),
+              refining_light = mean(refining_light, na.rm=TRUE)) %>%
+    fill_gaps_and_future() %>%
+    filter(date >= '2015-01-01')
+}
+
 get_prices_daily <- function(running_days=0){
 
   ttf_daily <- get_ttf()
@@ -170,12 +188,14 @@ get_prices_daily <- function(running_days=0){
   ara_daily <- get_ara()
   asia_lng_daily <- get_asia_lng()
   global_coal_daily <- get_global_coal()
+  refinery <- get_refinery_margin()
 
   ttf_daily %>%
     full_join(brent_daily) %>%
     full_join(ara_daily) %>%
     full_join(asia_lng_daily) %>%
     full_join(global_coal_daily) %>%
+    full_join(refinery) %>%
     mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC")) %>%
     rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "asia_lng", "global_coal"))
 }
@@ -202,11 +222,18 @@ get_prices_monthly <- function(){
     group_by(date = date %>% 'day<-'(1)) %>%
     summarise(across(global_coal, mean, na.rm=T))
 
+  refining_monthly <- get_refinery_margin() %>%
+    group_by(date = date %>% 'day<-'(1)) %>%
+    summarise(across(refining_heavy, mean, na.rm=T),
+              across(refining_medium, mean, na.rm=T),
+              across(refining_light, mean, na.rm=T))
+
   ttf_monthly %>%
     full_join(brent_monthly) %>%
     full_join(ara_monthly) %>%
     full_join(asia_lng_monthly) %>%
     full_join(global_coal_monthly) %>%
+    full_join(refining_monthly) %>%
     mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC"))
 }
 

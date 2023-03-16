@@ -5,12 +5,17 @@ price.get_prices <- function(production = F){
   # and the capped one by ship_onwer / insurer / destination
 
   # Get default values
-  p_default <- price.get_capped_prices(production = production, scenario='default', version='default')
-  p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1')
-  p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20')
-  p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30')
-  p_usd35 <- price.get_capped_prices(production = production, scenario='usd35', version='usd35')
-  p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40')
+  prices_daily_30day <- get_prices_daily(running_days = 30)
+  p_default <- price.get_capped_prices(production = production, scenario='default', version='default', prices_daily_30day=prices_daily_30day)
+  p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1', prices_daily_30day=prices_daily_30day)
+  p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20', prices_daily_30day=prices_daily_30day)
+  p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30', prices_daily_30day=prices_daily_30day)
+  p_usd35 <- price.get_capped_prices(production = production, scenario='usd35', version='usd35', prices_daily_30day=prices_daily_30day)
+  p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40', prices_daily_30day=prices_daily_30day)
+
+  # Eurostat pricing for KPLER
+  p_default_eurostat <- price_models_eurostat.get_predicted_prices(production=production)
+
 
   # Fill old values with NULL, because some endpoints expect a pricing_scenario
   p_default <- p_default %>%
@@ -20,6 +25,7 @@ price.get_prices <- function(production = F){
                     fill=list(eur_per_tonne=NA))
 
   all_prices <- bind_rows(p_default,
+                          p_default_eurostat,
                           p_2021H1,
                           p_usd20,
                           p_usd30,
@@ -100,11 +106,16 @@ price.get_predicted_portprices <- function(production=F){
 }
 
 
-price.get_predicted_prices <- function(production=F){
+price.get_predicted_prices <- function(production=F, prices_daily_30day=NULL){
 
-  prices_daily <- get_prices_daily(running_days=30) %>%
+  if(is.null(prices_daily_30day)){
+    prices_daily_30day <- get_prices_daily(running_days=30)
+  }
+
+  prices_daily_30day <- prices_daily_30day %>%
     arrange(desc(date)) %>%
     filter(!is.na(date))
+
 
   #Note: models where trained with datetime, so need to keep it as datetime
 
@@ -118,7 +129,7 @@ price.get_predicted_prices <- function(production=F){
   models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu%s.RDS", suffix), package="russiacounter"))
 
   prices_eu <- models_eu %>%
-    mutate(new_data=list(prices_daily)) %>%
+    mutate(new_data=list(prices_daily_30day)) %>%
     group_by(commodity) %>%
     group_map(function(df, group) {
       model <- df$model[[1]]
@@ -135,7 +146,7 @@ price.get_predicted_prices <- function(production=F){
     tidyr::crossing(tibble(iso2=codelist$iso2c[which(codelist$eu28=="EU")] ))
 
   prices_noneu  <- models_noneu %>%
-    mutate(new_data=list(prices_daily)) %>%
+    mutate(new_data=list(prices_daily_30day)) %>%
     group_by(commodity, country, iso2) %>%
     group_map(function(df, group) {
       model <- df$model[[1]]
@@ -291,9 +302,9 @@ price.get_price_caps <- function(p, version){
   return(ungroup(caps))
 }
 
-price.get_capped_prices <- function(production=F, scenario='default', version='default'){
+price.get_capped_prices <- function(production=F, scenario='default', version='default', prices_daily_30day=NULL){
 
-  p <- price.get_predicted_prices(production=production)
+  p <- price.get_predicted_prices(production=production, prices_daily_30day=prices_daily_30day)
   pp <- price.get_predicted_portprices(production = production)
   caps <- price.get_price_caps(p=p, version=version)
 
@@ -427,35 +438,6 @@ price.get_capped_portprices <- function(production=F){
       T ~ eur_per_tonne),
       scenario='pricecap') %>%
     select(-c(max_eur_per_tonne))
-
-  # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
-  # barrel_per_tonne <- 7.49
-  #
-  # caps <- list(
-  #   crude_oil=55 * barrel_per_tonne,
-  #   natural_gas= 15 * ng_mwh_per_tonne,
-  #   lng= 30 * ng_mwh_per_tonne,
-  #   coal=50
-  # )
-  #
-  # eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-  #                                  date_to=min(max(p$date), lubridate::today()))
-  #
-  #
-  # tibble(commodity=names(caps),
-  #        usd_per_tonne=unlist(caps)) %>%
-  #   tidyr::crossing(eur_per_usd) %>%
-  #   arrange(date) %>%
-  #   tidyr::fill(eur_per_usd) %>%
-  #   mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-  #   select(-c(usd_per_tonne, eur_per_usd)) %>%
-  #   right_join(p) %>%
-  #   mutate(eur_per_tonne=case_when(
-  #     (date >= '2022-07-01') ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-  #     T ~ eur_per_tonne),
-  #     scenario='pricecap') %>%
-  #   select(-c(max_eur_per_tonne))
-
 }
 
 
