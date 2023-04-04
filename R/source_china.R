@@ -79,6 +79,7 @@ china.get_flows_pipeline_oil <- function(){
     ) %>%
     mutate(value_tonne=(value_total_tonne_month - value_shipment_tonne_month)/ndays) %>%
     # Fill missing days
+    arrange(date) %>%
     tidyr::fill(value_tonne) %>%
     select(date, value_tonne) %>%
     mutate(departure_iso2='RU',
