@@ -61,12 +61,14 @@ china.get_flows_pipeline_oil <- function(){
   shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-01-01&commodity=crude_oil&aggregate_by=arrival_month,commodity&commodity_destination_iso2=CN&commodity_origin_iso2=RU&format=csv&bypass_maintenance=true') %>%
     select(month=arrival_month, value_shipment_tonne_month=value_tonne)
 
-  total <- read_csv(system.file("extdata","china/china_imports_wind.csv", package="russiacounter")) %>%
+  total <- read_csv(system.file("extdata","china/china_imports_wind.csv", package="russiacounter"), skip=1) %>%
     select(date=Name,
            value_kg=`Volume of Imports: Crude Oil: Russian Federation`) %>%
     filter(grepl('^20', date)) %>%
-    mutate(month=as.Date(paste0(date,'-01')),
-           value_total_tonne_month=as.numeric(gsub(",","",value_kg))/1000) %>%
+    mutate(
+      # month=as.Date(paste0(date,'-01')),
+          month=floor_date(as.Date(date), 'month'),
+           value_total_tonne_month=as.numeric(gsub(",", "", value_kg))/1000) %>%
     select(month, value_total_tonne_month)
 
   pipeline <- shipments %>%

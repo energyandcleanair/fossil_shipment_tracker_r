@@ -5,7 +5,8 @@ library(rcrea)
 library(pbapply)
 library(tidytext)
 
-countries <- c("Russian Federation", "India", "Turkey", "Malaysia", "Egypt", "China", "United Arab Emirates")
+countries <- c("Russian") #, "India", "Turkey", "Malaysia", "Egypt", "China", "United Arab Emirates")
+iso2s <- countrycode(countries, 'country.name', 'iso2c')
 flows_crea <- read_csv(sprintf('https://api.russiafossiltracker.com/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
 # flows_crea <- read_csv(sprintf('http://localhost:8080/v0/voyage?aggregate_by=status,commodity_origin_iso2,commodity_destination_iso2,commodity,date&format=csv&date_from=%s&commodity=crude_oil,oil_products,oil_or_chemical', min(flows_kpler$date)))
 flows_kpler_laundromat <- kpler.get_laundromat_flows()
@@ -190,43 +191,46 @@ pbapply::pblapply(countries, function(country){
 
 
 # Ports -------------------------------------------------------------------
+iso2s_str <- paste(iso2s, collapse=",")
+date_from <- "2022-01-01"
+date_to <- "2023-03-31"
+add_api_key <- function(url){paste0(url, "&api_key=", Sys.getenv("API_KEY"))}
 
-pbapply::pblapply(countries, function(country){
-  print(country)
-  iso2 <- countrycode(country, "country.name","iso2c")
+crea <- read_csv(sprintf('https://api.russiafossiltracker.com/v0/voyage?aggregate_by=departure_port,commodity&date_from=%s&date_to=%s&departure_iso2=%s&format=csv&commodity_group=oil',
+                                             date_from,
+                                             date_to,
+                                             iso2s_str))
 
-  flows_tmp <- kpler.get_flows_raw(froms=country,
-                                          products=NULL,
-                                          split="Origin Ports")
-  ports <- unique(flows_tmp$split)
-  flows_ports_kpler <- kpler.get_flows_raw(froms=ports,
-                                           products=NULL,
-                                           split="Products")
-
-  flows_ports_crea <- read_csv(sprintf('https://api.russiafossiltracker.com/v0/voyage?aggregate_by=departure_port,commodity&date_from=%s&date_to=%s&departure_iso2=%s&format=csv&commodity_group=oil&status=completed',
-                                      min(flows_ports_kpler$date),
-                                      max(flows_ports_kpler$date),
-                                      iso2))
+kpler <- read_csv(sprintf('http://localhost:8080/v1/kpler_flow?aggregate_by=origin,product,commodity&date_from=%s&date_to=%s&origin_iso2=%s&format=csv&origin_type=port',
+                          date_from,
+                          date_to,
+                          iso2s_str) %>%
+                    add_api_key())
 
 
-  flows_data <- bind_rows(
-    flows_ports_kpler %>%
-      select(commodity=split, port=from, value_tonne=value) %>%
+flows_data <- bind_rows(
+  kpler %>%
+    # filter(commodity_equivalent=='oil_products') %>%
+      select(commodity=commodity_equivalent, port=origin_name, value_tonne) %>%
       mutate(source='Kpler'),
 
-    flows_ports_crea %>%
-      filter(commodity_group=='oil') %>%
+    crea %>%
+      # filter(commodity %in% c('oil_products', 'oil_or_chemical')) %>%
       mutate(departure_port_name=stringr::str_to_title(gsub(" ANCH","",departure_port_name))) %>%
       select(commodity=commodity_name, port=departure_port_name, value_tonne) %>%
       mutate(source='CREA')
   ) %>%
-    recode_commodity() %>%
+    # recode_commodity() %>%
+   filter(commodity != 'coal') %>%
+    mutate(commodity = gsub("_"," ", tolower(commodity))) %>%
     group_by(commodity, port, source) %>%
-    summarise(value_tonne=sum(value_tonne, na.rm=T)) %>%
-    mutate(commodity=case_when(commodity=='Crude' ~ 'Crude',
-                                      T ~ 'Products'))
+    # mutate(commodity=case_when(grepl('crude', commodity, ignore.case=T) ~ 'Crude',
+    #                                 commodity=='Condensate' ~ 'Crude',
+    #                            T ~ 'Products')) %>%
+    summarise(value_tonne=sum(value_tonne, na.rm=T))
 
-  plt <- flows_data %>%
+
+plt <- flows_data %>%
     ungroup() %>%
     ggplot() +
     geom_bar(aes(value_tonne/1e6,
@@ -234,7 +238,7 @@ pbapply::pblapply(countries, function(country){
                  fill=commodity),
              stat='identity') +
     rcrea::scale_fill_crea_d() +
-    labs(title=sprintf("%s ports", country),
+    labs(title=sprintf("%s ports", countries),
          x=NULL,
          y=NULL) +
     scale_x_continuous(expand=expansion(mult=c(0, 0.1)),
@@ -242,6 +246,9 @@ pbapply::pblapply(countries, function(country){
     facet_wrap(~source, scales='free_y') +
     tidytext::scale_y_reordered()
 
+  plt
+  library(plotly)
+  ggplotly(plt)
 
   dir.create("scripts/validation_kpler", F, T)
   save_but_keep_older_dates(flows_ports_kpler, sprintf("scripts/validation_kpler/%s_ports.csv", iso2))
