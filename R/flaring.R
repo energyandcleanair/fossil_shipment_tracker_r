@@ -29,7 +29,7 @@ flaring.get_infrastructure <- function(){
     filter(grepl("Russia", countries))
 
   lines <- infra %>% filter(geom=='line', status=='operating')
-  points <- infra %>% filter(geom=='point', status=='operating')
+  points <- infra %>% filter(geom=='point', (status=='operating') | grepl('Portovaya', project))
 
   route_to_linestring <- function(route){
     tryCatch({
@@ -146,18 +146,23 @@ flaring.get_flaring_amount <- function(date, geometries){
     flares_sf <- sf::st_as_sf(flares, coords=c('lon', 'lat'))
     flares_sp <- as(flares_sf, "Spatial")
 
-    sp::proj4string(flares_sp) <- sp::proj4string(geometries_sp)
+    suppressWarnings(sp::proj4string(flares_sp) <- sp::proj4string(geometries_sp))
 
-    result <- cbind(
-      as.data.frame(flares_sf) %>% select(-c(date, geometry)),
-      sp::over(flares_sp, geometries_sp, returnList = F)) %>%
-      filter(!is.na(id)) %>%
-      group_by_at(setdiff(names(.), "bcm_est")) %>%
-      summarise(
-        bcm_est=sum(bcm_est),
-        count=n()
+    result <- tibble(geometries) %>% select(id, type) %>%
+      left_join(
+        cbind(
+        as.data.frame(flares_sf) %>% select(-c(date, geometry)),
+        sp::over(flares_sp, geometries_sp, returnList = F)) %>%
+        filter(!is.na(id)) %>%
+        group_by_at(setdiff(names(.), "bcm_est")) %>%
+        summarise(
+          bcm_est=sum(bcm_est),
+          count=n()
+        ) %>%
+        ungroup()
       ) %>%
-      ungroup() %>%
+      mutate(bcm_est=tidyr::replace_na(bcm_est, 0),
+             count=tidyr::replace_na(count, 0)) %>%
       mutate(date=!!date)
     return(result)
   }, error=function(e){
@@ -190,8 +195,9 @@ flaring.get_flaring_ts <- function(gas_only=T,
 
   geom_buffer <- bind_rows(
     lines_points_buffer %>% select(id=project, geometry, type),
-    fields_buffer %>% select(id=clusterCaption,geometry, type))
-
+    fields_buffer %>% select(id=clusterCaption,geometry, type)) %>%
+    group_by(id) %>%
+    summarise(geometry=sf::st_union(geometry))
 
   dates <- seq.Date(as.Date(date_from), as.Date(date_to), 'day')
   flare_amounts <- pbmcapply::pbmcmapply(flaring.get_flaring_amount, date=dates, geometries=list(geom_buffer),
@@ -219,8 +225,6 @@ flaring.get_flaring_ts <- function(gas_only=T,
          caption='Source: CREA analysis based on VIIRS, EnergyBase.ru and Global Energy Monitor.')
 
   ggsave('flaring.jpg', width=6, height=4, scale=1.5, dpi=150)
-
-
 
 
   # Top fields
@@ -259,12 +263,60 @@ flaring.get_flaring_ts <- function(gas_only=T,
     # scale_x_date(date_labels = '%b') +
     facet_wrap(~id, scales='free_y')
 
+  dir.create('cache', F)
   saveRDS(flare_amounts, 'cache/flaring.RDS')
+
   return(flare_amounts)
 }
 
 
 flaring.detect_anomalies <- function(flare_amounts){
+
+  library(anomalize)
+
+  d <- flare_amounts %>%
+    tidyr::complete(nesting(id, type), date, fill=list(bcm_est=0,
+                                                       count=0))
+
+
+ decomposed <- d %>%
+    group_by(id) %>%
+   group_map(function(x, id){
+     print(head(id))
+     x %>%
+       # group_by(date=lubridate::floor_date(date, 'week')) %>%
+       # summarise(bcm_est=sum(bcm_est, na.rm=T)) %>%
+       rcrea::utils.running_average(14, vars_to_avg = c('bcm_est', 'count')) %>%
+       filter(!is.na(bcm_est)) %>%
+       time_decompose(bcm_est, frequency='1 year', trend='10 years') %>%
+       anomalize(remainder, method = "iqr") %>%
+       mutate(id=id$id)
+   }) %>%
+   do.call(bind_rows, .)
+
+ # Anomalies lately
+ top_anomalies <- decomposed %>%
+   filter(date >= '2022-02-24') %>%
+   filter(anomaly == 'Yes') %>%
+   group_by(id) %>%
+   summarise(n_anomalies=n()) %>%
+   arrange(desc(n_anomalies)) %>%
+   head(20) %>%
+   select(id)
+
+
+ data <- top_anomalies %>%
+   left_join(decomposed) %>%
+   mutate(id=factor(id, levels=top_anomalies$id))
+
+  ggplot(data) +
+    geom_line(aes(date, observed)) +
+    geom_point(data=data %>% filter(anomaly=='Yes'),
+               aes(date, observed, col='red')) +
+   facet_wrap(~id,
+              scales='free_y') +
+   scale_y_continuous(limits=~c(0, quantile(.x,0.99))) +
+    geom_vline(xintercept = as.Date('2022-02-24'), col='blue')
 
 
 }
