@@ -7,11 +7,11 @@ price.get_prices <- function(production = F){
   # Get default values
   prices_daily_30day <- get_prices_daily(running_days = 30)
   p_default <- price.get_capped_prices(production = production, scenario='default', version='default', prices_daily_30day=prices_daily_30day)
-  p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1', prices_daily_30day=prices_daily_30day)
-  p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20', prices_daily_30day=prices_daily_30day)
-  p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30', prices_daily_30day=prices_daily_30day)
-  p_usd35 <- price.get_capped_prices(production = production, scenario='usd35', version='usd35', prices_daily_30day=prices_daily_30day)
-  p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40', prices_daily_30day=prices_daily_30day)
+  # p_2021H1 <- price.get_capped_prices(production = production, scenario='2021H1', version='2021H1', prices_daily_30day=prices_daily_30day)
+  # p_usd20 <- price.get_capped_prices(production = production, scenario='usd20', version='usd20', prices_daily_30day=prices_daily_30day)
+  # p_usd30 <- price.get_capped_prices(production = production, scenario='usd30', version='usd30', prices_daily_30day=prices_daily_30day)
+  # p_usd35 <- price.get_capped_prices(production = production, scenario='usd35', version='usd35', prices_daily_30day=prices_daily_30day)
+  # p_usd40 <- price.get_capped_prices(production = production, scenario='usd40', version='usd40', prices_daily_30day=prices_daily_30day)
 
   # Eurostat pricing for KPLER
   p_default_eurostat <- price_models_eurostat.get_predicted_prices(production=production)
@@ -26,10 +26,11 @@ price.get_prices <- function(production = F){
 
   all_prices <- bind_rows(p_default,
                           p_default_eurostat,
-                          p_2021H1,
-                          p_usd20,
-                          p_usd30,
-                          p_usd40)
+                          # p_2021H1,
+                          # p_usd20,
+                          # p_usd30,
+                          # p_usd40
+                          )
 
   return(all_prices)
 }
