@@ -8,11 +8,15 @@ fill_gaps_and_future <- function(result){
 
 get_brent <- function(){
 
-  brent_datahub <- read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv', show_col_type=F) %>%
-    select(date=Date, brent=Price) %>%
-    filter(date>='2016-01-01') %>%
-    arrange(desc(date))
+  brent_datahub1 <- tryCatch({read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv', show_col_type=F) %>%
+      select(date=Date, brent=Price) %>%
+      filter(date>='2016-01-01') %>%
+      arrange(desc(date))}, error=function(e){return(NULL)})
 
+  brent_datahub2 <- tryCatch({read_csv('https://datahub.io/core/oil-prices/r/brent-day.csv', show_col_type=F) %>%
+      select(date=Date, brent=Price) %>%
+      filter(date>='2016-01-01') %>%
+      arrange(desc(date))}, error=function(e){return(NULL)})
 
   brent_eia <- tryCatch({eia::eia_series(
     id="PET.RBRTE.D",
@@ -44,7 +48,8 @@ get_brent <- function(){
 #     select(date, brent)
 
   bind_rows(
-    brent_datahub,
+    brent_datahub1,
+    brent_datahub2,
     brent_eia,
     brent_eia_xls
   ) %>%
