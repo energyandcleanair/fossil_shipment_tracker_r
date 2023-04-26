@@ -12,7 +12,7 @@ update_counter <- function(){
 
 
   # Price should come first, as many endpoints rely on this to be complete
-  price.update_prices(production=T)
+  price.update_prices(production=T, buffer_days=60)
 
   # Europe pipeline gas ------------------------------------------------------------
   flows_entsog <- entsog_new.get_flows(date_from=lubridate::today()-21, use_cache=F)

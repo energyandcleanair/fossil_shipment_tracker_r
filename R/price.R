@@ -450,11 +450,11 @@ price.check_prices <- function(p){
 }
 
 
-price.update_prices <- function(production=F){
+price.update_prices <- function(production=F, buffer_days=60){
   p <- price.get_prices(production=production)
   ok <- price.check_prices(p)
   if(ok){
-    db.upload_prices_to_posgres(p, production=production)
+    db.upload_prices_to_posgres(p, production=production, buffer_days=buffer_days)
   }else{
     print("ERROR: prices not updated")
   }

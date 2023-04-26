@@ -211,7 +211,7 @@ db.rebuild_price_table <- function(p, production=F){
 
 
 
-db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=14){
+db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- prices
