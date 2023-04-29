@@ -11,16 +11,16 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
   prices_monthly <- get_prices_monthly()
 
   # Collect trade data ----------------------------------------------------------
-  trade <- price_models_comtrade.get_trade(refresh_comtrade = refresh_comtrade)
+  trade <- price_models_comtrade.get_trade(prices_monthly=prices_monthly, refresh_comtrade = refresh_comtrade)
 
   # Europe ------------------------------------------------------------------
   # We take EU reporting to comtrade, as a whole, not the sume of EU countries
   trade_eu <- trade %>%
     filter(country=="EU") %>%
     group_by(commodity, date) %>%
-    summarise(across(c(trade_value_eur, netweight_kg), sum, na.rm=T),
+    summarise(across(c(value_eur, value_kg), sum, na.rm=T),
               across(all_of(c('world_price_eur_per_tonne', prices_monthly %>% select(where(is.numeric)) %>% names)), unique)) %>%
-    mutate(price_eur_per_tonne = trade_value_eur/(netweight_kg/1000)) %>%
+    mutate(price_eur_per_tonne = value_eur/(value_kg/1000)) %>%
     mutate(date=as.Date(date))
 
   trade_with_predictions_eu <- trade_eu %>%
@@ -72,20 +72,20 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
     filter(!EU, !is.na(iso2), year(date)>=2017) %>%
     filter(!country %in% small_transit_countries) %>%
     group_by(country, commodity) %>%
-    summarise(trade_value_eur=mean(trade_value_eur, na.rm=T),
+    summarise(value_eur=mean(value_eur, na.rm=T),
               n=n(),
               last_date=max(date)) %>%
     group_by(commodity) %>%
-    mutate(share = trade_value_eur/sum(trade_value_eur)) %>%
+    mutate(share = value_eur/sum(value_eur)) %>%
     filter(n>10, share>.025, last_date >= '2021-01-01')
 
-  trade_grouped <- top_importers %>% select(-trade_value_eur) %>% left_join(trade)
+  trade_grouped <- top_importers %>% select(-value_eur) %>% left_join(trade)
   trade_grouped <- trade %>%
     filter(!is.na(iso2), country!='EU') %>%
     group_by(commodity, date, country = ifelse(EU, 'EU', 'others')) %>%
-    summarise(across(c(trade_value_eur, netweight_kg), sum, na.rm=T),
+    summarise(across(c(value_eur, value_kg), sum, na.rm=T),
               across(all_of(c('world_price_eur_per_tonne', prices_monthly %>% select(is.numeric) %>% names)), unique)) %>%
-    mutate(price_eur_per_tonne = trade_value_eur/(netweight_kg/1000)) %>%
+    mutate(price_eur_per_tonne = value_eur/(value_kg/1000)) %>%
     bind_rows(trade_grouped) %>%
     mutate(date=as.Date(date))
 
@@ -158,7 +158,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
 
 
 
-price_models_comtrade.get_trade <- function(refresh_comtrade=T){
+price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
 
   oil_codes <- c("2709","2710")
   gas_codes <- c("2711","271121","271111")
@@ -166,21 +166,21 @@ price_models_comtrade.get_trade <- function(refresh_comtrade=T){
 
   if(refresh_comtrade){
     imp <- utils.collect_comtrade(partners="Russian Federation",
-                                  reporters="all",
-                                  years=seq(2016,2022),
+                                  reporters=c("all", "EUR"),
+                                  trade_flow="import",
+                                  years=seq(2016, lubridate::year(lubridate::today())),
                                   codes=c(coal_codes, oil_codes, gas_codes),
                                   frequency="monthly",
-                                  stop_if_no_row=F) %>%
-      filter(trade_flow=="Imports")
+                                  stop_if_no_row=F)
     saveRDS(imp, "cache/imp_for_building_models.RDS")
 
     exp <- utils.collect_comtrade(partners="all",
                                   reporters="Russian Federation",
+                                  trade_flow="export",
                                   years=seq(2015,2019), # No record for 2020, and 2021
                                   codes=c(coal_codes, oil_codes, gas_codes),
                                   frequency="monthly",
-                                  stop_if_no_row=F) %>%
-      filter(trade_flow=="Exports")
+                                  stop_if_no_row=F)
     saveRDS(exp, "cache/exp_for_building_models.RDS")
   }else{
     imp <-readRDS( "cache/imp_for_building_models.RDS")
@@ -189,11 +189,17 @@ price_models_comtrade.get_trade <- function(refresh_comtrade=T){
 
   clean_comtrade <- function(df, is_import){
     df <- df %>%
+      rename(value_kg=netWgt,
+             value_usd=primaryValue,
+             commodity=cmdDesc,
+             reporter_iso3=reporterISO,
+             partner_iso3=partnerISO) %>%
+      filter(!is.na(period)) %>%
       mutate(across(is.logical, as.character),
              across(matches('_kg|_usd|year|period|flag'), as.numeric),
              across(matches('code|level'), as.character)) %>%
       mutate(date=ymd(paste0(period, '01')),
-             price_usd_per_tonne=trade_value_usd/(netweight_kg/1000)) %>%
+             price_usd_per_tonne=value_usd/(value_kg/1000)) %>%
       full_join(prices_monthly, by="date") %>%
       mutate(date = as.Date(date))
 
@@ -206,17 +212,21 @@ price_models_comtrade.get_trade <- function(refresh_comtrade=T){
 
     df <- df %>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas', commodity))
 
-    group_cols <- if(is_import){c("reporter")}else{c("partner")}
+    group_cols <- if(is_import){c("reporter_iso3")}else{c("partner_iso3")}
     df <- df %>%
       group_by(across(c("commodity", "date", group_cols))) %>%
-      summarise_at(c('trade_value_usd', 'netweight_kg'), sum, na.rm=T) %>%
+      summarise_at(c('value_usd', 'value_kg'), sum, na.rm=T) %>%
       ungroup() %>%
-      mutate(price_usd_per_tonne = trade_value_usd/(netweight_kg/1000))
+      mutate(price_usd_per_tonne = value_usd/(value_kg/1000))
 
     if(is_import){
-      df$reporter_iso2 <- countrycode::countrycode(df$reporter, "country.name", "iso2c")
+      df$reporter_iso2 <- countrycode::countrycode(df$reporter_iso3, "iso3c", "iso2c", custom_match=c("EUR"="EU"))
+      df$reporter <- countrycode::countrycode(df$reporter_iso3, "iso3c", "country.name", custom_match=c("EUR"="EU"))
+      df$reporter_iso3 <- NULL
     }else{
-      df$partner_iso2 <- countrycode::countrycode(df$partner, "country.name", "iso2c")
+      df$partner_iso2 <- countrycode::countrycode(df$partner_iso3, "iso3c", "iso2c")
+      df$partner <- countrycode::countrycode(df$partner_iso3, "iso3c", "country.name")
+      df$partner_iso3 <- NULL
     }
     return(df)
   }
@@ -229,7 +239,7 @@ price_models_comtrade.get_trade <- function(refresh_comtrade=T){
   # Combine: take source with max flow for that month
   trade <- bind_rows(imp_cleaned, exp_cleaned) %>%
     group_by(commodity, date, country) %>%
-    dplyr::slice_max(trade_value_usd, n=1) %>%
+    dplyr::slice_max(value_usd, n=1) %>%
     ungroup() %>%
     left_join(prices_monthly)
 
@@ -237,26 +247,27 @@ price_models_comtrade.get_trade <- function(refresh_comtrade=T){
                                monthly=T)
   trade <- trade %>%
     left_join(eur_usd) %>%
-    mutate(trade_value_eur=trade_value_usd * eur_per_usd,
+    mutate(value_eur=value_usd * eur_per_usd,
            price_eur_per_tonne=price_usd_per_tonne * eur_per_usd,
     ) %>%
-    select(-c(trade_value_usd, price_usd_per_tonne))
+    select(-c(value_usd, price_usd_per_tonne))
 
   world_price <- trade %>%
     filter(!is.na(price_eur_per_tonne),
            !is.infinite(price_eur_per_tonne)) %>%
     group_by(commodity, date) %>%
-    summarise_at(c("trade_value_eur", "netweight_kg"), sum) %>%
-    mutate(world_price_eur_per_tonne = trade_value_eur/(netweight_kg/1000)) %>%
+    summarise_at(c("value_eur", "value_kg"), sum) %>%
+    mutate(world_price_eur_per_tonne = value_eur/(value_kg/1000)) %>%
     select(commodity, date, world_price_eur_per_tonne) %>%
     ungroup()
 
   trade <- trade %>% left_join(world_price)
-  trade$EU <-trade$iso2 %in% eu_iso2s
+  trade$EU <- trade$iso2 %in% eu_iso2s
 
   trade %>%
     price_models_comtrade.remove_trade_outliers() %>%
-    price_models_comtrade.keep_complete_trade()
+    price_models_comtrade.keep_complete_trade() %>%
+    arrange(desc(date))
 }
 
 price_models_comtrade.remove_trade_outliers <- function(trade){
@@ -265,7 +276,7 @@ price_models_comtrade.remove_trade_outliers <- function(trade){
     filter((commodity!="lng") | (price_eur_per_tonne < 1500)) %>%
     filter((commodity!="oil_products") | (price_eur_per_tonne > 80)) %>%
     filter(!is.na(price_eur_per_tonne) & !is.infinite(price_eur_per_tonne)) %>%
-    filter(netweight_kg> 100 * 1000)
+    filter(value_kg> 100 * 1000)
 }
 
 price_models_comtrade.keep_complete_trade <- function(trade){

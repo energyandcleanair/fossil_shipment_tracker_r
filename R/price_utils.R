@@ -170,7 +170,15 @@ get_jkm <- function(){
 
 get_refinery_margin <- function(){
   url <- "https://data.nasdaq.com/api/v3/datasets/BP/OIL_REF_MARG.csv"
-  refinery <- read_csv(url) %>%
+
+  cache_path <- 'cache/BP-OIL_REF_MARG.csv'
+  refinery_raw <- tryCatch({
+    d <- read_csv(url);
+    write_csv(d, cache_path);
+    d
+    },error=function(error){return(read_csv(cache_path))})
+
+  refinery <- refinery_raw %>%
     rename(date=Date,
            refining_heavy = `USGC Heavy Sour Coking`,
            refining_medium = `Singapore Medium Sour Hydrocracking`,
@@ -228,7 +236,7 @@ get_prices_monthly <- function(){
     summarise(across(global_coal, mean, na.rm=T))
 
   refining_monthly <- get_refinery_margin() %>%
-    group_by(date = date %>% 'day<-'(1)) %>%
+    group_by(date = as.Date(date) %>% 'day<-'(1)) %>%
     summarise(across(refining_heavy, mean, na.rm=T),
               across(refining_medium, mean, na.rm=T),
               across(refining_light, mean, na.rm=T))
