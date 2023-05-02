@@ -17,48 +17,59 @@ utils.recode_comtrade_commodity <- function(df){
 }
 
 utils.collect_comtrade <- function(partners, reporters, years, codes, frequency="monthly", trade_flow='all', stop_if_no_row=T){
-  # Max 5 reporters at a time and one year
 
+  readRenviron('.Renviron')
+  comtradr::set_primary_comtrade_key(Sys.getenv("COMTRADE_PRIMARY_KEY"))
+
+  # Max 5 reporters at a time and one year
   if(all(partners=="World") & all(reporters=="all") & (frequency=="monthly")){
     start_dates <- lapply(years, function(y) paste0(y, c("-01","-06","-11"))) %>% unlist
     end_dates <- lapply(years, function(y) paste0(y, c("-05","-10","-12"))) %>% unlist
   }else{
-    start_dates <- years
-    end_dates <- years
+    start_dates <- paste0(years, "-01")
+    end_dates <- paste0(years, "-12")
   }
 
-  lapply(seq_along(start_dates), function(i_date){
-    message(start_dates[i_date], " - ", end_dates[i_date])
-    lapply(split(reporters, rep(seq(1, length(reporters)/4), each=5)[1:length(reporters)]),
-           function(reporters){
-             print(reporters)
+  frequency = list(monthly="M", annualy="A")[[frequency]]
+  partners_iso3 <- countrycode::countrycode(partners, "country.name", "iso3c", custom_match=c(World="World", all="all"))
+  reporters_iso3 <- countrycode::countrycode(reporters, "country.name", "iso3c", custom_match=c(all="all", "EUR"="EUR"))
+
+  pbapply::pblapply(seq_along(start_dates), function(i_date){
+    lapply(reporters_iso3, function(reporter_iso3){
+      lapply(codes, function(code){
+
              res <- tibble()
              itry <- 0
              ntries <- 3
              while(nrow(res)==0 & (itry<ntries)){
-               res <- comtradr::ct_search(partners = partners,
-                                          reporters = reporters,
-                                          trade_direction = trade_flow,
-                                          commod_codes=codes,
-                                          freq=frequency,
-                                          start_date = start_dates[i_date],
-                                          end_date = end_dates[i_date])
 
-               Sys.sleep(5)
+               res <- comtradr::ct_get_data(partner = partners_iso3,
+                                            reporter = reporter_iso3,
+                                            flow_direction = trade_flow,
+                                            commodity_code=code,
+                                            freq=frequency,
+                                            start_date = start_dates[i_date],
+                                            end_date = end_dates[i_date]
+                                            )
+
                if(nrow(res)==0 & (itry<ntries)){
                  itry <- itry + 1
                  print("No row returned. Trying again")
                }
              }
+
              if(nrow(res)==0 & stop_if_no_row){
                warning("No row returned.")
              }
+
              return(res)
            }) %>%
-      Filter(function(x){nrow(x)>0}, .) %>%
+        do.call(bind_rows, .)
+        # Filter(function(x){nrow(x)>0}, .)
+      }) %>%
       do.call(bind_rows, .)
-  }) %>%
-    Filter(function(x){nrow(x)>0}, .) %>%
+    }) %>%
+    # Filter(function(x){nrow(x)>0}, .) %>%
     do.call(bind_rows, .)
 }
 

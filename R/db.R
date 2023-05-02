@@ -228,7 +228,6 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_
 
   format_array <- function(list) {
     if(length(list)==0 | all(is.na(list))){return('{NULL}')}
-    # if(length(list)==0 | all(is.na(list))){return(NA)}
     unlist(list) %>%
       paste0(., collapse = ", ") %>%
       paste0('{', ., "}")

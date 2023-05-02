@@ -60,7 +60,9 @@ price.get_predicted_portprices <- function(production=F){
   tonne_per_bbl <- 0.138
 
   spread_ural <- russiacounter::get_ural_brent_spread() %>%
-    select(date, add_brent=usd_per_bbl)
+    select(date, add_brent=usd_per_bbl) %>%
+    tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
+    fill(add_brent)
 
   price_ural <- brent %>%
     left_join(spread_ural) %>%
@@ -72,7 +74,10 @@ price.get_predicted_portprices <- function(production=F){
     mutate(commodity="crude_oil")
 
   spread_espo <- get_espo_brent_spread() %>%
-    select(date, add_brent=usd_per_bbl)
+    select(date, add_brent=usd_per_bbl) %>%
+    arrange(date) %>%
+    tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
+    fill(add_brent)
 
   price_espo <- brent %>%
     left_join(spread_espo) %>%
@@ -450,11 +455,11 @@ price.check_prices <- function(p){
 }
 
 
-price.update_prices <- function(production=F, buffer_days=60){
-  p <- price.get_prices(production=production)
-  ok <- price.check_prices(p)
+price.update_prices <- function(production=F, buffer_days=60, rebuild=F){
+  prices <- price.get_prices(production=production)
+  ok <- price.check_prices(prices)
   if(ok){
-    db.upload_prices_to_posgres(p, production=production, buffer_days=buffer_days)
+    db.upload_prices_to_posgres(prices, production=production, buffer_days=buffer_days, rebuild=rebuild)
   }else{
     print("ERROR: prices not updated")
   }
