@@ -172,9 +172,17 @@ get_refinery_margin <- function(){
   url <- "https://data.nasdaq.com/api/v3/datasets/BP/OIL_REF_MARG.csv"
 
   cache_path <- 'cache/BP-OIL_REF_MARG.csv'
+  inst_path <- system.file("extdata", "BP-OIL_REF_MARG.csv", package="russiacounter")
+
+  if(!file.exists(cache_path)){
+    file.copy(inst_path, cache_path)
+  }
+
   refinery_raw <- tryCatch({
     d <- read_csv(url);
     write_csv(d, cache_path);
+    # Just for regular updates to be embedded in the package
+    try(write_csv(d, file.path("inst/extdata/BP-OIL_REF_MARG.csv")));
     d
     },error=function(error){return(read_csv(cache_path))})
 
