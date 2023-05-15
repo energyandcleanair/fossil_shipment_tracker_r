@@ -175,6 +175,7 @@ get_refinery_margin <- function(){
   inst_path <- system.file("extdata", "BP-OIL_REF_MARG.csv", package="russiacounter")
 
   if(!file.exists(cache_path)){
+    dir.create("cache", F)
     file.copy(inst_path, cache_path)
   }
 
