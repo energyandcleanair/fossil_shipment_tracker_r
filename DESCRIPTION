@@ -11,6 +11,7 @@ License: GPL 3.0
 Encoding: UTF-8
 LazyData: true
 Imports:
+    curl (== 4.3),
     tidyverse,
     lubridate,
     scales,
@@ -22,14 +23,15 @@ Imports:
     magrittr,
     gsubfn,
     comtradr,
-    entsog,
     eurostat,
     comtradr,
     tidyquant,
     priceR,
     dbx,
     RPostgres,
-    eia
+    eia,
+    httr
 Remotes:
     energyandcleanair/entsog
+    ropensci/comtradr@api-update
 RoxygenNote: 7.1.1

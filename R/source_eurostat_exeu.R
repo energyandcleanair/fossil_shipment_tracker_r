@@ -47,20 +47,6 @@ eurostat_exeu.get_flows <- function(use_cache=T){
     filter(commodity_code %in% names(hs_commodities)) %>%
     mutate(commodity=recode(commodity_code, !!!hs_commodities))
 
-  # trade %>% ungroup() %>%
-  #   filter(value>0, unit=="tonne") %>%
-  #   group_by(country, commodity, unit) %>% summarise(value=sum(value)) %>%
-  #   tidyr::spread(commodity, value, fill = 0) %>%
-  #   mutate(gas_all2=lng+natural_gas) %>%
-  #   select(country, unit, gas_all, gas_all2)
-
-  # Some countries only share total gas numbers
-  # trade %>% ungroup() %>% filter(value>0, unit=="tonne") %>%
-  #   group_by(country, commodity, transport, unit) %>% summarise(value=sum(value)) %>%
-  #   tidyr::spread(commodity, value, fill = 0) %>%
-  #   mutate(gas_all2=lng+natural_gas) %>%
-  #   select(country, unit, transport, gas_all, gas_all2) %>% View()
-
   # Clean commodities
   trade$transport[grep('Fixed', trade$transport)] <- "pipeline"
   trade$transport[grep('Sea', trade$transport)] <- "seaborne"

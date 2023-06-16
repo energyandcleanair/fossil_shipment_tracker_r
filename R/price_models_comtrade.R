@@ -98,8 +98,8 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       max_deviation = 10
       independents = case_when(group$commodity=='coal' ~ 'ara + global_coal',
                                group$commodity=='natural_gas' ~
-                                 'brent + ttf + asia_lng',
-                               group$commodity=='lng' ~ 'ttf + asia_lng',
+                                 'brent + ttf + jkm',
+                               group$commodity=='lng' ~ 'ttf + jkm',
                                grepl('oil', group$commodity)  ~
                                  'brent + lag(brent) + lag(brent, 3) + 0',
                                T ~ 'brent')
@@ -274,7 +274,8 @@ price_models_comtrade.remove_trade_outliers <- function(trade){
   trade %>%
     filter((commodity!="natural_gas") | (price_eur_per_tonne < 3000)) %>%
     filter((commodity!="lng") | (price_eur_per_tonne < 1500)) %>%
-    filter((commodity!="oil_products") | (price_eur_per_tonne > 80)) %>%
+    filter((commodity!="oil_products") | (
+      price_eur_per_tonne > 80 & price_eur_per_tonne < 1500)) %>%
     filter(!is.na(price_eur_per_tonne) & !is.infinite(price_eur_per_tonne)) %>%
     filter(value_kg> 100 * 1000)
 }

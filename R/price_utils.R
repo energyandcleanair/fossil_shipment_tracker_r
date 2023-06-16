@@ -70,17 +70,17 @@ get_ttf <- function(){
   #   rename(ttf = contains('Close')) %>%
   #   select(date, ttf) %>%
   #   fill_gaps_and_future()
-  url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
-  result <- read_csv(url, show_col_type=F) %>%
-    mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
-           ttf = as.numeric(Price)) %>%
-    select(date, ttf)
+  # url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
+  # result <- read_csv(url, show_col_type=F) %>%
+  #   mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
+  #          ttf = as.numeric(Price)) %>%
+  #   select(date, ttf)
+  #
+  # if(max(result$date) <= lubridate::today() - 7){
+  #   warning("Need to update ttf data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
+  # }
 
-  if(max(result$date) <= lubridate::today() - 7){
-    warning("Need to update ttf data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
-  }
-
-  result  %>%
+  oilprice.get_prices("ttf") %>%
     fill_gaps_and_future()
 }
 
@@ -139,32 +139,32 @@ get_global_coal <- function(){
 }
 
 
-get_asia_lng <- function(){
-  # tidyquant::tq_get("PNGASJPUSDM", get='economic.data', from='2015-01-01') %>%
-  #   select(date, asia_lng=price)
-  url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1027875093&single=true&output=csv"
-  result <- read_csv(url) %>%
-    mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
-           asia_lng = as.numeric(Price)) %>%
-    select(date, asia_lng)
-
-  if(max(result$date) <= lubridate::today() - 7){
-    warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
-  }
-
-  result  %>%
-    fill_gaps_and_future()
-}
+# get_asia_lng <- function(){
+#   # tidyquant::tq_get("PNGASJPUSDM", get='economic.data', from='2015-01-01') %>%
+#   #   select(date, asia_lng=price)
+#   # url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1027875093&single=true&output=csv"
+#   # result <- read_csv(url) %>%
+#   #   mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
+#   #          asia_lng = as.numeric(Price)) %>%
+#   #   select(date, asia_lng)
+#   #
+#   # if(max(result$date) <= lubridate::today() - 7){
+#   #   warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
+#   # }
+#   oilprice.get_prices("jkm") %>%
+#     fill_gaps_and_future()
+# }
 
 
 get_jkm <- function(){
-  url <- "https://assets.ino.com/data/history/?s=NYMEX_QJKM.K22&b=&f=json"
-  jkm <- jsonlite::fromJSON(url)
-  as.data.frame(jkm) %>%
-    `names<-`(c("date", "open", "high", "low", "close", "volume")) %>%
-    tibble() %>%
-    mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
-    select(date, jkm=close) %>%
+  # url <- "https://assets.ino.com/data/history/?s=NYMEX_QJKM.K22&b=&f=json"
+  # jkm <- jsonlite::fromJSON(url)
+  # as.data.frame(jkm) %>%
+  #   `names<-`(c("date", "open", "high", "low", "close", "volume")) %>%
+  #   tibble() %>%
+  #   mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
+  #   select(date, jkm=close) %>%
+  oilprice.get_prices("jkm") %>%
     fill_gaps_and_future()
 }
 
@@ -208,18 +208,18 @@ get_prices_daily <- function(running_days=0){
   ttf_daily <- get_ttf()
   brent_daily <- get_brent()
   ara_daily <- get_ara()
-  asia_lng_daily <- get_asia_lng()
+  jkm <- get_jkm()
   global_coal_daily <- get_global_coal()
   refinery <- get_refinery_margin()
 
   ttf_daily %>%
     full_join(brent_daily) %>%
     full_join(ara_daily) %>%
-    full_join(asia_lng_daily) %>%
+    full_join(jkm) %>%
     full_join(global_coal_daily) %>%
     full_join(refinery) %>%
     mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC")) %>%
-    rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "asia_lng", "global_coal"))
+    rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "jkm", "global_coal"))
 }
 
 get_prices_monthly <- function(){
@@ -236,9 +236,9 @@ get_prices_monthly <- function(){
     group_by(date = date %>% 'day<-'(1)) %>%
     summarise(across(ara, mean, na.rm=T))
 
-  asia_lng_monthly <- get_asia_lng() %>%
+  jkm_monthly <- get_jkm() %>%
     group_by(date = date %>% 'day<-'(1)) %>%
-    summarise(across(asia_lng, mean, na.rm=T))
+    summarise(across(jkm, mean, na.rm=T))
 
   global_coal_monthly <- get_global_coal() %>%
     group_by(date = date %>% 'day<-'(1)) %>%
@@ -253,7 +253,7 @@ get_prices_monthly <- function(){
   ttf_monthly %>%
     full_join(brent_monthly) %>%
     full_join(ara_monthly) %>%
-    full_join(asia_lng_monthly) %>%
+    full_join(jkm_monthly) %>%
     full_join(global_coal_monthly) %>%
     full_join(refining_monthly) %>%
     mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC"))
@@ -292,6 +292,11 @@ price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today()
       summarise(eur_per_usd=mean(eur_per_usd, na.rm=T))
   }
   return(eur_per_usd)
+}
+
+get_urals <- function(){
+  oilprice.get_prices("urals") %>%
+    fill_gaps_and_future()
 }
 
 get_ural_brent_spread <- function(){
