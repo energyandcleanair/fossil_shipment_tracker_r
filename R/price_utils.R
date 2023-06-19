@@ -1,3 +1,11 @@
+fill_past <- function(result, date_from){
+  result %>%
+    ungroup() %>%
+    tidyr::complete(date = seq(as.Date(date_from), lubridate::date(min(date)), by = "day")) %>%
+    arrange(desc(date)) %>%
+    tidyr::fill(setdiff(names(.),"date"), .direction="down")
+}
+
 fill_gaps_and_future <- function(result){
   result %>%
     ungroup() %>%
@@ -70,18 +78,17 @@ get_ttf <- function(){
   #   rename(ttf = contains('Close')) %>%
   #   select(date, ttf) %>%
   #   fill_gaps_and_future()
+
+
   # url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
-  # result <- read_csv(url, show_col_type=F) %>%
+  # historical <- read_csv(url, show_col_type=F) %>%
   #   mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
   #          ttf = as.numeric(Price)) %>%
   #   select(date, ttf)
-  #
-  # if(max(result$date) <= lubridate::today() - 7){
-  #   warning("Need to update ttf data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
-  # }
 
   oilprice.get_prices("ttf") %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+    fill_past(date_from="2020-01-01") # missing 14 days
 }
 
 get_ara <- function(){
@@ -165,7 +172,8 @@ get_jkm <- function(){
   #   mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
   #   select(date, jkm=close) %>%
   oilprice.get_prices("jkm") %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+    fill_past(date_from="2020-01-01") # missing 14 days
 }
 
 get_refinery_margin <- function(){

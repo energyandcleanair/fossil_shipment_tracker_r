@@ -446,7 +446,7 @@ price.get_capped_portprices <- function(production=F){
 
 
 price.check_prices <- function(p){
-  ok <- !any(is.na(p$eur_per_tonne) & (p$date >= '2018-01-01'))
+  ok <- !any(is.na(p$eur_per_tonne) & (p$date >= '2020-01-01'))
   ok <- ok & !any(is.na(p$scenario))
   ok <- ok & (min(p$eur_per_tonne, na.rm=T) >= 0)
   ok <- ok & all(c("destination_iso2s", "departure_port_ids", "ship_owner_iso2s", "ship_insurer_iso2s", "date","commodity","eur_per_tonne","scenario") %in% names(p))
@@ -467,6 +467,3 @@ price.update_prices <- function(production=F, buffer_days=60, rebuild=F){
   scenario_names <- price.get_scenario_names()
   db.upload_scenario_names(scenario_names, production=production)
 }
-
-
-

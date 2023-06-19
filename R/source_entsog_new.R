@@ -26,7 +26,8 @@ entsog_new.get_flows <- function(date_from='2021-11-01', date_to=NULL, use_cache
 
   # Distribute to source country using our iterative method
   flows_sourced <- pbapply::pblapply(split(flows_formatted, flows_formatted$date),
-                                     function(df){process_iterative(df) %>%mutate(date=unique(df$date))}) %>%
+                                     function(df){print(unique(df$date));process_iterative(df) %>%
+                                         mutate(date=unique(df$date))}) %>%
     do.call(bind_rows,.)
 
   sum(flows_sourced$value[flows_sourced$from_country=='RU'], na.rm=T) / 1e9

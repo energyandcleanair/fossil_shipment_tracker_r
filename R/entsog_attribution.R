@@ -125,6 +125,9 @@ process_old <- function(consolidated_date){
 # so as to have a square matrix
 consolidate <- function(d){
   all_countries = unique(c(d$from_country, d$to_country))
+  if(is.null(d)){
+    stop("d is null")
+  }
   d %>%
     full_join(tidyr::crossing(from_country=all_countries,
                               to_country=all_countries),
@@ -135,6 +138,10 @@ consolidate <- function(d){
 
 # "Netize" so that there is no A <-> B
 netize <- function(d){
+  if(is.null(d)){
+    stop("d is null")
+  }
+
   d %>%
     ungroup() %>%
     left_join(
@@ -262,6 +269,55 @@ distribute <- function(pos){
 #     `dimnames<-`(dimnames(pos))
 # }
 
+bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s){
+
+  if(length(unique(flows$date))>1) stop("Only works for a single date")
+  if(length(origin_iso2)!=1 | length(transit_iso2)!=1) stop("Wrong arguments in bypass")
+
+  flows_in_idx <- flows$from_country %in% origin_iso2 & flows$to_country %in% transit_iso2
+  flows_out_idx <- flows$from_country %in% transit_iso2 & flows$to_country %in% destination_iso2s
+  flows_in <- flows[flows_in_idx,]
+  flows_out <- flows[flows_out_idx,]
+
+
+  if(nrow(flows_in) > 1) stop("more than one input flow")
+  if(nrow(flows_in)==0 | nrow(flows_out)==0) return(flows)
+
+  flow_in <- sum(flows_in$value)
+  flow_out <- sum(flows_out$value)
+  if(flow_in<0 | any(flows_out$value<0)) stop("negative flow, not managed")
+
+  offset <- min(flow_in, flow_out)
+  ratio <- offset/flow_out
+
+  flows[flows_in_idx, "value"] <- flows[flows_in_idx, "value"] - offset
+
+  # Create new flows
+  new_flows <- flows[flows_out_idx,]
+  new_flows$from_country <- origin_iso2
+  new_flows$value <- new_flows$value * ratio
+
+  # Update old ones
+  flows[flows_out_idx, "value"] <- flows[flows_out_idx, "value"] * (1-ratio)
+
+  # Concatenate
+  flows = rbind(flows, new_flows)
+
+  # Group just in case other flows existed
+  flows <- flows %>%
+    group_by(from_country, to_country, date) %>%
+    summarise(value = sum(value, na.rm=T)) %>%
+    ungroup()
+
+  # Remove unneeded rows
+  flows <- flows %>%
+    filter(value!=0)
+
+  return(flows)
+}
+
+
+
 process_iterative <- function(flows){
 
   options(dplyr.summarise.inform = FALSE)
@@ -326,6 +382,12 @@ process_iterative <- function(flows){
     mutate(value=ifelse((from_country=='RU') & (to_country=='UA'), 0, value),
       from_country=recode(from_country, "UA"="RU"),
       to_country=recode(to_country, "UA"="RU"))
+
+  # Bulgaria as transit from TR (i.e RU) to RO,RS,MK
+  flows <- bypass_country(flows,
+                          origin_iso2='RU',
+                          transit_iso2='BG',
+                          destination_iso2s = c('RO','RS','MK'))
 
 
   flow_mat <- flows %>%
