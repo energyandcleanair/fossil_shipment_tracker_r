@@ -33,6 +33,9 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
                                  'brent + ttf + lag(ttf)',
                                group$commodity=='lng' ~ 'ttf + lag(ttf)',
                                grepl('oil', group$commodity) ~
+                                 'brent + lag(brent) + lag(brent, 3)',
+                               group$commodity=='lpg' ~ 'brent + ttf + lag(ttf)',
+                               grepl('oil', group$commodity)  ~
                                  'brent + lag(brent) + lag(brent, 3) + 0',
                                T ~ 'brent + lag(price_eur_per_tonne, 12)')
 
@@ -53,6 +56,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
       tidyr::unnest(data)  %>% pivot_longer(c(price_eur_per_tonne, predicted_price, price_ceiling)) %>% filter(year(date)>=2016) %>%
       ggplot(aes(date, value, col=name)) +
       facet_wrap(~commodity) + geom_line()
+
     ggsave(file.path(diagnostic_folder, 'pricing_model_eu.png'), plot=plt, width=12, height=8)
 
     plt <- trade_with_predictions_eu %>% select(-c(model)) %>%
@@ -100,6 +104,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
                                group$commodity=='natural_gas' ~
                                  'brent + ttf + jkm',
                                group$commodity=='lng' ~ 'ttf + jkm',
+                               group$commodity=='lpg' ~ 'brent + ttf + jkm',
                                grepl('oil', group$commodity)  ~
                                  'brent + lag(brent) + lag(brent, 3) + 0',
                                T ~ 'brent')
@@ -161,7 +166,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
 price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
 
   oil_codes <- c("2709","2710")
-  gas_codes <- c("2711","271121","271111")
+  gas_codes <- c("2711","271121","271111", "271119")
   coal_codes <- c("2701","2704","2705","2706")
 
   if(refresh_comtrade){
@@ -203,14 +208,15 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
       full_join(prices_monthly, by="date") %>%
       mutate(date = as.Date(date))
 
-    df$commodity[grep('crude$', df$commodity)] <- "crude_oil"
-    df$commodity[grep('not crude', df$commodity)] <- "oil_products"
-    df$commodity[grep('^Coal.*ovoids', df$commodity)] <- "coal"
-    df$commodity[grep('liquefied', df$commodity)] <- "lng"
-    df$commodity[grep('Coal gas', df$commodity)] <- "coal_gas"
-    df$commodity[grep('gases', df$commodity)] <- "natural_gas"
+    df$commodity[grepl('crude$', df$commodity) & (df$cmdCode %in% oil_codes)] <- "crude_oil"
+    df$commodity[grepl('not crude', df$commodity) & (df$cmdCode %in% oil_codes)] <- "oil_products"
+    df$commodity[grepl('^Coal.*ovoids', df$commodity) & (df$cmdCode %in% coal_codes)] <- "coal"
+    df$commodity[grepl('Coal gas', df$commodity) & (df$cmdCode %in% gas_codes)] <- "coal_gas"
+    df$commodity[grepl('gases', df$commodity) & (df$cmdCode %in% gas_codes)] <- "natural_gas"
+    df$commodity[df$cmdCode == '271111'] <- "lng"
+    df$commodity[df$cmdCode == '271119'] <- "lpg"
 
-    df <- df %>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas', commodity))
+    df <- df %>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas|lpg', commodity))
 
     group_cols <- if(is_import){c("reporter_iso3")}else{c("partner_iso3")}
     df <- df %>%
