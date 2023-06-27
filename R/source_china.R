@@ -49,7 +49,7 @@ china.get_flows_pipeline_oil_old <- function(){
 }
 
 
-china.get_flows_pipeline_oil <- function(){
+china.get_flows_pipeline_oil <- function(use_google_sheets=T){
 
   # Getting total monthly data from China customs: http://43.248.49.97/indexEn
   # Or from wind
@@ -61,14 +61,24 @@ china.get_flows_pipeline_oil <- function(){
   shipments <- read_csv('https://api.russiafossiltracker.com/v0/voyage?date_from=2022-01-01&commodity=crude_oil&aggregate_by=arrival_month,commodity&commodity_destination_iso2=CN&commodity_origin_iso2=RU&format=csv&bypass_maintenance=true') %>%
     select(month=arrival_month, value_shipment_tonne_month=value_tonne)
 
-  total <- read_csv(system.file("extdata","china/china_imports_wind.csv", package="russiacounter"), skip=1) %>%
+  if(use_google_sheets){
+    # China Wind url:
+    # https://docs.google.com/spreadsheets/d/1D3tXE6zGuxlvq8xcGcoD-R_2hD9aY8Ls-gs9DAJlIJo/edit#gid=1918715945
+    path <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vSK6MEhS2XLjA5fEAqYCm7UD3Ox-V-z3sfH9YV5snUeN06PKP7_soS8vaUJOVD7lSIZ8XL9ceNvM0xw/pub?gid=1918715945&single=true&output=csv"
+    skip <- 0
+  }else{
+    path <- system.file("extdata","china/china_imports_wind.csv", package="russiacounter")
+    skip <- 1
+  }
+
+  total <- read_csv(path, skip=skip) %>%
     select(date=Name,
            value_kg=`Volume of Imports: Crude Oil: Russian Federation`) %>%
     filter(grepl('^20', date)) %>%
     mutate(
-      # month=as.Date(paste0(date,'-01')),
-          month=floor_date(as.Date(date), 'month'),
-           value_total_tonne_month=as.numeric(gsub(",", "", value_kg))/1000) %>%
+      date = lubridate::parse_date_time(gsub("/", "-", date), orders = c("ymd", "ym")),
+      month=floor_date(date, 'month'),
+      value_total_tonne_month=as.numeric(gsub(",", "", value_kg))/1000) %>%
     select(month, value_total_tonne_month)
 
   pipeline <- shipments %>%
