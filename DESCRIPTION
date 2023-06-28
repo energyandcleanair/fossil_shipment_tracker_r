@@ -32,6 +32,6 @@ Imports:
     eia,
     httr
 Remotes:
-    energyandcleanair/entsog
+    energyandcleanair/entsog,
     ropensci/comtradr@api-update
 RoxygenNote: 7.2.3
