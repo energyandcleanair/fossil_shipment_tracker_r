@@ -359,7 +359,7 @@ get_espo_brent_spread <- function(){
                            discount=c(0,0,20,26,30,30,39,37,25,25,20))
     approx(as_date(espo_discount$date), espo_discount$discount, as_date(target_date))$y
   }
-  dates <- seq.Date(as.Date("2022-01-01"), date_to, by="day")
+  dates <- seq.Date(as.Date("2020-01-01"), date_to, by="day")
   # eur_per_usd <- price.eur_per_usd(date_from=min(dates), date_to=max(dates))
   # tonne_per_bbl <- 0.138
   tibble(date=dates, usd_per_bbl=-get_at_date(date)) %>%
@@ -373,6 +373,58 @@ get_espo_brent_spread <- function(){
     # select(commodity, date, reduction_eur_per_tonne)
 }
 
+get_urals <- function(brent=NULL, eur_per_usd=NULL){
+
+  if(is.null(brent)){
+    brent <- get_brent()
+  }
+
+  if(is.null(eur_per_usd)){
+    eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+  }
+
+  spread_ural <- russiacounter::get_ural_brent_spread() %>%
+    select(date, add_brent=usd_per_bbl) %>%
+    tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
+    fill(add_brent)
+
+  brent %>%
+    left_join(spread_ural) %>%
+    arrange(desc(date)) %>%
+    mutate(usd_per_bbl = brent + add_brent) %>%
+    left_join(eur_per_usd) %>%
+    mutate(eur_per_tonne=usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+    select(date, eur_per_tonne) %>%
+    mutate(commodity="crude_oil")
+}
+
+get_espo <- function(brent=NULL, eur_per_usd=NULL){
+
+  if(is.null(brent)){
+    brent <- get_brent()
+  }
+
+  if(is.null(eur_per_usd)){
+    eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+  }
+
+  spread_espo <- get_espo_brent_spread() %>%
+    select(date, add_brent=usd_per_bbl) %>%
+    arrange(date) %>%
+    tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
+    fill(add_brent)
+
+  tonne_per_bbl <- 0.138
+
+  brent %>%
+    left_join(spread_espo) %>%
+    arrange(desc(date)) %>%
+    mutate(usd_per_bbl = brent + add_brent) %>%
+    left_join(eur_per_usd) %>%
+    mutate(eur_per_tonne=usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+    select(date, eur_per_tonne) %>%
+    mutate(commodity="crude_oil")
+}
 #'
 #' price.ttf <- function(date_from="2016-01-01"){
 #'   p <- quantmod::getSymbols("TTF=F",

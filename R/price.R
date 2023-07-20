@@ -1,3 +1,16 @@
+price.update_prices <- function(production=F, buffer_days=60, rebuild=F){
+  prices <- price.get_prices(production=production)
+  ok <- price.check_prices(prices)
+  if(ok){
+    db.upload_prices_to_posgres(prices, production=production, buffer_days=buffer_days, rebuild=rebuild)
+  }else{
+    print("ERROR: prices not updated")
+  }
+
+  scenario_names <- price.get_scenario_names()
+  db.upload_scenario_names(scenario_names, production=production)
+}
+
 price.get_prices <- function(production = F){
 
   # This function gets all prices in one dataframe,
@@ -55,7 +68,6 @@ price.get_predicted_portprices <- function(production=F){
 
   # Discounts
   brent <- russiacounter::get_brent()
-
   eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
   tonne_per_bbl <- 0.138
 
@@ -73,19 +85,7 @@ price.get_predicted_portprices <- function(production=F){
     select(date, eur_per_tonne) %>%
     mutate(commodity="crude_oil")
 
-  spread_espo <- get_espo_brent_spread() %>%
-    select(date, add_brent=usd_per_bbl) %>%
-    arrange(date) %>%
-    tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
-    fill(add_brent)
-
-  price_espo <- brent %>%
-    left_join(spread_espo) %>%
-    arrange(desc(date)) %>%
-    mutate(usd_per_bbl = brent + add_brent) %>%
-    left_join(eur_per_usd) %>%
-    mutate(eur_per_tonne=usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
-    select(date, eur_per_tonne) %>%
+  price_espo <- get_espo(brent=brent, eur_per_usd=eur_per_usd) %>%
     mutate(commodity="crude_oil")
 
   portprice_ural <- ports_ural %>%
@@ -384,13 +384,32 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
       ship_insurer_iso2s=list(ship_insurer_iso2s))
 
 
+  # Create a deditacted Ural and Espo price
+  # which is used by Kpler
+  pc_espo <- get_espo() %>%
+    mutate(commodity='crude_oil_espo',
+           scenario=!!scenario
+           ) %>%
+    filter(!is.na(eur_per_tonne)) %>%
+    fill_gaps_and_future()
+
+  pc_urals <- get_urals() %>%
+    mutate(commodity='crude_oil_urals',
+           scenario=!!scenario
+    ) %>%
+    filter(!is.na(eur_per_tonne)) %>%
+    fill_gaps_and_future()
+
+
   pc <- bind_rows(ppc_ship_owner,
                   ppc_ship_insurer,
                   ppc_destination,
                   pc_destination,
                   pc_ship_owner,
                   pc_ship_insurer,
-                  pp
+                  pp,
+                  pc_urals,
+                  pc_espo
                   ) %>%
     ungroup() %>%
     select(-c(max_eur_per_tonne)) %>%
@@ -455,15 +474,4 @@ price.check_prices <- function(p){
 }
 
 
-price.update_prices <- function(production=F, buffer_days=60, rebuild=F){
-  prices <- price.get_prices(production=production)
-  ok <- price.check_prices(prices)
-  if(ok){
-    db.upload_prices_to_posgres(prices, production=production, buffer_days=buffer_days, rebuild=rebuild)
-  }else{
-    print("ERROR: prices not updated")
-  }
 
-  scenario_names <- price.get_scenario_names()
-  db.upload_scenario_names(scenario_names, production=production)
-}

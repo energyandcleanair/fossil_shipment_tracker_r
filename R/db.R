@@ -211,10 +211,11 @@ db.rebuild_price_table <- function(p, production=F){
 
 
 
-db.upload_prices_to_posgres <- function(p, rebuild=F, production=F, buffer_days=60){
+db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60){
+
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
-  p$updated_on <- lubridate::now()
+  prices$updated_on <- lubridate::now()
 
 
   list_cols <- c('destination_iso2s',
@@ -235,18 +236,18 @@ db.upload_prices_to_posgres <- function(p, rebuild=F, production=F, buffer_days=
   # Replacing list(NULL) with something dbx can upload
   # We'll replace it by NULL below
   for(col in list_cols){
-    p[[col]] = unlist(lapply(p[[col]], format_array))
+    prices[[col]] = unlist(lapply(prices[[col]], format_array))
   }
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
   if(!rebuild){
     max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
-    p <- p %>%
+    prices <- prices %>%
       filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
   }
 
-  dbx::dbxUpsert(db, "price", as.data.frame(p),
+  dbx::dbxUpsert(db, "price", as.data.frame(prices),
                  batch_size = 10000,
                  where_cols=c("commodity", "date", "scenario",
                               "destination_iso2s", "departure_port_ids",
