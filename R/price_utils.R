@@ -388,6 +388,8 @@ get_urals <- function(brent=NULL, eur_per_usd=NULL){
     tidyr::complete(date=seq.Date(min(date), max(date), by='day')) %>%
     fill(add_brent)
 
+  tonne_per_bbl <- 0.138
+
   brent %>%
     left_join(spread_ural) %>%
     arrange(desc(date)) %>%
