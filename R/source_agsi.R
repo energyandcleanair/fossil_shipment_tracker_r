@@ -13,7 +13,7 @@ agsi.get_storage_change <- function(date_from, date_to, iso2){
       select(iso2=code,
              date=gasDayStart,
              value_gwh=netWithdrawal) %>%
-      mutate(date=date(date),
+      mutate(date=as.Date(date),
              value_gwh=as.numeric(value_gwh),
              value_m3=value_gwh*1e6/gcv_kWh_per_m3,
              type='storage_drawdown')
