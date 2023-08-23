@@ -247,6 +247,8 @@ price.get_price_caps <- function(p, version){
 
     precaps <- list(
       crude_oil=55 * barrel_per_tonne,
+      crude_oil_espo=55 * barrel_per_tonne,
+      crude_oil_urals=55 * barrel_per_tonne,
       natural_gas= 15 * ng_mwh_per_tonne,
       lng= 30 * ng_mwh_per_tonne,
       coal=50
@@ -269,7 +271,9 @@ price.get_price_caps <- function(p, version){
     barrel_per_tonne <- 1 / 0.138
 
     precaps <- list(
-      crude_oil= 60 * barrel_per_tonne
+      crude_oil= 60 * barrel_per_tonne,
+      crude_oil_espo= 60 * barrel_per_tonne,
+      crude_oil_urals= 60 * barrel_per_tonne
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
@@ -288,7 +292,9 @@ price.get_price_caps <- function(p, version){
     barrel_per_tonne <- 1 / 0.138
     cap_usd <- as.numeric(sub('usd','',version))
     precaps <- list(
-      crude_oil= cap_usd * barrel_per_tonne
+      crude_oil= cap_usd * barrel_per_tonne,
+      crude_oil_espo= cap_usd * barrel_per_tonne,
+      crude_oil_urals= cap_usd * barrel_per_tonne,
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
@@ -386,20 +392,49 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Create a deditacted Ural and Espo price
   # which is used by Kpler
-  pc_espo <- get_espo() %>%
+  p_espo <- get_espo() %>%
     mutate(commodity='crude_oil_espo',
            scenario=!!scenario
            ) %>%
     filter(!is.na(eur_per_tonne)) %>%
     fill_gaps_and_future()
 
-  pc_urals <- get_urals() %>%
+  p_urals <- get_urals() %>%
     mutate(commodity='crude_oil_urals',
            scenario=!!scenario
     ) %>%
     filter(!is.na(eur_per_tonne)) %>%
     fill_gaps_and_future()
 
+  p_urals_espo <- bind_rows(p_urals, p_espo)
+
+  # Create one version per destination_iso2, with no ship constraint
+  pc_urals_espo_destination <- caps %>%
+    right_join(p_urals_espo %>%  mutate(destination_iso2s=list(c(eu_g7)))) %>%
+    tidyr::unnest(destination_iso2s, keep_empty = T) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) & (destination_iso2s %in% destination_iso2) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      # Not to have NULL nested with other countries
+      destination_is_null=is.null(destination_iso2s) | is.na(destination_iso2s)) %>%
+    # To nest more together
+    mutate(eur_per_tonne=round(eur_per_tonne, 3)) %>%
+    group_by(across(-c(destination_iso2s, max_eur_per_tonne))) %>%
+    summarise(across(destination_iso2s, list)) %>%
+    select(-c(destination_is_null)) %>%
+    ungroup()
+
+  # Create a ship constraint (insurer): regardless of destination and owner
+  pc_urals_espo_ship_insurer <-
+    bind_rows(
+        p_urals_espo,
+        pc_urals_espo_destination) %>%
+    filter(commodity %in% seaborne_commodities) %>%
+    left_join(caps) %>%
+    mutate(eur_per_tonne=case_when(
+      (date >= date_start) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+      ship_insurer_iso2s=list(ship_insurer_iso2s))
 
   pc <- bind_rows(ppc_ship_owner,
                   ppc_ship_insurer,
@@ -408,8 +443,9 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
                   pc_ship_owner,
                   pc_ship_insurer,
                   pp,
-                  pc_urals,
-                  pc_espo
+                  p_urals_espo,
+                  pc_urals_espo_destination,
+                  pc_urals_espo_ship_insurer
                   ) %>%
     ungroup() %>%
     select(-c(max_eur_per_tonne)) %>%
