@@ -277,10 +277,11 @@ price.get_price_caps <- function(p, version){
     )
 
     eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                     date_to=min(max(p$date), lubridate::today()))
+                                     date_to=min(max(p$date), lubridate::today())) %>%
+      fill_gaps_and_future()
 
     caps <- tibble(commodity=names(precaps),
-                 usd_per_tonne=unlist(precaps)) %>%
+                   usd_per_tonne=unlist(precaps)) %>%
       tidyr::crossing(eur_per_usd) %>%
       arrange(date) %>%
       tidyr::fill(eur_per_usd) %>%
@@ -308,6 +309,8 @@ price.get_price_caps <- function(p, version){
       mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
       select(-c(usd_per_tonne, eur_per_usd))
   }
+
+
 
   return(ungroup(caps))
 }
@@ -413,7 +416,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
     right_join(p_urals_espo %>%  mutate(destination_iso2s=list(c(eu_g7)))) %>%
     tidyr::unnest(destination_iso2s, keep_empty = T) %>%
     mutate(eur_per_tonne=case_when(
-      (date >= date_start) & (destination_iso2s %in% destination_iso2) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      (date >= date_start)  ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
       T ~ eur_per_tonne),
       # Not to have NULL nested with other countries
       destination_is_null=is.null(destination_iso2s) | is.na(destination_iso2s)) %>%
