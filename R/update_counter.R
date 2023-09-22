@@ -12,6 +12,8 @@ update_counter <- function(){
 
 
   # Price should come first, as many endpoints rely on this to be complete
+  # Run the line below after updating price models
+  # price.update_prices(production=T, rebuild = T)
   price.update_prices(production=T, buffer_days=60)
 
   # Europe pipeline gas ------------------------------------------------------------
