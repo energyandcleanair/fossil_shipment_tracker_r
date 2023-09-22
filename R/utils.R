@@ -35,15 +35,15 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
   reporters_iso3 <- countrycode::countrycode(reporters, "country.name", "iso3c", custom_match=c(all="all", "EUR"="EUR"))
 
   pbapply::pblapply(seq_along(start_dates), function(i_date){
-    lapply(reporters_iso3, function(reporter_iso3){
-      lapply(codes, function(code){
-
+    pbapply::pblapply(reporters_iso3, function(reporter_iso3){
+      pbapply::pblapply(codes, function(code){
+             print(code)
              res <- tibble()
              itry <- 0
              ntries <- 3
              while(nrow(res)==0 & (itry<ntries)){
 
-               res <- comtradr::ct_get_data(partner = partners_iso3,
+               res <- tryCatch({comtradr::ct_get_data(partner = partners_iso3,
                                             reporter = reporter_iso3,
                                             flow_direction = trade_flow,
                                             commodity_code=code,
@@ -51,6 +51,9 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
                                             start_date = start_dates[i_date],
                                             end_date = end_dates[i_date]
                                             )
+               }, error=function(error){
+                 return(tibble())
+               })
 
                if(nrow(res)==0 & (itry<ntries)){
                  itry <- itry + 1
