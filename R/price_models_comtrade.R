@@ -169,12 +169,21 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
   gas_codes <- c("2711","271121","271111", "271119")
   coal_codes <- c("2701","2704","2705","2706")
 
+  # Adding more granular data for kpler
+  fueloils_codes <- c("27101951", "27101962", "27101966", "27101967")
+  kerosene_codes <- c("27101921", "27101925")
+  diesel_codes <- c("27101931", "27101935", "27101943", "27101946", "27101947",
+                    "27101948", "27102011", "27102016", "27102019")
+  gasoline_codes <- c("271012")
+
   if(refresh_comtrade){
     imp <- utils.collect_comtrade(partners="Russian Federation",
                                   reporters=c("all", "EUR"),
                                   trade_flow="import",
                                   years=seq(2016, lubridate::year(lubridate::today())),
-                                  codes=c(coal_codes, oil_codes, gas_codes),
+                                  codes=c(coal_codes, oil_codes, gas_codes,
+                                          fueloils_codes, kerosene_codes, diesel_codes,
+                                          gasoline_codes),
                                   frequency="monthly",
                                   stop_if_no_row=F)
     saveRDS(imp, "cache/imp_for_building_models.RDS")
@@ -183,7 +192,9 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
                                   reporters="Russian Federation",
                                   trade_flow="export",
                                   years=seq(2015,2019), # No record for 2020, and 2021
-                                  codes=c(coal_codes, oil_codes, gas_codes),
+                                  codes=c(coal_codes, oil_codes, gas_codes,
+                                          fueloils_codes, kerosene_codes, diesel_codes,
+                                          gasoline_codes),
                                   frequency="monthly",
                                   stop_if_no_row=F)
     saveRDS(exp, "cache/exp_for_building_models.RDS")
@@ -194,11 +205,11 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
 
   clean_comtrade <- function(df, is_import){
     df <- df %>%
-      rename(value_kg=netWgt,
-             value_usd=primaryValue,
-             commodity=cmdDesc,
-             reporter_iso3=reporterISO,
-             partner_iso3=partnerISO) %>%
+      rename(value_kg=net_wgt,
+             value_usd=primary_value,
+             commodity=cmd_desc,
+             reporter_iso3=reporter_iso,
+             partner_iso3=partner_iso) %>%
       filter(!is.na(period)) %>%
       mutate(across(is.logical, as.character),
              across(matches('_kg|_usd|year|period|flag'), as.numeric),
@@ -208,15 +219,23 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
       full_join(prices_monthly, by="date") %>%
       mutate(date = as.Date(date))
 
-    df$commodity[grepl('crude$', df$commodity) & (df$cmdCode %in% oil_codes)] <- "crude_oil"
-    df$commodity[grepl('not crude', df$commodity) & (df$cmdCode %in% oil_codes)] <- "oil_products"
-    df$commodity[grepl('^Coal.*ovoids', df$commodity) & (df$cmdCode %in% coal_codes)] <- "coal"
-    df$commodity[grepl('Coal gas', df$commodity) & (df$cmdCode %in% gas_codes)] <- "coal_gas"
-    df$commodity[grepl('gases', df$commodity) & (df$cmdCode %in% gas_codes)] <- "natural_gas"
-    df$commodity[df$cmdCode == '271111'] <- "lng"
-    df$commodity[df$cmdCode == '271119'] <- "lpg"
+    df$commodity[grepl('crude$', df$commodity) & (df$cmd_code %in% oil_codes)] <- "crude_oil"
+    df$commodity[grepl('not crude', df$commodity) & (df$cmd_code %in% oil_codes)] <- "oil_products"
+    df$commodity[grepl('^Coal.*ovoids', df$commodity) & (df$cmd_code %in% coal_codes)] <- "coal"
+    df$commodity[grepl('Coal gas', df$commodity) & (df$cmd_code %in% gas_codes)] <- "coal_gas"
+    df$commodity[grepl('gases', df$commodity) & (df$cmd_code %in% gas_codes)] <- "natural_gas"
+    df$commodity[df$cmd_code == '271111'] <- "lng"
+    df$commodity[df$cmd_code == '271119'] <- "lpg"
 
-    df <- df %>% filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas|lpg', commodity))
+    df$commodity[df$cmd_code %in% fueloils_codes] <- "fuel_oils"
+    df$commodity[df$cmd_code %in% kerosene_codes] <- "kerosene"
+    df$commodity[df$cmd_code %in% diesel_codes] <- "diesel"
+    df$commodity[df$cmd_code %in% gasoline_codes] <- "gasoline"
+
+
+    df <- df %>%
+    filter(grepl('coal$|crude_oil|oil_products|lng|natural_gas|lpg|fuel_oils|kerosene|diesel|gasoline',
+                commodity))
 
     group_cols <- if(is_import){c("reporter_iso3")}else{c("partner_iso3")}
     df <- df %>%
