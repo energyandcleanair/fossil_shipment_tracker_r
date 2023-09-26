@@ -64,7 +64,7 @@ china.get_flows_pipeline_oil <- function(use_google_sheets=T){
   if(use_google_sheets){
     # China Wind url:
     # https://docs.google.com/spreadsheets/d/1MQae1FpawourNnJpy-p3jxXxgrnqIkxw/edit#gid=1904808077
-    path <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?gid=121272541&single=true&output=csv"
+    path <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?gid=57025182&single=true&output=csv"
     skip <- 1
   }else{
     path <- system.file("extdata","china/china_imports_wind.csv", package="russiacounter")
