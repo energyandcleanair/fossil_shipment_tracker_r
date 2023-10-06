@@ -14,6 +14,10 @@ fill_gaps_and_future <- function(result){
     tidyr::fill(setdiff(names(.),"date"), .direction="up")
 }
 
+force_utc <- function(df){
+  df %>% mutate(date=force_tz(date, "UTC"))
+}
+
 get_brent <- function(){
 
   brent_datahub1 <- tryCatch({read_csv('https://datahub.io/core/oil-prices/r/brent-daily.csv', show_col_type=F) %>%
@@ -65,7 +69,8 @@ get_brent <- function(){
     summarise_at('brent', mean, na.rm=T) %>%
     filter(!is.na(brent)) %>%
     arrange(desc(date)) %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+    force_utc()
 
 }
 
@@ -88,7 +93,8 @@ get_ttf <- function(){
 
   oilprice.get_prices("ttf") %>%
     fill_gaps_and_future() %>%
-    fill_past(date_from="2020-01-01") # missing 14 days
+    fill_past(date_from="2020-01-01") %>%
+    force_utc() # missing 14 days
 }
 
 get_ara <- function(){
@@ -112,7 +118,8 @@ get_ara <- function(){
 
   # Fill gaps and next 7 days
   ara %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+    force_utc()
 }
 
 get_newcastle <- function(){
@@ -124,7 +131,8 @@ get_newcastle <- function(){
     tibble() %>%
     mutate(date = strptime(date, "%a %b %d %H:%M:%S %Y", tz="UTC"),
            newcastle = as.numeric(newcastle))  %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+   force_utc()
 }
 
 
@@ -142,7 +150,8 @@ get_global_coal <- function(){
   }
 
   result  %>%
-    fill_gaps_and_future()
+    fill_gaps_and_future() %>%
+    force_utc()
 }
 
 
@@ -173,7 +182,8 @@ get_jkm <- function(){
   #   select(date, jkm=close) %>%
   oilprice.get_prices("jkm") %>%
     fill_gaps_and_future() %>%
-    fill_past(date_from="2020-01-01") # missing 14 days
+    fill_past(date_from="2020-01-01") %>%
+    force_utc()
 }
 
 get_refinery_margin <- function(){
@@ -208,7 +218,8 @@ get_refinery_margin <- function(){
               refining_medium = mean(refining_medium, na.rm=TRUE),
               refining_light = mean(refining_light, na.rm=TRUE)) %>%
     fill_gaps_and_future() %>%
-    filter(date >= '2015-01-01')
+    filter(date >= '2015-01-01') %>%
+    force_utc()
 }
 
 get_prices_daily <- function(running_days=0){
@@ -264,7 +275,7 @@ get_prices_monthly <- function(){
     full_join(jkm_monthly) %>%
     full_join(global_coal_monthly) %>%
     full_join(refining_monthly) %>%
-    mutate(date=lubridate::date(date) %>% lubridate::force_tz("UTC"))
+    force_utc()
 }
 
 price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
@@ -295,11 +306,46 @@ price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today()
     tidyr::fill(eur_per_usd)
 
   if(monthly){
-    eur_per_usd %>%
-      group_by(lubridate::floor_date(date, "month")) %>%
+    eur_per_usd <- eur_per_usd %>%
+      group_by(date=lubridate::floor_date(date, "month")) %>%
       summarise(eur_per_usd=mean(eur_per_usd, na.rm=T))
   }
   return(eur_per_usd)
+}
+
+price.cny_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
+
+
+  get_from_priceR <- function(date_from, date_to){
+    priceR::historical_exchange_rates("USD", to = "CNY",
+                                      start_date = date_from,
+                                      end_date = min(date_to, lubridate::today()-1)) %>%
+      tibble() %>%
+      `names<-`(c("date","eur_per_usd"))
+  }
+
+  get_from_wsj <- function(date_from, date_to){
+    url <- sprintf("https://www.wsj.com/market-data/quotes/fx/USDCNY/historical-prices/download?MOD_VIEW=page&num_rows=90000&range_days=90000&startDate=%s&endDate=%s", strftime(as.Date(date_from), '%m/%d/%Y'), strftime(as.Date(date_to), '%m/%d/%Y'))
+    readr::read_csv(url) %>%
+      mutate(date=as.Date(Date, '%m/%d/%y')) %>%
+      select(date, cny_per_usd=Close)
+  }
+
+  cny_per_usd <- tryCatch({get_from_priceR(date_from, date_to)},
+                          error=function(error){
+                            return(get_from_wsj(date_from, date_to))})
+
+  # Fill values
+  cny_per_usd <- cny_per_usd %>%
+    tidyr::complete(date=seq.Date(min(.$date), max(.$date, as.Date(date_to)), by='day')) %>%
+    tidyr::fill(cny_per_usd)
+
+  if(monthly){
+    cny_per_usd <- cny_per_usd %>%
+      group_by(date=lubridate::floor_date(date, "month")) %>%
+      summarise(cny_per_usd=mean(cny_per_usd, na.rm=T))
+  }
+  return(cny_per_usd)
 }
 
 get_urals <- function(){
@@ -380,7 +426,8 @@ get_urals <- function(brent=NULL, eur_per_usd=NULL){
   }
 
   if(is.null(eur_per_usd)){
-    eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+    eur_per_usd <- price.eur_per_usd(date_from=min(lubridate::date(brent$date)),
+                                     date_to=min(lubridate::date(max(brent$date)), lubridate::today()))
   }
 
   spread_ural <- russiacounter::get_ural_brent_spread() %>%
@@ -407,7 +454,8 @@ get_espo <- function(brent=NULL, eur_per_usd=NULL){
   }
 
   if(is.null(eur_per_usd)){
-    eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+    eur_per_usd <- price.eur_per_usd(date_from=min(lubridate::date(brent$date)),
+                                     date_to=min(lubridate::date(max(brent$date)), lubridate::today()))
   }
 
   spread_espo <- get_espo_brent_spread() %>%

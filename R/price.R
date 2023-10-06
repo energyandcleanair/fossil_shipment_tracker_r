@@ -29,10 +29,23 @@ price.get_prices <- function(production = F){
   # Eurostat pricing for KPLER
   p_default_eurostat <- price_models_eurostat.get_predicted_prices(production=production)
 
+  # Specific one for China gas pipeline, directly from customs, so that total number matches
+  china_ng_prices <- china.get_natural_gas_prices()
+
+  p_default <- p_default %>%
+    left_join(
+      china_ng_prices %>%
+        select(date, eur_per_tonne_fix = eur_per_tonne) %>%
+        mutate(commodity='natural_gas',
+               destination_iso2s=list('CN'))
+    ) %>%
+    mutate(eur_per_tonne = coalesce(eur_per_tonne_fix, eur_per_tonne)) %>%
+    select(-c(eur_per_tonne_fix))
+
 
   # Fill old values with NULL, because some endpoints expect a pricing_scenario
   p_default <- p_default %>%
-    tidyr::complete(date=seq(as.Date('2015-01-01'), max(p_default$date), by='day'),
+    tidyr::complete(date=seq(as.Date('2015-01-01'), max(date(p_default$date)), by='day'),
                     scenario,
                     commodity,
                     fill=list(eur_per_tonne=NA))
@@ -68,7 +81,7 @@ price.get_predicted_portprices <- function(production=F){
 
   # Discounts
   brent <- russiacounter::get_brent()
-  eur_per_usd <- price.eur_per_usd(date_from=min(brent$date), date_to=min(max(brent$date), lubridate::today()))
+  eur_per_usd <- price.eur_per_usd(date_from=min(date(brent$date)), date_to=min(max(date(brent$date)), lubridate::today()))
   tonne_per_bbl <- 0.138
 
   spread_ural <- russiacounter::get_ural_brent_spread() %>%
@@ -333,7 +346,7 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
 
   # Create one version per destination_iso2, with no ship constraint
   pc_destination <- caps %>%
-      right_join(p) %>%
+      right_join(p, multiple='all') %>%
     tidyr::unnest(destination_iso2s, keep_empty = T) %>%
     mutate(eur_per_tonne=case_when(
         (date >= date_start) & (destination_iso2s %in% destination_iso2) ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
