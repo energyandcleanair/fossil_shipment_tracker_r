@@ -163,6 +163,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
     # Divide all columns starting with value_ by days_in_month
     mutate_at(vars(starts_with("value_")), ~ . / days_in_month) %>%
     mutate(
+      commodity='natural_gas',
       departure_iso2='RU',
       destination_iso2='CN') %>%
     select(-c(month, days_in_month))
