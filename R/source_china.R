@@ -1,3 +1,7 @@
+china.get_google_sheets_url <- function(){
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSK6MEhS2XLjA5fEAqYCm7UD3Ox-V-z3sfH9YV5snUeN06PKP7_soS8vaUJOVD7lSIZ8XL9ceNvM0xw/pub?gid=1143322280&single=true&output=csv"
+}
+
 china.get_flows <- function(){
   #China pipeline oil imports 41 Mtpa
 
@@ -7,22 +11,182 @@ china.get_flows <- function(){
    )
 }
 
-china.get_flows_natural_gas <- function(){
+china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
+                                        fill_gaps_and_future = T){
 
   #China pipeline gas 3.9 bcm in 2020; 5 bcm over 161 days in 2021-22 - assume 10 bcmpa
   #http://www.xinhuanet.com/english/2021-08/10/c_1310119621.htm
   #https://news.cgtn.com/news/2022-01-18/China-Russia-pipeline-delivers-15b-cubic-meters-of-natural-gas--16V6fC0jWQo/index.html
 
-    tibble(commodity='natural_gas',
+  original <-  tibble(commodity='natural_gas',
            value_m3=c(10e9/365),
            value_tonne=c(10e9/1000/365*0.7168),
     ) %>%
       tidyr::crossing(tibble(date=seq.Date(as.Date("2021-01-01"), lubridate::today(), by="day"))) %>%
       mutate(departure_iso2='RU',
              destination_iso2='CN')
+
+
+  # Read customs data -------------------------------------------------------
+  path <- china.get_google_sheets_url()
+  skip <- 0
+
+  customs <- read_csv(path, skip=skip) %>%
+    select(date=Name,
+           value_kg=`Volume of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`,
+           value_usd=`Value of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`)%>%
+    filter(grepl('^20', date),
+           value_usd>0) %>%
+    mutate(
+      date = floor_date(lubridate::parse_date_time(gsub("/", "-", date), orders = c("ymd", "ym")), 'month'),
+      value_kg=as.numeric(value_kg),
+      value_usd=as.numeric(value_usd),
+      price_usd_per_kg = case_when(value_usd>0 & value_kg>0 ~ value_usd / value_kg,
+                                   T ~ NA))
+
+
+  # Collect prices ----------------------------------------------------------
+
+  # https://carnegieendowment.org/politika/89552
+  # It is also obvious that the pricing for all the Chinese pipeline gas contracts is in parallel,
+  # most likely as a result of using the so-called 6-3-3 Brent average,
+  # meaning that the price is fixed for three months based on a six-month average with a three-month delay
+  # : i.e., the gas price for October–December is determined by averaging the oil price in January–June.
+
+
+  prices <- get_prices_monthly()
+
+  # Add a six month rolling average of Brent
+
+  prices <- prices %>%
+    arrange(date) %>%
+    mutate(brent_6m = zoo::rollmean(brent, 6, align='right', fill=NA)) %>%
+    mutate(brent_6m_lag3 = lag(brent_6m, 3))
+
+  cny_per_usd <- price.cny_per_usd(monthly = T)
+  eur_per_usd <- price.eur_per_usd(monthly = T)
+
+
+  data <- customs %>%
+    # Fill dates so that we can have longer price time series
+    tidyr::complete(date=seq.Date(min(date(date)), ceiling_date(today(), "month"), by='month')) %>%
+    left_join(prices) %>%
+    left_join(cny_per_usd) %>%
+    left_join(eur_per_usd) %>%
+    mutate(ttf_cny = ttf * cny_per_usd,
+           jkm_cny = jkm * cny_per_usd,
+           brent_cny = brent * cny_per_usd,
+           brent_6m_lag3_cny = brent_6m_lag3 * cny_per_usd,
+           price_cny_per_kg = price_usd_per_kg * cny_per_usd,
+           value_cny=value_usd * cny_per_usd,
+           value_eur=value_usd * eur_per_usd)
+
+
+  # CNY version
+  # model <- lm(price_cny_per_kg ~ cny_per_usd +  lag(ttf_cny, 3) + brent_cny + lag(brent_cny, 3) + brent_6m_lag3_cny
+  #             , data %>% filter(value_kg > 0))
+  # summary(model)
+  #
+  # USD version
+  model <- lm(price_usd_per_kg ~  brent_6m_lag3 + lag(cny_per_usd, 1),
+              data %>% filter(value_kg > 0))
+  summary(model)
+  r2 <- summary(model)$r.squared
+  if(r2 < 0.8) stop("Something wrong with China gas pricing model")
+
+  data$price_usd_per_kg_predicted <- predict(model, data)
+
+  data <- data %>%
+    mutate(value_kg_predicted = value_usd / price_usd_per_kg_predicted,
+           value_tonne = value_kg_predicted / 1000,
+           value_m3 = value_tonne * 1000 / 0.7168,
+           eur_per_tonne = price_usd_per_kg_predicted * eur_per_usd * 1000)
+
+  # Diagnostic plots
+  if(!is.null(diagnostics_folder)){
+    ggplot(data) +
+      geom_line(data=function(x) x %>% filter(value_kg>0),
+                aes(date, price_usd_per_kg, col='declared'))+
+      geom_line(aes(date, price_usd_per_kg_predicted, col='price model'), linetype='dashed') +
+      rcrea::scale_y_crea_zero() +
+      rcrea::theme_crea() +
+      labs(title='Pipeline gas price from Russia to China',
+           subtitle='USD per kg',
+           x=NULL,
+           y=NULL,col=NULL)
+    ggsave(file.path(diagnostics_folder, "china_pipeline_gas_price.jpg"), width=8, height=4)
+    # ggplot(data) + geom_point(aes(price_usd_per_kg, price_usd_per_kg_predicted)) + geom_abline()
+    # ggplot(data) + geom_line(aes(date, price_usd_per_kg, col='observed'))+ geom_line(aes(date, price_usd_per_kg_predicted, col='predicted')) +
+    #   rcrea::scale_y_crea_zero()
+    ggplot(data) +
+      geom_line(data=function(x) x %>% filter(value_kg>0),
+                aes(date, value_kg / 1e9, col='declared'))+
+      geom_line(aes(date, value_kg_predicted / 1e9, col='price model'), linetype='dashed') +
+      geom_line(data=original, aes(as.POSIXct(date), value_tonne*30.5/1e6, col='old version in database')) +
+      rcrea::scale_y_crea_zero() +
+      rcrea::theme_crea() +
+      labs(title='Pipeline gas volumes from Russia to China',
+           subtitle='Million tonnes per month',
+           x=NULL,
+           y=NULL,col=NULL)
+    ggsave(file.path(diagnostics_folder, "china_pipeline_gas_volume.jpg"), width=8, height=4)
+
+
+    ggplot(data) +
+      geom_line(data=function(x) x %>% filter(value_kg>0),
+                aes(date, value_kg / 0.7168 / 1e9 * 12, col='declared'))+
+      geom_line(aes(date, value_kg_predicted / 0.7168 / 1e9 * 12, col='price model'), linetype='dashed') +
+      # geom_line(data=original, aes(as.POSIXct(date), value_tonne*30.5/1e6, col='currently in database')) +
+      rcrea::scale_y_crea_zero() +
+      rcrea::theme_crea() +
+      labs(title='Pipeline gas volumes from Russia to China',
+           subtitle='BCM equivalent per year',
+           x=NULL,
+           y=NULL,col=NULL)
+    ggsave(file.path(diagnostics_folder, "china_pipeline_gas_volume_bcm.jpg"), width=8, height=4)
+
+  }
+
+  # Make it daily
+  sum_before <- sum(data$value_tonne, na.rm=T)
+  result <- data %>%
+    select(month=date, value_tonne, value_m3, eur_per_tonne) %>%
+    left_join(
+      tibble(
+        date=seq.Date(min(lubridate::date(data$date)),
+                      lubridate::ceiling_date(max(lubridate::date(data$date)), "month") - days(1), by="day"),
+        month=floor_date(date, "month"),
+        days_in_month=lubridate::days_in_month(month),
+      ),
+      multiple='all'
+    ) %>%
+    # Divide all columns starting with value_ by days_in_month
+    mutate_at(vars(starts_with("value_")), ~ . / days_in_month) %>%
+    mutate(
+      departure_iso2='RU',
+      destination_iso2='CN') %>%
+    select(-c(month, days_in_month))
+
+  # Never too safe
+  sum_after <- sum(result$value_tonne, na.rm=T)
+  if(round(sum_before) != round(sum_after)) stop("Wrong join")
+  # if(any(is.na(result$eur_per_tonne))) stop("Missing price")
+
+  if(fill_gaps_and_future){
+    result <- result %>%
+      fill_gaps_and_future()
+  }
+
+  return(result)
 }
 
+china.get_natural_gas_prices <- function(fill_gaps_and_future=T){
+  flows <- china.get_flows_natural_gas(fill_gaps_and_future=fill_gaps_and_future,
+                                       diagnostics_folder = NULL)
 
+  flows %>%
+    select(date, eur_per_tonne, departure_iso2, destination_iso2)
+}
 
 china.get_flows_pipeline_oil_old <- function(){
 
@@ -63,9 +227,8 @@ china.get_flows_pipeline_oil <- function(use_google_sheets=T){
 
   if(use_google_sheets){
     # China Wind url:
-    # https://docs.google.com/spreadsheets/d/1MQae1FpawourNnJpy-p3jxXxgrnqIkxw/edit#gid=1904808077
-    path <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?gid=121272541&single=true&output=csv"
-    skip <- 1
+    path <- china.get_google_sheets_url()
+    skip <- 0
   }else{
     path <- system.file("extdata","china/china_imports_wind.csv", package="russiacounter")
     skip <- 1
