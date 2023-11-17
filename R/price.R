@@ -217,122 +217,17 @@ price.get_predicted_prices <- function(production=F, prices_daily_30day=NULL){
 }
 
 
-price.get_price_caps <- function(p, version){
-
-  if(version=='2021H1'){
-
-    # Cap using 2021H1 prices, weighted average, one globally
-    precaps <- readRDS(system.file("extdata", "comtrade_eurostat.RDS", package="russiacounter")) %>%
-      filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
-      group_by(commodity, unit) %>%
-      summarise_at('value', sum, na.rm=T) %>%
-      tidyr::spread(unit, value) %>%
-      mutate(eur_per_tonne=eur/tonne) %>%
-      select(-c(eur, tonne)) %>%
-      mutate(commodity=recode(commodity,
-                              oil='crude_oil'))
-
-    precaps <- bind_rows(precaps, precaps %>%
-                        filter(commodity=='crude_oil') %>%
-                        mutate(commodity='pipeline_oil'))
-
-    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                     date_to=min(max(p$date), lubridate::today()))
-
-    eur_per_usd_2021H1 <- eur_per_usd %>%
-      filter(lubridate::floor_date(date,'halfyear')=='2021-01-01') %>%
-      summarise(eur_per_usd_base=mean(eur_per_usd))
-
-    caps <- eur_per_usd %>%
-      tidyr::crossing(eur_per_usd_2021H1) %>%
-      mutate(price_adjustment = eur_per_usd / eur_per_usd_base) %>%
-      select(date, price_adjustment) %>%
-      tidyr::crossing(precaps) %>%
-      mutate(eur_per_tonne=case_when(commodity %in% c('natural_gas', 'lng') ~ eur_per_tonne,
-                                     T ~ eur_per_tonne * price_adjustment)) %>%
-      select(-c(price_adjustment)) %>%
-      rename(max_eur_per_tonne=eur_per_tonne)
-  }
-
-  if(version=='andrei'){
-    ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
-    barrel_per_tonne <- 7.49
-
-    precaps <- list(
-      crude_oil=55 * barrel_per_tonne,
-      crude_oil_espo=55 * barrel_per_tonne,
-      crude_oil_urals=55 * barrel_per_tonne,
-      natural_gas= 15 * ng_mwh_per_tonne,
-      lng= 30 * ng_mwh_per_tonne,
-      coal=50
-    )
-
-    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                     date_to=min(max(p$date), lubridate::today()))
-
-    caps <- tibble(commodity=names(precaps),
-                 usd_per_tonne=unlist(precaps)) %>%
-      tidyr::crossing(eur_per_usd) %>%
-      arrange(date) %>%
-      tidyr::fill(eur_per_usd) %>%
-      mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-      select(-c(usd_per_tonne, eur_per_usd))
-  }
-
-  if(version=='default'){
-    # ng_mwh_per_tonne <- 12.54 #https://unit-converter.gasunie.nl/
-    barrel_per_tonne <- 1 / 0.138
-
-    precaps <- list(
-      crude_oil= 60 * barrel_per_tonne,
-      crude_oil_espo= 60 * barrel_per_tonne,
-      crude_oil_urals= 60 * barrel_per_tonne
-    )
-
-    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                     date_to=min(max(p$date), lubridate::today())) %>%
-      fill_gaps_and_future()
-
-    caps <- tibble(commodity=names(precaps),
-                   usd_per_tonne=unlist(precaps)) %>%
-      tidyr::crossing(eur_per_usd) %>%
-      arrange(date) %>%
-      tidyr::fill(eur_per_usd) %>%
-      mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-      select(-c(usd_per_tonne, eur_per_usd))
-  }
-
-  if(grepl('usd[0-9]+$', version)){
-    barrel_per_tonne <- 1 / 0.138
-    cap_usd <- as.numeric(sub('usd','',version))
-    precaps <- list(
-      crude_oil= cap_usd * barrel_per_tonne,
-      crude_oil_espo= cap_usd * barrel_per_tonne,
-      crude_oil_urals= cap_usd * barrel_per_tonne,
-    )
-
-    eur_per_usd <- price.eur_per_usd(date_from=min(p$date),
-                                     date_to=min(max(p$date), lubridate::today()))
-
-    caps <- tibble(commodity=names(precaps),
-                   usd_per_tonne=unlist(precaps)) %>%
-      tidyr::crossing(eur_per_usd) %>%
-      arrange(date) %>%
-      tidyr::fill(eur_per_usd) %>%
-      mutate(max_eur_per_tonne=usd_per_tonne*eur_per_usd) %>%
-      select(-c(usd_per_tonne, eur_per_usd))
-  }
 
 
-
-  return(ungroup(caps))
-}
-
-price.get_capped_prices <- function(production=F, scenario='default', version='default', prices_daily_30day=NULL){
+price.get_capped_prices <- function(production=F,
+                                    scenario='default',
+                                    version='default',
+                                    prices_daily_30day=NULL,
+                                    add_portprices=T){
 
   p <- price.get_predicted_prices(production=production, prices_daily_30day=prices_daily_30day)
   pp <- price.get_predicted_portprices(production = production)
-  caps <- price.get_price_caps(p=p, version=version)
+  caps <- price_cap.get_price_caps(p=p, version=version)
 
   commodities <- read_csv('https://api.russiafossiltracker.com/v0/commodity?format=csv')
   seaborne_commodities <- commodities %>% filter(transport == 'seaborne') %>% pull(id)
@@ -452,17 +347,26 @@ price.get_capped_prices <- function(production=F, scenario='default', version='d
       T ~ eur_per_tonne),
       ship_insurer_iso2s=list(ship_insurer_iso2s))
 
-  pc <- bind_rows(ppc_ship_owner,
-                  ppc_ship_insurer,
-                  ppc_destination,
-                  pc_destination,
+
+  pc <- bind_rows(pc_destination,
                   pc_ship_owner,
                   pc_ship_insurer,
-                  pp,
                   p_urals_espo,
                   pc_urals_espo_destination,
                   pc_urals_espo_ship_insurer
-                  ) %>%
+                  )
+
+  if(add_portprices){
+    pc <- bind_rows(pc,
+                   pp,
+                   ppc_ship_owner,
+                   ppc_ship_insurer,
+                   ppc_destination,
+
+    )
+  }
+
+  pc <- pc %>%
     ungroup() %>%
     select(-c(max_eur_per_tonne)) %>%
     mutate(scenario=!!scenario)
