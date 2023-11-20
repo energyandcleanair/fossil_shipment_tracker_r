@@ -1,4 +1,4 @@
-price_models_eurostat.get_predicted_prices <- function(production=F){
+price_models_eurostat.get_predicted <- function(production=F){
 
   prices_daily <- get_prices_daily(running_days=30) %>%
     arrange(desc(date)) %>%
@@ -45,14 +45,13 @@ price_models_eurostat.get_predicted_prices <- function(production=F){
     arrange(date) %>%
     tidyr::fill(eur_per_tonne) %>%
     filter(!is.na(eur_per_tonne)) %>%
-    filter(!is.na(date)) %>%
-    mutate(scenario='default')
+    filter(!is.na(date))
 
 
   # Nest country to match new price table structure
   p_formatted <- p %>%
     filter(!is.na(country_iso2)) %>%
-    group_by(date, commodity, eur_per_tonne, scenario) %>%
+    group_by(date, commodity, eur_per_tonne) %>%
     summarise(destination_iso2s=list(country_iso2)) %>%
     bind_rows(p %>%
                 filter(is.na(country_iso2)) %>%

@@ -161,7 +161,95 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
     write_csv('data/predicted_export_prices.csv')
 }
 
+price_models_comtrade.get_predicted <- function(production=F, prices_daily_30day=NULL){
 
+  if(is.null(prices_daily_30day)){
+    prices_daily_30day <- get_prices_daily(running_days=30)
+  }
+
+  prices_daily_30day <- prices_daily_30day %>%
+    arrange(desc(date)) %>%
+    filter(!is.na(date)) %>%
+    mutate(date=as.Date(date))
+
+  if(production){
+    suffix=''
+  }else{
+    suffix='_development'
+  }
+
+  models_eu <- readRDS(system.file("extdata", sprintf("pricing_models_eu%s.RDS", suffix), package="russiacounter"))
+  models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu%s.RDS", suffix), package="russiacounter"))
+
+  prices_eu <- models_eu %>%
+    mutate(new_data=list(prices_daily_30day)) %>%
+    group_by(commodity) %>%
+    group_map(function(df, group) {
+      model <- df$model[[1]]
+      new_data <- df$new_data[[1]] %>% arrange(date)
+      if(is.null(model)){ return(NULL) }
+      new_data$price_eur_per_tonne <- predict(model, new_data)
+      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
+      new_data$price_ceiling <- df$price_ceiling
+      tibble(group, new_data)
+    }) %>% do.call(bind_rows, .) %>%
+    arrange(desc(date))
+
+  prices_eu <- prices_eu %>%
+    tidyr::crossing(tibble(iso2=codelist$iso2c[which(codelist$eu28=="EU")] ))
+
+  prices_noneu  <- models_noneu %>%
+    mutate(new_data=list(prices_daily_30day)) %>%
+    group_by(commodity, country, iso2) %>%
+    group_map(function(df, group) {
+      model <- df$model[[1]]
+      new_data <- df$new_data[[1]] %>% arrange(date)
+      if(is.null(model)){ return(NULL) }
+      new_data$price_eur_per_tonne <- predict(model, new_data)
+      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
+      new_data$price_ceiling <- df$price_ceiling
+      tibble(group, new_data)
+    }) %>% do.call(bind_rows, .)
+
+  p <- bind_rows(prices_eu,
+                 prices_noneu) %>%
+    dplyr::select(country_iso2=iso2,
+                  date,
+                  commodity,
+                  eur_per_tonne=price_eur_per_tonne) %>%
+    mutate(date=as.Date(date))
+
+  # Add pipeline_oil equivalent to crude_oil
+  p <- bind_rows(p,
+                 p %>% filter(commodity=="crude_oil") %>% mutate(commodity="pipeline_oil"))
+
+  # Extend and fill
+  days_buffer <- 8
+  dates <- seq.Date(min(p$date, na.rm=T), lubridate::today() + days_buffer, by="day")
+  filler <- tidyr::crossing(tibble(date=dates),
+                            p %>% distinct(commodity, country_iso2))
+  p <- p %>%
+    full_join(filler, by=c("commodity","country_iso2","date")) %>%
+    group_by(country_iso2, commodity) %>%
+    arrange(date) %>%
+    tidyr::fill(eur_per_tonne) %>%
+    filter(!is.na(eur_per_tonne)) %>%
+    filter(!is.na(date))
+
+
+  # Nest country to match new price table structure
+  p_formatted <- p %>%
+    filter(!is.na(country_iso2)) %>%
+    group_by(date, commodity, eur_per_tonne) %>%
+    summarise(destination_iso2s=list(country_iso2)) %>%
+    bind_rows(p %>%
+                filter(is.na(country_iso2)) %>%
+                ungroup()) %>%
+    ungroup() %>%
+    select(-c(country_iso2))
+
+  return(p_formatted)
+}
 
 price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade=T){
 

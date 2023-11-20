@@ -1,9 +1,77 @@
-price_cap.apply_price_cap <- function(p, version){
-  price_caps <- price_cap.get_price_caps(p, version)
+price_cap.apply_price_cap <- function(predicted_prices,
+                                      cap_version,
+                                      scenario,
+                                      destination_iso2s=eu_g7_iso2s,
+                                      add_ship_owner=T,
+                                      ship_owner_iso2s=eu_g7_iso2s,
+                                      add_ship_insurer=T,
+                                      ship_insurer_iso2s=eu_g7_iso2s){
 
-  p %>%
-    left_join(price_caps) %>%
-    mutate(eur_per_tonne=pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T))
+  # Check input
+  if(is.null(destination_iso2s)){
+    message(sprintf("Applying price cap %s to all destinations", cap_version))
+
+    if(add_ship_owner | add_ship_insurer){
+      stop("Doesn't make sense to add ship_owner / ship_insurer if destination_iso2s is NULL")
+    }
+  }
+
+  price_caps <- price_cap.get_price_caps(predicted_prices, version=cap_version)
+  commodities <- read_csv('https://api.russiafossiltracker.com/v0/commodity?format=csv')
+  seaborne_commodities <- commodities %>% filter(transport == 'seaborne') %>% pull(id)
+  capped_commodities <- unique(price_caps$commodity)
+
+
+  # Create one version per destination_iso2, with no ship constraint
+  pc_destination <- predicted_prices %>%
+    left_join(caps, multiple='all') %>%
+    tidyr::unnest(destination_iso2s, keep_empty = T) %>%
+    mutate(
+      eur_per_tonne=case_when(
+        (destination_iso2s %in% !!destination_iso2s | is.null(!!destination_iso2s))
+        ~ pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+      T ~ eur_per_tonne),
+
+      # Not to have NULL nested with other countries
+      destination_is_null=is.null(destination_iso2s) | is.na(destination_iso2s)) %>%
+
+    # To nest more destination_iso2s together
+    mutate(eur_per_tonne=round(eur_per_tonne, 3)) %>%
+    group_by(across(-c(destination_iso2s, max_eur_per_tonne))) %>%
+    summarise(across(destination_iso2s, list)) %>%
+    select(-c(destination_is_null)) %>%
+    ungroup()
+
+  pc_ship_owner <- NULL
+  if(add_ship_owner){
+    # Create a ship constraint (owner): regardless of destination and insurer
+    pc_ship_owner <- pc_destination %>%
+      filter(commodity %in% seaborne_commodities,
+             commodity %in% capped_commodities) %>%
+      left_join(caps) %>%
+      mutate(eur_per_tonne= pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+             ship_owner_iso2s=list(!!ship_owner_iso2s))
+  }
+
+  pc_ship_insurer <- NULL
+  if(add_ship_insurer){
+    # Create a ship constraint (insurer): regardless of destination and owner
+    pc_ship_insurer <- pc_destination %>%
+      filter(commodity %in% seaborne_commodities) %>%
+      left_join(caps) %>%
+      mutate(eur_per_tonne=pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
+        ship_insurer_iso2s=list(!!ship_insurer_iso2s))
+
+  }
+
+
+  pc <- bind_rows(pc_destination,
+                  pc_ship_owner,
+                  pc_ship_insurer
+  ) %>%
+    mutate(scenario = !!scenario)
+
+  return(pc)
 }
 
 price_cap.get_price_caps <- function(p, version) {
@@ -14,7 +82,7 @@ price_cap.get_price_caps <- function(p, version) {
     "cap_is_working" = price_cap.get_cap_is_working
   )
 
-  price_cap_fn <- get_price_cap_fns[grepl(names(get_price_cap_fns), version)]
+  price_cap_fn <- get_price_cap_fns[[which(unlist(lapply(names(get_price_cap_fns), function(x) grepl(x, version))))]]
   price_cap_fn(p, version)
 }
 
@@ -42,7 +110,7 @@ price_cap.get_default <- function(p, version) {
     tidyr::fill(eur_per_usd) %>%
     mutate(max_eur_per_tonne = case_when(
       date >= '2022-12-05' ~ usd_per_tonne * eur_per_usd,
-      T ~ Inf) %>%
+      T ~ Inf)) %>%
     select(-c(usd_per_tonne, eur_per_usd))
 }
 
