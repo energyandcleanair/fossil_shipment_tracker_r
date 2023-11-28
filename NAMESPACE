@@ -45,6 +45,8 @@ importFrom(dplyr,"%>%")
 
 importFrom(forecast, forecast)
 
+importFrom(glue, glue)
+
 importFrom(lubridate,"hour<-")
 importFrom(lubridate,"day<-")
 importFrom(lubridate,date)

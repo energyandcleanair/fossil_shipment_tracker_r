@@ -5,7 +5,7 @@ gcv_MWh_per_m3 <- gcv_kWh_per_m3 / 1e3
 gcv_MJ_per_m3 <- gcv_kWh_per_m3 * 3.6 #40
 barrel_per_tonne <- 1 / 0.138
 
-eu_iso2s <- setdiff(codelist$iso2c[!is.na(codelist$eu28)], 'GB')
+eu_iso2s <- setdiff(countrycode::codelist$iso2c[!is.na(countrycode::codelist$eu28)], 'GB')
 g7_iso2s <- c('CA','FR','DE','IT','JP','GB','US','UK')
 eu_g7_iso2s <- c(eu_iso2s, g7_iso2s)
 

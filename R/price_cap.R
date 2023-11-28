@@ -24,7 +24,7 @@ price_cap.apply_price_cap <- function(predicted_prices,
 
   # Create one version per destination_iso2, with no ship constraint
   pc_destination <- predicted_prices %>%
-    left_join(caps, multiple='all') %>%
+    left_join(price_caps, multiple='all') %>%
     tidyr::unnest(destination_iso2s, keep_empty = T) %>%
     mutate(
       eur_per_tonne=case_when(
@@ -48,9 +48,10 @@ price_cap.apply_price_cap <- function(predicted_prices,
     pc_ship_owner <- pc_destination %>%
       filter(commodity %in% seaborne_commodities,
              commodity %in% capped_commodities) %>%
-      left_join(caps) %>%
+      left_join(price_caps) %>%
       mutate(eur_per_tonne= pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-             ship_owner_iso2s=list(!!ship_owner_iso2s))
+             ship_owner_iso2s=list(!!ship_owner_iso2s)) %>%
+      select(-c(max_eur_per_tonne))
   }
 
   pc_ship_insurer <- NULL
@@ -58,12 +59,12 @@ price_cap.apply_price_cap <- function(predicted_prices,
     # Create a ship constraint (insurer): regardless of destination and owner
     pc_ship_insurer <- pc_destination %>%
       filter(commodity %in% seaborne_commodities) %>%
-      left_join(caps) %>%
+      left_join(price_caps) %>%
       mutate(eur_per_tonne=pmin(eur_per_tonne, max_eur_per_tonne, na.rm=T),
-        ship_insurer_iso2s=list(!!ship_insurer_iso2s))
+        ship_insurer_iso2s=list(!!ship_insurer_iso2s)) %>%
+      select(-c(max_eur_per_tonne))
 
   }
-
 
   pc <- bind_rows(pc_destination,
                   pc_ship_owner,

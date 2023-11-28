@@ -2,7 +2,10 @@ price.update_prices <- function(production=F, buffer_days=60, rebuild=F){
   prices <- price.get_prices(production=production)
   ok <- price.check_prices(prices)
   if(ok){
-    db.upload_prices_to_posgres(prices, production=production, buffer_days=buffer_days, rebuild=rebuild)
+    db.upload_prices_to_posgres(prices,
+                                production=production,
+                                buffer_days=buffer_days,
+                                rebuild=rebuild)
   }else{
     print("ERROR: prices not updated")
   }
@@ -41,8 +44,6 @@ price.get_prices <- function(production = F){
     scenario = 'enhanced'
   )
 
-
-
   # p_default <- price.get_capped_prices(
   #   predicted_prices=predicted_prices,
   #   predicted_port_prices=predicted_port_prices,
@@ -55,18 +56,17 @@ price.get_prices <- function(production = F){
 
   all_prices <- bind_rows(
     p_default,
-    # p_enhanced
+    p_enhanced
   ) %>%
     price.apply_china_ng_fix() %>%
     price.fill_old_values()
-
 
   return(all_prices)
 }
 
 price.fill_old_values <- function(p){
   p %>%
-    tidyr::complete(date=seq(as.Date('2015-01-01'), max(date(p_default$date)), by='day'),
+    tidyr::complete(date=seq(as.Date('2015-01-01'), max(date(p$date)), by='day'),
                     scenario,
                     commodity,
                     fill=list(eur_per_tonne=NA))
@@ -150,10 +150,6 @@ price.get_predicted_portprices <- function(production=F){
 
   return(pp_formatted)
 }
-
-
-
-
 
 
 price.get_capped_prices <- function(
@@ -364,7 +360,7 @@ price.check_prices <- function(p){
   ok <- !any(is.na(p$eur_per_tonne) & (p$date >= '2020-01-01'))
   ok <- ok & !any(is.na(p$scenario))
   ok <- ok & (min(p$eur_per_tonne, na.rm=T) >= 0)
-  ok <- ok & all(c("destination_iso2s", "departure_port_ids", "ship_owner_iso2s", "ship_insurer_iso2s", "date","commodity","eur_per_tonne","scenario") %in% names(p))
+  ok <- ok & all(c("destination_iso2s", "ship_owner_iso2s", "ship_insurer_iso2s", "date","commodity","eur_per_tonne","scenario") %in% names(p))
   ok <- ok & nrow(p) >0
   return(ok)
 }
