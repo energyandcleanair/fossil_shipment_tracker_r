@@ -207,7 +207,7 @@ price_cap.add_subcommodity_group <- function(p) {
     mutate(
       oil_products_pricing_subgroup = case_when(
         grepl("fuel_oils$|_fo$|_slurry$|vgo$", commodity) ~ "low value",
-        grepl("gasoline|naphtha|diesel|gasoil|jet$|kero|blending_comps", commodity) ~ "premium",
+        grepl("gasoline|naphtha|diesel|gasoil|jet$|kero|blending_comps|blendings", commodity) ~ "premium",
         T ~ NA_character_
       )
     )

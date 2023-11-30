@@ -170,6 +170,9 @@ price_models_eurostat.get_trade <- function(date_from='2015-01-01'){
     "Naphtha", gasoline_codes,
     "Blending Comps", gasoline_codes,
 
+    # TODO add more commodities that are covered by Blendings (e.g. )
+    "Blendings", gasoline_codes,
+
     "Diesel", diesel_codes,
     "Gasoil", diesel_codes,
     "Gasoil/Diesel", diesel_codes,
