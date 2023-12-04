@@ -160,7 +160,7 @@ db.upload_scenario_names <- function(scenario_names, production=T){
 }
 
 
-db.rebuild_price_table <- function(p, production=F){
+db.rebuild_price_table <- function(p, production=F, table='price'){
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
   p <- p_bkp
@@ -200,10 +200,10 @@ db.rebuild_price_table <- function(p, production=F){
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
   RPostgres::dbBegin(db)
-  RPostgres::dbExecute(db,  "TRUNCATE TABLE price")
+  RPostgres::dbExecute(db,  glue("TRUNCATE TABLE {table}"))
   pbapply::pblapply(split(p, (seq(nrow(p))-1) %/% chunk_size),
                     function(p_chunk){
-                      RPostgres::dbWriteTable(db, "price", as.data.frame(p_chunk), append=T)
+                      RPostgres::dbWriteTable(db, table, as.data.frame(p_chunk), append=T)
                     })
   RPostgres::dbCommit(db)
 
@@ -211,7 +211,8 @@ db.rebuild_price_table <- function(p, production=F){
 
 
 
-db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60){
+db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60,
+                                        table='price'){
 
   print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
 
@@ -225,6 +226,14 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_
 
   list_cols_bigint <- c('departure_port_ids')
   list_cols_text <- setdiff(list_cols, list_cols_bigint)
+
+  # TEMPORARY, before updating constraint
+  if(! 'departure_port_ids' %in% names(prices)){
+    prices <- prices %>%
+      rowwise() %>%
+      mutate(departure_port_ids = list(NULL)) %>%
+      ungroup()
+  }
 
   format_array <- function(list) {
     if(length(list)==0 | all(is.na(list))){return('{NULL}')}
@@ -242,12 +251,14 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
 
   if(!rebuild){
-    max_date <- dbx::dbxSelect(db, "SELECT max(date) from price;")
+    max_date <- dbx::dbxSelect(db, glue("SELECT max(date) from {table};"))
     prices <- prices %>%
       filter(date >= as.Date(max_date$max) - lubridate::days(buffer_days))
   }
 
-  dbx::dbxUpsert(db, "price", as.data.frame(prices),
+
+
+  dbx::dbxUpsert(db, table, as.data.frame(prices),
                  batch_size = 10000,
                  where_cols=c("commodity", "date", "scenario",
                               "destination_iso2s", "departure_port_ids",
@@ -262,7 +273,7 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_
 
   # Remove old pricing that may not have been erased by the upsert
   if(rebuild){
-    dbx::dbxExecute(db, "DELETE FROM price p USING (SELECT max(updated_on) as updated_on FROM price) p2 WHERE p.updated_on < p2.updated_on")
+    dbx::dbxExecute(db, glue("DELETE FROM {table} p USING (SELECT max(updated_on) as updated_on FROM {table}) p2 WHERE p.updated_on < p2.updated_on"))
   }
 
   dbx::dbxDisconnect(db)

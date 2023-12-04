@@ -30,8 +30,9 @@ Imports:
     dbx,
     RPostgres,
     eia,
-    httr
+    httr,
+    glue
 Remotes:
     energyandcleanair/entsog,
-    ropensci/comtradr@api-update
+    ropensci/comtradr
 RoxygenNote: 7.2.3
