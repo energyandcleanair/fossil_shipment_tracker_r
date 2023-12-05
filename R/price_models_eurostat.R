@@ -165,27 +165,32 @@ price_models_eurostat.get_trade <- function(date_from='2015-01-01'){
   commodity_tbl <- tribble(
     ~product, ~code,
 
+    # Gasoline
     "Gasoline", gasoline_codes,
     "Gasoline/Naphtha", gasoline_codes,
     "Naphtha", gasoline_codes,
     "Blending Comps", gasoline_codes,
 
-    # TODO add more commodities that are covered by Blendings (e.g. )
+    # Blending
     "Blendings", gasoline_codes,
 
+    # Diesel
     "Diesel", diesel_codes,
     "Gasoil", diesel_codes,
     "Gasoil/Diesel", diesel_codes,
-    "VGO", diesel_codes,
 
-    "Jet", c(27101921),
-    "Kero/Jet", c(27101921, 27101925),
-    "Kerosene", c(27101925),
-
+    # Fuel oils
+    "VGO", fueloils_codes,
     "Fuel Oils", fueloils_codes,
     "FO", fueloils_codes,
     "SRFO", fueloils_codes,
     "Slurry", fueloils_codes,
+
+    # Jet/Kerosene
+    "Jet", c(27101921),
+    "Kero/Jet", c(27101921, 27101925),
+    "Kerosene", c(27101925),
+
   ) %>%
     tidyr::unnest(code)
 
