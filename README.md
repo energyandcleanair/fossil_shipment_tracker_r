@@ -9,6 +9,7 @@ To regenerate the EUROSTAT pricing model:
    ```
 3. Add, commit, and push the latest `pricing_models_eurostat.RDS` files:
    ```
-   data/pricing_models_eurostat.RDS
-   inst/extdata/pricing_models_eurostat.RDS
+   git add **/pricing_models_eurostat.RDS
+   git commit -m "Update eurostat model"
+   git push
    ```
