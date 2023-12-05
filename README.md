@@ -1,22 +1,14 @@
-# 202203_russian_gas
-Looking at trade flows of gas, oil and other commodities from Russia to other countries
 
+### Regenerate EUROSTAT pricing model
 
-Leveraging:
-- ENTSOG for gas
-- COMTRADE for oil and coal (and others?)
-
-
-## Remarks on data
-
-- IEA:
-  - missing Ukraine
-  - missint Belarus
-- Eurostat:
-  - missing Ukraine
-  - missint Belarus
-- Comtrade:
-  - Germany has no Russian partner. Most under `Areas nes`
-- ENTSOG:
-  - Missing Russia -> Belarus
-  - Missing LNG
+To regenerate the EUROSTAT pricing model:
+1. Go to the root directory of the `fossil_shipment_tracker_r` project in your terminal
+2. Run the script `scripts/rebuild_eurostat.R`
+   ```
+   ./scripts/rebuild_eurostat.R
+   ```
+3. Add, commit, and push the latest `pricing_models_eurostat.RDS` files:
+   ```
+   data/pricing_models_eurostat.RDS
+   inst/extdata/pricing_models_eurostat.RDS
+   ```
