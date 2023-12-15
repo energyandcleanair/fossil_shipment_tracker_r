@@ -30,7 +30,8 @@ Imports:
     dbx,
     RPostgres,
     eia,
-    httr
+    httr,
+    glue
 Remotes:
     energyandcleanair/entsog,
     ropensci/comtradr

@@ -1,5 +1,5 @@
 china.get_google_sheets_url <- function(){
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSK6MEhS2XLjA5fEAqYCm7UD3Ox-V-z3sfH9YV5snUeN06PKP7_soS8vaUJOVD7lSIZ8XL9ceNvM0xw/pub?gid=1143322280&single=true&output=csv"
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?gid=1196354004&single=true&output=csv"
 }
 
 china.get_flows <- function(){
@@ -29,7 +29,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
 
   # Read customs data -------------------------------------------------------
   path <- china.get_google_sheets_url()
-  skip <- 0
+  skip <- 1
 
   customs <- read_csv(path, skip=skip) %>%
     select(date=Name,
@@ -229,7 +229,7 @@ china.get_flows_pipeline_oil <- function(use_google_sheets=T){
   if(use_google_sheets){
     # China Wind url:
     path <- china.get_google_sheets_url()
-    skip <- 0
+    skip <- 1
   }else{
     path <- system.file("extdata","china/china_imports_wind.csv", package="russiacounter")
     skip <- 1
