@@ -31,8 +31,11 @@ Imports:
     RPostgres,
     eia,
     httr,
-    glue
+    glue,
+    rcrea,
+    entsog
 Remotes:
+    energyandcleanair/rcrea,
     energyandcleanair/entsog,
     ropensci/comtradr
 RoxygenNote: 7.2.3
