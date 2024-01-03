@@ -1,0 +1,53 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: engine-r
+  labels:
+    cloud.googleapis.com/location: europe-west1
+spec:
+  template:
+    spec:
+      parallelism: 1
+      taskCount: 1
+      template:
+        spec:
+          containers:
+          - image: europe-west1-docker.pkg.dev/fossil-shipment-tracker/tracker/engine-r
+            env:
+            - name: FOSSIL_DB_DEVELOPMENT
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: DB_URL_DEVELOPMENT
+            - name: FOSSIL_DB_PRODUCTION
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: DB_URL_PRODUCTION
+            - name: GITHUB_PAT
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: GITHUB_ACCESS_TOKEN
+            - name: CREA_MONGODB_URL
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: CREA_MONGODB_URL
+            - name: EIA_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: EIA_KEY
+            - name: EXCHANGERATEHOST_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: EXCHANGERATEHOST_ACCESS_KEY
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 4Gi
+          maxRetries: 0
+          timeoutSeconds: '86400'
+          serviceAccountName: engine@fossil-shipment-tracker.iam.gserviceaccount.com

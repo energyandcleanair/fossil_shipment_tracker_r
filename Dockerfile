@@ -30,8 +30,6 @@ RUN R -e "install.packages('argparse')"
 COPY ./R ./R
 COPY data ./data
 COPY inst ./inst
-COPY map ./map
-COPY results ./results
 COPY NAMESPACE ./
 
 # Build package

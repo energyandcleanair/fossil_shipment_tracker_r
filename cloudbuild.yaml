@@ -1,0 +1,10 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  script: |
+    docker buildx build \
+      -t europe-west1-docker.pkg.dev/$PROJECT_ID/tracker/engine-r:latest \
+      -f Dockerfile \
+      .
+  automapSubstitutions: true
+images:
+- 'europe-west1-docker.pkg.dev/$PROJECT_ID/tracker/engine-r:latest'

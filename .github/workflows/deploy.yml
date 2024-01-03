@@ -1,0 +1,29 @@
+# Deploy production
+name: russia-engine-r-deploy-production
+
+on: workflow_dispatch
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Authenticate
+      id: 'auth'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v1'
+    - name: Build and deploy latest docker image
+      id: build-and-deploy-image
+      run: 'gcloud builds submit --region=europe-west1 --config cloudbuild.yaml'
+    - name: Deploy latest job spec
+      id: deploy-job-spec
+      run: 'gcloud run jobs replace infra/jobs/engine-r.yaml'
