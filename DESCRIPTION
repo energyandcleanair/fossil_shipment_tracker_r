@@ -2,10 +2,12 @@ Package: russiacounter
 Type: Package
 Title: Russian cost counter for fossil fuels
 Version: 0.2.9
+Author: Hubert Thieriot <hubert@energyandcleanair.org>
 Authors@R: c(
     person("Hubert", "Thieriot", email = "hubert@energyandcleanair.org", role = c("cre", "aut"))
     )
 Maintainer: Hubert Thieriot <hubert@energyandcleanair.org>
+Maintainer: Panda Rushwood <panda@energyandcleanair.org>
 Description: Building a cost counter for trade of fossil fuels with Russia
 License: GPL 3.0
 Encoding: UTF-8
@@ -13,6 +15,10 @@ LazyData: true
 Imports:
     curl (== 4.3),
     tidyverse,
+    dplyr,
+    forecast,
+    readr,
+    tidyr,
     lubridate,
     scales,
     pbapply,
