@@ -8,7 +8,7 @@ update_counter <- function(rebuild_prices = F) {
   library(eurostat)
   library(forecast)
 
-  message("=== Updating counter ===")
+  message("=== Updating misc flows ===")
   message("--- Updating prices ---")
   # Price should come first, as many endpoints rely on this to be complete
   # Run the line below after updating price models
