@@ -27,6 +27,7 @@ expect_flows_close <- function(actual, expected) {
 }
 
 arbitrary_date <- as.Date("2020-01-01")
+different_date <- as.Date("2020-01-02")
 
 test_that("creates the expected flows for basic model", {
   # Graph of flows (flow from left to right):
@@ -265,4 +266,42 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; leave extra i
   )
 
   expect_flows_close(actual_flows, expected_flows)
+})
+
+test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; Bulgaria creates extra", {
+  # Graph of flows:
+  #            /->2-> RO
+  # RU ->3-> BG ->2-> RS
+  #            \->2-> MK
+  initial_flows <- tibble(
+    from_country = c("RU", "BG", "BG", "BG"),
+    to_country = c("BG", "RO", "RS", "MK"),
+    value = c(3, 2, 2, 2),
+    date = rep(arbitrary_date, 4)
+  )
+
+  actual_flows <- process_iterative_for_day(initial_flows) %>%
+    filter(value != 0) %>%
+    select(from_country, to_country, value) %>%
+    as_tibble()
+
+  expected_flows <- tibble(
+    from_country = c("RU", "RU", "RU", "BG", "BG", "BG"),
+    to_country = c("RO", "RS", "MK", "RO", "RS", "MK"),
+    value = c(1, 1, 1, 1, 1, 1),
+  )
+
+  expect_flows_close(actual_flows, expected_flows)
+})
+
+
+test_that("multiple dates causes error", {
+  initial_flows <- tibble(
+    from_country = c("RU", "BG", "BG", "BG"),
+    to_country = c("BG", "RO", "RS", "MK"),
+    value = c(6, 1, 1, 1),
+    date = c(rep(arbitrary_date, 3), different_date)
+  )
+
+  expect_error(process_iterative_for_day(initial_flows))
 })
