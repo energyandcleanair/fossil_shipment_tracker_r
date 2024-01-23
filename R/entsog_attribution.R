@@ -1,4 +1,3 @@
-
 #' @title Redistribute flows for a period for each day
 #' @description Redistributes flows for a period for each day.
 #' @param flows_for_whole_period the flows for the whole period
@@ -203,8 +202,6 @@ set_transit_country <- function(flows, origin_country, transit_country) {
 #' transit_iso2 and then from transit_iso2 to destination_iso2s and
 #' redistributing them so that the flows go from origin_iso2 to
 #' destination_iso2s, proportionally.
-#' @details If there is more input than output, then the excess will be left in
-#' the transit_iso2. If there is more output than input
 bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) {
   if (length(unique(flows$date)) > 1) {
     stop("Only works for a single date")
@@ -213,49 +210,68 @@ bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) 
     stop("Wrong arguments in bypass")
   }
 
-  flows_in_filter <- flows$from_country %in% origin_iso2 & flows$to_country %in% transit_iso2
-  flows_out_filter <- flows$from_country %in% transit_iso2 & flows$to_country %in% destination_iso2s
-  flows_in <- flows[flows_in_filter, ]
-  flows_out <- flows[flows_out_filter, ]
+  origin_to_transit <- flows %>%
+    filter(from_country == origin_iso2, to_country == transit_iso2)
 
-  if (nrow(flows_in) > 1) stop("more than one input flow")
-  if (nrow(flows_in) == 0 | nrow(flows_out) == 0) {
-    return(flows)
-  }
+  transit_to_destination <- flows %>%
+    filter(from_country == transit_iso2, to_country %in% destination_iso2s)
 
-  total_flow_in <- sum(flows_in$value)
-  total_flow_out <- sum(flows_out$value)
-  if (total_flow_in < 0 | any(flows_out$value < 0)) {
-    stop("negative flow, not managed")
-  }
+  assert_that(
+    nrow(origin_to_transit) <= 1
+  )
 
-  offset <- min(total_flow_in, total_flow_out)
-  ratio <- offset / total_flow_out
+  total_to_destinations_ma <- sum(transit_to_destination$value_ma)
+  total_from_origin_ma <- sum(origin_to_transit$value_ma)
 
-  flows[flows_in_filter, "value"] <- flows[flows_in_filter, "value"] - offset
+  transit_through_ma <- min(total_to_destinations_ma, total_from_origin_ma)
+  leave_in_transit_ma <- max(total_from_origin_ma - total_to_destinations_ma, 0)
 
-  # Create new flows
-  new_flows <- flows[flows_out_filter, ]
-  new_flows$from_country <- origin_iso2
-  new_flows$value <- new_flows$value * ratio
+  provided_by_transit_ma <- max(total_to_destinations_ma - total_from_origin_ma, 0)
 
-  # Update old ones
-  flows[flows_out_filter, "value"] <- flows[flows_out_filter, "value"] * (1 - ratio)
+  proportion_transit_through <- transit_through_ma / total_from_origin_ma
+  proportion_leave_in_transit <- leave_in_transit_ma / total_from_origin_ma
 
-  # Concatenate
-  flows <- rbind(flows, new_flows)
+  proportion_from_transit <- provided_by_transit_ma / total_from_origin_ma
 
-  # Group just in case other flows existed
-  flows <- flows %>%
-    group_by(from_country, to_country, date) %>%
-    summarise(value = sum(value, na.rm = T)) %>%
+  total_from_origin <- sum(origin_to_transit$value)
+
+  destination_overwrites <- transit_to_destination %>%
+    rowwise() %>%
+    mutate(
+      proportion = value_ma / total_to_destinations_ma,
+      overwrite_from_origin = proportion * proportion_transit_through * total_from_origin,
+      overwrite_from_transit = proportion * proportion_from_transit * total_from_origin
+    ) %>%
     ungroup()
 
-  # Remove unneeded rows
-  flows <- flows %>%
-    filter(value != 0)
+  new_origin_to_transit <- origin_to_transit %>%
+    mutate(value = total_from_origin * proportion_leave_in_transit)
 
-  return(flows)
+  new_transit_to_destinations <- destination_overwrites %>%
+    mutate(value = overwrite_from_transit)
+
+  new_origin_to_destinations <- destination_overwrites %>%
+    mutate(
+      from_country = origin_iso2,
+      value = overwrite_from_origin
+    )
+
+  flows_without_transit <- flows %>%
+    filter(
+      !(
+        (from_country == transit_iso2 & to_country %in% destination_iso2s) |
+          (from_country == origin_iso2 & to_country == transit_iso2)
+      )
+    )
+
+  return(
+    bind_rows(
+      flows_without_transit,
+      new_origin_to_transit,
+      new_transit_to_destinations,
+      new_origin_to_destinations
+    )
+  )
 }
 
 #' @title Consolidate

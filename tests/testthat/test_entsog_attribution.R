@@ -40,6 +40,7 @@ test_that("creates the expected flows for basic model", {
     from_country = c("GB", "FR", "DE", "FR"),
     to_country = c("FR", "ES", "FR", "BE"),
     value = c(8, 3, 4, 6),
+    value_ma = c(8, 3, 4, 6),
     date = rep(arbitrary_date, 4)
   )
 
@@ -68,6 +69,7 @@ test_that("production doesn't affect flows and is removed", {
     from_country = c("GB", "FR", "DE", "FR", "FR"),
     to_country = c("FR", "ES", "FR", "BE", "FR"),
     value = c(8, 3, 4, 6, 1),
+    value_ma = c(8, 3, 4, 6, 1),
     date = rep(arbitrary_date, 5)
   )
 
@@ -96,6 +98,7 @@ test_that("Ukraine doesn't import from Russia and transits through", {
     from_country = c("RU", "UA", "UA"),
     to_country = c("UA", "SK", "PL"),
     value = c(3, 3, 2),
+    value_ma = c(3, 3, 2),
     date = rep(arbitrary_date, 3)
   )
 
@@ -122,6 +125,7 @@ test_that("Ukraine can't reimport from Russia", {
     from_country = c("RU", "PL"),
     to_country = c("PL", "UA"),
     value = c(6, 3),
+    value_ma = c(6, 3),
     date = rep(arbitrary_date, 2)
   )
 
@@ -150,18 +154,21 @@ test_that("a loop takes from where gas is 'made' (made is not the same as produc
       from_country = c("PL", "SK", "DE"),
       to_country = c("SK", "DE", "PL"),
       value = c(3, 1, 2),
+      value_ma = c(3, 1, 2),
       date = rep(arbitrary_date, 3)
     ),
     tibble(
       from_country = c("SK", "DE", "PL"),
       to_country = c("DE", "PL", "SK"),
       value = c(1, 2, 3),
+      value_ma = c(1, 2, 3),
       date = rep(arbitrary_date, 3)
     ),
     tibble(
       from_country = c("DE", "PL", "SK"),
       to_country = c("PL", "SK", "DE"),
       value = c(2, 3, 1),
+      value_ma = c(2, 3, 1),
       date = rep(arbitrary_date, 3)
     )
   )
@@ -195,6 +202,7 @@ test_that("a loop with nothing 'made' transmits nothing)", {
     from_country = c("PL", "SK", "DE"),
     to_country = c("SK", "DE", "PL"),
     value = c(3, 3, 3),
+    value_ma = c(3, 3, 3),
     date = rep(arbitrary_date, 3)
   )
 
@@ -224,6 +232,7 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; use other sou
     from_country = c("GR", "RU", "BG", "BG", "BG"),
     to_country = c("BG", "BG", "RO", "RS", "MK"),
     value = c(3, 3, 1, 1, 1),
+    value_ma = c(3, 3, 1, 1, 1),
     date = rep(arbitrary_date, 5)
   )
 
@@ -242,7 +251,7 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; use other sou
 })
 
 
-test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; leave extra in Bulgaria", {
+test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; leave extra in BG from RU", {
   # Graph of flows:
   #            /->1-> RO
   # RU ->6-> BG ->1-> RS
@@ -251,6 +260,7 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; leave extra i
     from_country = c("RU", "BG", "BG", "BG"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(6, 1, 1, 1),
+    value_ma = c(6, 1, 1, 1),
     date = rep(arbitrary_date, 4)
   )
 
@@ -277,6 +287,7 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; Bulgaria crea
     from_country = c("RU", "BG", "BG", "BG"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(3, 2, 2, 2),
+    value_ma = c(3, 2, 2, 2),
     date = rep(arbitrary_date, 4)
   )
 
@@ -294,12 +305,66 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; Bulgaria crea
   expect_flows_close(actual_flows, expected_flows)
 })
 
+test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; proportional to moving average", {
+  # Graph of flows:
+  #            /->2-> RO
+  # RU ->3-> BG ->2-> RS
+  #            \->2-> MK
+  initial_flows <- tibble(
+    from_country = c("RU", "BG", "BG", "BG"),
+    to_country = c("BG", "RO", "RS", "MK"),
+    value = c(6, 2, 2, 2),
+    value_ma = c(6, 1, 2, 3),
+    date = rep(arbitrary_date, 4)
+  )
+
+  actual_flows <- process_iterative_for_day(initial_flows) %>%
+    filter(value != 0) %>%
+    select(from_country, to_country, value) %>%
+    as_tibble()
+
+  expected_flows <- tibble(
+    from_country = c("RU", "RU", "RU"),
+    to_country = c("RO", "RS", "MK"),
+    value = c(1, 2, 3),
+  )
+
+  expect_flows_close(actual_flows, expected_flows)
+})
+
+test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; uses moving average with actual Russian exports for day", {
+  # Graph of flows:
+  #            /->2-> RO
+  # RU ->3-> BG ->2-> RS
+  #            \->2-> MK
+  initial_flows <- tibble(
+    from_country = c("RU", "BG", "BG", "BG"),
+    to_country = c("BG", "RO", "RS", "MK"),
+    value = c(12, 0, 0, 0),
+    value_ma = c(6, 1, 2, 3),
+    date = rep(arbitrary_date, 4)
+  )
+
+  actual_flows <- process_iterative_for_day(initial_flows) %>%
+    filter(value != 0) %>%
+    select(from_country, to_country, value) %>%
+    as_tibble()
+
+  expected_flows <- tibble(
+    from_country = c("RU", "RU", "RU"),
+    to_country = c("RO", "RS", "MK"),
+    value = c(2, 4, 6),
+  )
+
+  expect_flows_close(actual_flows, expected_flows)
+})
 
 test_that("multiple dates causes error", {
   initial_flows <- tibble(
     from_country = c("RU", "BG", "BG", "BG"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(6, 1, 1, 1),
+    value_ma = c(6, 1, 1, 1),
     date = c(rep(arbitrary_date, 3), different_date)
   )
 
