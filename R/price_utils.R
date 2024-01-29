@@ -279,28 +279,18 @@ get_prices_monthly <- function(){
 }
 
 price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
-
-
-  get_from_priceR <- function(date_from, date_to){
-    priceR::historical_exchange_rates("USD", to = "EUR",
-                                      start_date = date_from,
-                                      end_date = min(date_to, lubridate::today()-1)) %>%
-      tibble() %>%
-      `names<-`(c("date","eur_per_usd")) %>%
-      mutate(date=date(date))
+  message("Getting EUR per USD from European Central Bank")
+  get_from_european_central_bank <- function(date_from, date_to) {
+    read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
+      mutate(
+        date = lubridate::ymd(TIME_PERIOD),
+        eur_per_usd = 1 / OBS_VALUE
+      ) %>%
+      filter(date_from <= date & date <= date_to) %>%
+      select(date, eur_per_usd)
   }
 
-  get_from_wsj <- function(date_from, date_to){
-    url <- sprintf("https://www.wsj.com/market-data/quotes/fx/USDEUR/historical-prices/download?MOD_VIEW=page&num_rows=90000&range_days=90000&startDate=%s&endDate=%s", strftime(as.Date(date_from), '%m/%d/%Y'), strftime(as.Date(date_to), '%m/%d/%Y'))
-    readr::read_csv(url) %>%
-      mutate(date=as.Date(Date, '%m/%d/%y')) %>%
-      select(date, eur_per_usd=Close) %>%
-      mutate(date=date(date))
-  }
-
-  eur_per_usd <- tryCatch({get_from_priceR(date_from, date_to)},
-                          error=function(error){
-                          return(get_from_wsj(date_from, date_to))})
+  eur_per_usd <- get_from_european_central_bank(date_from, date_to)
 
   # Fill values
   eur_per_usd <- eur_per_usd %>%
@@ -316,27 +306,35 @@ price.eur_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today()
 }
 
 price.cny_per_usd <- function(date_from="2015-01-01", date_to=lubridate::today(), monthly=F){
+  message("Getting CNY per USD from European Central Bank (CYN -> EUR -> USD)")
 
+  get_from_european_central_bank <- function(date_from, date_to) {
+    message("  Getting EUR per USD from European Central Bank")
+    eur_per_usd <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
+      mutate(
+        date = lubridate::ymd(TIME_PERIOD),
+        eur_per_usd = 1 / OBS_VALUE # API returns USD per EUR
+      ) %>%
+      filter(date_from <= date & date <= date_to) %>%
+      select(date, eur_per_usd)
 
-  get_from_priceR <- function(date_from, date_to){
-    priceR::historical_exchange_rates("USD", to = "CNY",
-                                      start_date = date_from,
-                                      end_date = min(date_to, lubridate::today()-1)) %>%
-      tibble() %>%
-      `names<-`(c("date","cny_per_usd")) %>%
-      mutate(date=date(date))
+    message("  Getting CYN per EUR from European Central Bank")
+    cyn_per_eur <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.CNY.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
+      mutate(
+        date = lubridate::ymd(TIME_PERIOD),
+        cyn_per_eur = OBS_VALUE # API returns CNY per EUR
+      ) %>%
+      filter(date_from <= date & date <= date_to) %>%
+      select(date, cyn_per_eur)
+
+    return(
+      eur_per_usd %>%
+        left_join(cyn_per_eur) %>%
+        mutate(cny_per_usd = cyn_per_eur * eur_per_usd) %>% # Cancels out the EUR
+        select(date, cny_per_usd)
+    )
   }
-
-  get_from_wsj <- function(date_from, date_to){
-    url <- sprintf("https://www.wsj.com/market-data/quotes/fx/USDCNY/historical-prices/download?MOD_VIEW=page&num_rows=90000&range_days=90000&startDate=%s&endDate=%s", strftime(as.Date(date_from), '%m/%d/%Y'), strftime(as.Date(date_to), '%m/%d/%Y'))
-    readr::read_csv(url) %>%
-      mutate(date=as.Date(Date, '%m/%d/%y')) %>%
-      select(date, cny_per_usd=Close)
-  }
-
-  cny_per_usd <- tryCatch({get_from_priceR(date_from, date_to)},
-                          error=function(error){
-                            return(get_from_wsj(date_from, date_to))})
+  cny_per_usd <- get_from_european_central_bank(date_from, date_to)
 
   # Fill values
   cny_per_usd <- cny_per_usd %>%
