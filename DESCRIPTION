@@ -38,7 +38,8 @@ Imports:
     glue,
     rcrea,
     entsog,
-    logger
+    logger,
+    rvest
 Remotes:
     energyandcleanair/rcrea,
     energyandcleanair/entsog,
