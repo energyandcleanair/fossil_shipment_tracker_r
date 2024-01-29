@@ -81,3 +81,7 @@ importFrom(logger, log_debug)
 importFrom(logger, log_warn)
 importFrom(logger, log_error)
 importFrom(logger, log_level)
+
+importFrom(rvest, read_html)
+importFrom(rvest, html_nodes)
+importFrom(rvest, html_text)

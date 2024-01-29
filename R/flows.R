@@ -18,7 +18,6 @@ update_flows <- function(source, use_cache = F, date_from = NULL) {
     flows <- flows %>% filter(date >= date_from)
   }
 
-  log_info("Uploading flows")
   db.upload_flows(flows, source)
   return(flows)
 }

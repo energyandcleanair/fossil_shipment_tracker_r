@@ -31,6 +31,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
   path <- china.get_google_sheets_url()
   skip <- 1
 
+  log_level(REQUEST, "Fetch customs data for China from spreadsheet")
   customs <- read_csv(path, skip=skip) %>%
     select(date=Name,
            value_kg=`Volume of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`,
@@ -70,9 +71,9 @@ china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
   data <- customs %>%
     # Fill dates so that we can have longer price time series
     tidyr::complete(date=seq.Date(min(date(date)), ceiling_date(today(), "month"), by='month')) %>%
-    left_join(prices) %>%
-    left_join(cny_per_usd) %>%
-    left_join(eur_per_usd) %>%
+    left_join(prices, by = join_by(date)) %>%
+    left_join(cny_per_usd, by = join_by(date)) %>%
+    left_join(eur_per_usd, by = join_by(date)) %>%
     mutate(ttf_cny = ttf * cny_per_usd,
            jkm_cny = jkm * cny_per_usd,
            brent_cny = brent * cny_per_usd,
@@ -158,7 +159,8 @@ china.get_flows_natural_gas <- function(diagnostics_folder = 'diagnostics',
         month=floor_date(date, "month"),
         days_in_month=lubridate::days_in_month(month),
       ),
-      multiple='all'
+      multiple='all',
+      by = join_by(month)
     ) %>%
     # Divide all columns starting with value_ by days_in_month
     mutate_at(vars(starts_with("value_")), ~ . / days_in_month) %>%

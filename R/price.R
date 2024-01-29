@@ -1,17 +1,23 @@
 price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
+  log_info("Fetch get all prices")
   prices <- price.get_prices(production = production)
+  log_info("Validate prices")
   ok <- price.check_prices(prices)
+
   if (ok) {
+    log_info("Uploading prices to database")
     db.upload_prices_to_posgres(prices,
       production = production,
       buffer_days = buffer_days,
       rebuild = rebuild
     )
   } else {
-    log_warn("prices not updated")
+    log_warn("Prices are not valid, not uploading to database")
   }
 
+  log_info("Get scenario names")
   scenario_names <- price.get_scenario_names()
+  log_info("Uploading scenario names to database")
   db.upload_scenario_names(scenario_names, production = production)
 }
 
@@ -21,21 +27,23 @@ price.get_prices <- function(production = F) {
   # and the capped one by ship_owner / insurer / destination
 
   # Get default values
+  log_info("Get actual prices")
   prices_daily_30day <- get_prices_daily(running_days = 30)
+  log_info("Get predicted prices")
   predicted_prices <- price_models.get_predicted(
     production = production,
     add_urals_espo = T,
     prices_daily_30day = prices_daily_30day
   )
-  # predicted_portprices <- price.get_predicted_portprices(production = production)
-  # predicted_eurostat_prices <- price_models_eurostat.get_predicted_prices(production=production)
 
+  log_info("Create model: current scenario")
   p_default <- price_cap.apply_price_cap(
     predicted_prices = predicted_prices,
     cap_version = "default",
     scenario = "default"
   )
 
+  log_info("Create model: impose price caps on all countries")
   # Create a version that imposes caps for all countries
   p_enhanced <- price_cap.apply_price_cap(
     predicted_prices = predicted_prices,
@@ -46,27 +54,23 @@ price.get_prices <- function(production = F) {
     scenario = "enhanced"
   )
 
-  # p_default <- price.get_capped_prices(
-  #   predicted_prices=predicted_prices,
-  #   predicted_port_prices=predicted_port_prices,
-  #   predicted_eurostat_prices=predicted_eurostat_prices,
-  #   prices_daily_30day=prices_daily_30day,
-  #   production = production,
-  #   scenario='default',
-  #   version='default',
-  # )
-
+  log_info("Combine all prices together")
   all_prices <- bind_rows(
     p_default,
     p_enhanced
-  ) %>%
+  )
+
+  log_info("Fix all prices")
+  fixed <- all_prices %>%
     price.apply_china_ng_fix() %>%
     price.fill_old_values()
 
-  return(all_prices)
+  return(fixed)
 }
 
 price.fill_old_values <- function(p) {
+  log_info("Fill old values")
+
   p %>%
     tidyr::complete(
       date = seq(as.Date("2015-01-01"), max(date(p$date)), by = "day"),
@@ -77,6 +81,8 @@ price.fill_old_values <- function(p) {
 }
 
 price.apply_china_ng_fix <- function(p) {
+  log_info("Apply China NG fix")
+
   # Specific one for China gas pipeline, directly from customs, so that total number matches
   china_ng_prices <- china.get_natural_gas_prices()
 
@@ -87,7 +93,8 @@ price.apply_china_ng_fix <- function(p) {
         mutate(
           commodity = "natural_gas",
           destination_iso2s = list("CN")
-        )
+        ),
+      by = join_by(date, commodity, destination_iso2s)
     ) %>%
     mutate(eur_per_tonne = coalesce(eur_per_tonne_fix, eur_per_tonne)) %>%
     select(-c(eur_per_tonne_fix))

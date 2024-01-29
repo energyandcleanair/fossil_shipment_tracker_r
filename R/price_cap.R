@@ -8,24 +8,26 @@ price_cap.apply_price_cap <- function(predicted_prices,
                                       ship_insurer_iso2s = eu_g7_iso2s) {
   # Check input
   if (is.null(destination_iso2s)) {
-    message(sprintf("Applying price cap %s to all destinations", cap_version))
+    log_info("Applying price cap {cap_version} to all destinations")
 
     if (add_ship_owner | add_ship_insurer) {
       stop("Doesn't make sense to add ship_owner / ship_insurer if destination_iso2s is NULL")
     }
   }
 
+  log_info("Applying for {scenario}: Get price caps")
   price_caps <- price_cap.get_price_caps(predicted_prices, version = cap_version)
+  log_info("Applying for {scenario}: Get commodities data")
   commodities <- read_csv("https://api.russiafossiltracker.com/v0/commodity?format=csv")
   seaborne_commodities <- commodities %>%
     filter(transport == "seaborne") %>%
     pull(id)
   capped_commodities <- unique(price_caps$commodity)
 
-
+  log_info("Applying for {scenario}: For each destination")
   # Create one version per destination_iso2, with no ship constraint
   pc_destination <- predicted_prices %>%
-    left_join(price_caps, multiple = "all") %>%
+    left_join(price_caps, multiple = "all", by = join_by(date, commodity)) %>%
     tidyr::unnest(destination_iso2s, keep_empty = T) %>%
     mutate(
       eur_per_tonne = case_when(
@@ -46,13 +48,14 @@ price_cap.apply_price_cap <- function(predicted_prices,
 
   pc_ship_owner <- NULL
   if (add_ship_owner) {
+    log_info("Applying for {scenario}: For each owner")
     # Create a ship constraint (owner): regardless of destination and insurer
     pc_ship_owner <- pc_destination %>%
       filter(
         commodity %in% seaborne_commodities,
         commodity %in% capped_commodities
       ) %>%
-      left_join(price_caps) %>%
+      left_join(price_caps, by = join_by(date, commodity)) %>%
       mutate(
         eur_per_tonne = pmin(eur_per_tonne, max_eur_per_tonne, na.rm = T),
         ship_owner_iso2s = list(!!ship_owner_iso2s)
@@ -62,10 +65,11 @@ price_cap.apply_price_cap <- function(predicted_prices,
 
   pc_ship_insurer <- NULL
   if (add_ship_insurer) {
+    log_info("Applying for {scenario}: For each insurer")
     # Create a ship constraint (insurer): regardless of destination and owner
     pc_ship_insurer <- pc_destination %>%
       filter(commodity %in% seaborne_commodities) %>%
-      left_join(price_caps) %>%
+      left_join(price_caps, by = join_by(date, commodity)) %>%
       mutate(
         eur_per_tonne = pmin(eur_per_tonne, max_eur_per_tonne, na.rm = T),
         ship_insurer_iso2s = list(!!ship_insurer_iso2s)

@@ -269,11 +269,11 @@ get_prices_daily <- function(running_days = 0) {
   refinery <- get_refinery_margin()
 
   ttf_daily %>%
-    full_join(brent_daily) %>%
-    full_join(ara_daily) %>%
-    full_join(jkm) %>%
-    full_join(global_coal_daily) %>%
-    full_join(refinery) %>%
+    full_join(brent_daily, by = join_by(date)) %>%
+    full_join(ara_daily, by = join_by(date)) %>%
+    full_join(jkm, by = join_by(date)) %>%
+    full_join(global_coal_daily, by = join_by(date)) %>%
+    full_join(refinery, by = join_by(date)) %>%
     mutate(date = lubridate::date(date) %>% lubridate::force_tz("UTC")) %>%
     rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "jkm", "global_coal"))
 }
@@ -308,17 +308,17 @@ get_prices_monthly <- function() {
     )
 
   ttf_monthly %>%
-    full_join(brent_monthly) %>%
-    full_join(ara_monthly) %>%
-    full_join(jkm_monthly) %>%
-    full_join(global_coal_monthly) %>%
-    full_join(refining_monthly) %>%
+    full_join(brent_monthly, by = join_by(date)) %>%
+    full_join(ara_monthly, by = join_by(date)) %>%
+    full_join(jkm_monthly, by = join_by(date)) %>%
+    full_join(global_coal_monthly, by = join_by(date)) %>%
+    full_join(refining_monthly, by = join_by(date)) %>%
     force_utc()
 }
 
 price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
-  log_info("Getting EUR per USD from European Central Bank")
   get_from_european_central_bank <- function(date_from, date_to) {
+    log_level(REQUEST, "Getting EUR per USD from European Central Bank")
     read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -344,10 +344,8 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 }
 
 price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
-  log_info("Getting CNY per USD from European Central Bank (CYN -> EUR -> USD)")
-
   get_from_european_central_bank <- function(date_from, date_to) {
-    log_info("  Getting EUR per USD from European Central Bank")
+    log_level(REQUEST, "Getting EUR per USD from European Central Bank")
     eur_per_usd <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -356,7 +354,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
       filter(date_from <= date & date <= date_to) %>%
       select(date, eur_per_usd)
 
-    log_info("  Getting CYN per EUR from European Central Bank")
+    log_level(REQUEST, "Getting CYN per EUR from European Central Bank")
     cyn_per_eur <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.CNY.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -367,7 +365,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 
     return(
       eur_per_usd %>%
-        left_join(cyn_per_eur) %>%
+        left_join(cyn_per_eur, by = join_by(date)) %>%
         mutate(cny_per_usd = cyn_per_eur * eur_per_usd) %>% # Cancels out the EUR
         select(date, cny_per_usd)
     )
@@ -483,10 +481,10 @@ get_urals <- function(brent = NULL, eur_per_usd = NULL) {
   tonne_per_bbl <- 0.138
 
   brent %>%
-    left_join(spread_ural) %>%
+    left_join(spread_ural, by = join_by(date)) %>%
     arrange(desc(date)) %>%
     mutate(usd_per_bbl = brent + add_brent) %>%
-    left_join(eur_per_usd) %>%
+    left_join(eur_per_usd, by = join_by(date)) %>%
     mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
     select(date, eur_per_tonne) %>%
     mutate(commodity = "crude_oil")
@@ -513,10 +511,10 @@ get_espo <- function(brent = NULL, eur_per_usd = NULL) {
   tonne_per_bbl <- 0.138
 
   brent %>%
-    left_join(spread_espo) %>%
+    left_join(spread_espo, by = join_by(date)) %>%
     arrange(desc(date)) %>%
     mutate(usd_per_bbl = brent + add_brent) %>%
-    left_join(eur_per_usd) %>%
+    left_join(eur_per_usd, by = join_by(date)) %>%
     mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
     select(date, eur_per_tonne) %>%
     mutate(commodity = "crude_oil")

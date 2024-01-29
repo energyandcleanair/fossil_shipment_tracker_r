@@ -95,9 +95,7 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
   trade_with_predictions <- trade_grouped %>%
     group_by(commodity, country, iso2) %>%
     group_map(function(df, group) {
-      message(group)
       start_year = ifelse(group$commodity %in% c('lng', 'coal'), 2016, 2015) #Russia lng & coal prices in 2015 were silly
-      message(start_year)
       max_deviation = 10
       independents = case_when(group$commodity=='coal' ~ 'ara + global_coal',
                                group$commodity=='natural_gas' ~

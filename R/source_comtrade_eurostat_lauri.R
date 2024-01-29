@@ -30,7 +30,6 @@ comtrade_eurostat_lauri.get_flows <- function(use_cache=T){
       if('year' %in% names(df)) {
         get_year = 2019 #ifelse(2021 %in% df$year, 2021, 2019)
         df %<>% filter(year==get_year)
-        message('filtering for year')
       }
       df %>% summarise(across(c(trade_value_usd, netweight_kg), fun, na.rm=na.rm)) -> df.out
       if(!is.null(get_year)) df.out$year <- get_year

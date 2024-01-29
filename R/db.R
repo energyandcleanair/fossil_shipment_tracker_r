@@ -81,7 +81,7 @@ db.download_counter <- function(test=F){
 }
 
 db.update_counter <- function(counter_data, test=F){
-  log_info("Update counter")
+  log_level(UPLOAD, "Update counter")
   if(!all(c("date","oil_eur","gas_eur","coal_eur","total_eur") %in% names(counter_data))){
     stop("Missing columns")
   }
@@ -97,14 +97,13 @@ db.update_counter <- function(counter_data, test=F){
 
 
 db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
+  db_env <- ifelse(production,"production","development")
+  log_level(UPLOAD, "Uploading flows to postgres ({db_env})")
 
   p <- pipeline_flows %>%
     select(commodity, departure_iso2, destination_iso2, date, value_tonne, value_mwh, value_m3)
 
   p$updated_on <- lubridate::now()
-
-  db_env <- ifelse(production,"production","development")
-  log_info("=== Upload flows to postgres ({db_env}) ===")
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   chunk_size <- 1000
@@ -120,7 +119,7 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
 
 db.update_counter_prices <- function(prices, test=F){
 
-  log_info("=== Update counter prices ===")
+  log_level(UPLOAD, "Uploading counter prices")
   p <- prices %>%
     filter(date>="2021-01-01") %>%
     group_by(date, source, commodity, transport, unit) %>%
@@ -154,6 +153,9 @@ db.update_counter_prices <- function(prices, test=F){
 }
 
 db.upload_scenario_names <- function(scenario_names, production=T){
+  db_env <- ifelse(production,"production","development")
+  log_level(UPLOAD, "Uploading scenario names ({db_env})")
+
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   dbx::dbxUpsert(db, "price_scenario", as.data.frame(scenario_names),
                  where_cols=c("id"))
@@ -163,7 +165,7 @@ db.upload_scenario_names <- function(scenario_names, production=T){
 
 db.rebuild_price_table <- function(p, production=F, table='price'){
   db_env <- ifelse(production,"production","development")
-  log_info("=== Uploading prices ({db_env}) ===")
+  log_level(UPLOAD, "Rebuilding prices ({db_env})")
 
   p <- p_bkp
   p$updated_on <- lubridate::now()
@@ -216,7 +218,7 @@ db.rebuild_price_table <- function(p, production=F, table='price'){
 db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60,
                                         table='price'){
   db_env <- ifelse(production,"production","development")
-  log_info("=== Uploading prices ({db_env}) ===")
+  log_level(UPLOAD, "Uploading prices ({db_env})")
 
   prices$updated_on <- lubridate::now()
 
@@ -283,6 +285,8 @@ db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_
 
 db.upload_flows <- function(flows,
                             source){
+
+  log_level(UPLOAD, "Uploading flows")
   fs <- db.get_gridfs()
   tmpdir <- tempdir()
   filepath <- file.path(tmpdir, "flows.RDS")
