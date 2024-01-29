@@ -47,3 +47,6 @@ vignettes/*.pdf
 diagnostics
 
 .env
+
+.vscode
+tmp/
