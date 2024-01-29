@@ -2,7 +2,7 @@ utils.read_csv <- function(url, ...){
   start_time <- Sys.time()
   res <- read_csv(url, ..., guess_max=1e6)
   end_time <- Sys.time()
-  print(sprintf("Took %s for %s", end_time-start_time, url))
+  log_info("Took {end_time - start_time} for {url}")
   return(res)
 }
 
@@ -37,7 +37,6 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
   pbapply::pblapply(seq_along(start_dates), function(i_date){
     pbapply::pblapply(reporters_iso3, function(reporter_iso3){
       pbapply::pblapply(codes, function(code){
-             print(code)
              res <- tibble()
              itry <- 0
              ntries <- 3
@@ -57,12 +56,12 @@ utils.collect_comtrade <- function(partners, reporters, years, codes, frequency=
 
                if(nrow(res)==0 & (itry<ntries)){
                  itry <- itry + 1
-                 print("No row returned. Trying again")
+                 log_debug("No row returned. Trying again")
                }
              }
 
              if(nrow(res)==0 & stop_if_no_row){
-               warning("No row returned.")
+               log_warn("No row returned.")
              }
 
              return(res)
@@ -195,7 +194,7 @@ utils.get_transport_share <- function(){
   # f <- "inst/extdata/DS-1262527_1_Data_for_transport_share_20220424.RDS"
   f <- system.file("extdata", "DS-1262527_1_Data_for_transport_share_20220424.RDS",
                     package="russiacounter")
-  print(sprintf("Reading %s",f))
+  log_info("Reading {f}")
 
   if(!file.exists(f)){
     stop(sprintf("Can't find file %s",f))

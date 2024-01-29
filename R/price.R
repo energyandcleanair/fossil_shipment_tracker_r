@@ -8,7 +8,7 @@ price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
       rebuild = rebuild
     )
   } else {
-    print("ERROR: prices not updated")
+    log_warn("prices not updated")
   }
 
   scenario_names <- price.get_scenario_names()

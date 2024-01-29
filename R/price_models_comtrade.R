@@ -26,7 +26,6 @@ price_models_comtrade.build <- function(production=F, refresh_comtrade=T, diagno
   trade_with_predictions_eu <- trade_eu %>%
     group_by(commodity) %>%
     group_map(function(df, group) {
-      print(group$commodity)
       start_year = ifelse(group$commodity=='natural_gas', 2016, ifelse(group$commodity=='lng', 2018, 2015))
       independents = case_when(group$commodity=='coal' ~ 'ara',
                                group$commodity=='natural_gas' ~

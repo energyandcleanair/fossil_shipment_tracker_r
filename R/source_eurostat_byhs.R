@@ -8,7 +8,7 @@ eurostat_byhs.get_flows <- function(use_cache=T){
   # read_csv(f) %>% saveRDS("inst/extdata/data-16870525.RDS")
 
   f <- system.file("extdata", "data-16870525.RDS", package="russiacounter")
-  print(sprintf("Reading %s",f))
+  log_info("Reading {f}")
   if(!file.exists(f)){
     stop(sprintf("Can't find file %s",f))
   }

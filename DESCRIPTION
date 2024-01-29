@@ -37,7 +37,8 @@ Imports:
     httr,
     glue,
     rcrea,
-    entsog
+    entsog,
+    logger
 Remotes:
     energyandcleanair/rcrea,
     energyandcleanair/entsog,

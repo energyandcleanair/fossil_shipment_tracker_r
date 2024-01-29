@@ -100,7 +100,7 @@ flaring.download_nvf_date <- function(date, force=F){
   data_url <- sprintf('https://eogdata.mines.edu/wwwdata/viirs_products/vnf/v30//VNF_npp_d%s_noaa_v30-ez.csv.gz', strftime(as.Date(date),'%Y%m%d'))
   auth <- paste('Bearer', access_token)
 
-  download.file(data_url, output_file_gz, mode = "wb", headers = list(Authorization = auth))
+  download.file(data_url, output_file_gz, mode = "wb", headers = list(Authorization = auth), quiet = TRUE)
   gunzip(output_file_gz, remove=T)
   return(file.exists(output_file))
 

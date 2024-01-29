@@ -96,7 +96,6 @@ price_models_eurostat.build <- function(production = F, refresh_trade = T, diagn
   trade_with_predictions <- trade %>%
     group_by(commodity) %>%
     group_map(function(df, group) {
-      print(group$commodity)
       start_year <- 2015 # ifelse(group$commodity=='natural_gas', 2016, ifelse(group$commodity=='lng', 2018, 2015))
       independents <- case_when(T ~ "brent + lag(brent, 1) + refining_light + refining_medium + refining_heavy + lag(refining_light,1)  + lag(refining_medium,1)  + lag(refining_heavy,1)")
 

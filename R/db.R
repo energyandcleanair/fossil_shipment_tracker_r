@@ -81,7 +81,7 @@ db.download_counter <- function(test=F){
 }
 
 db.update_counter <- function(counter_data, test=F){
-  print("=== Update counter ===")
+  log_info("Update counter")
   if(!all(c("date","oil_eur","gas_eur","coal_eur","total_eur") %in% names(counter_data))){
     stop("Missing columns")
   }
@@ -103,7 +103,8 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
 
   p$updated_on <- lubridate::now()
 
-  print(sprintf("=== Upload flows to postgres (%s) ===", ifelse(production,"production","development")))
+  db_env <- ifelse(production,"production","development")
+  log_info("=== Upload flows to postgres ({db_env}) ===")
 
   db <- dbx::dbxConnect(adapter="postgres", url=db.get_pg_url(production=production))
   chunk_size <- 1000
@@ -119,7 +120,7 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
 
 db.update_counter_prices <- function(prices, test=F){
 
-  print("=== Update counter prices ===")
+  log_info("=== Update counter prices ===")
   p <- prices %>%
     filter(date>="2021-01-01") %>%
     group_by(date, source, commodity, transport, unit) %>%
@@ -161,7 +162,8 @@ db.upload_scenario_names <- function(scenario_names, production=T){
 
 
 db.rebuild_price_table <- function(p, production=F, table='price'){
-  print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
+  db_env <- ifelse(production,"production","development")
+  log_info("=== Uploading prices ({db_env}) ===")
 
   p <- p_bkp
   p$updated_on <- lubridate::now()
@@ -188,7 +190,7 @@ db.rebuild_price_table <- function(p, production=F, table='price'){
     # Replacing list(NULL) with something dbx can upload
     # We'll replace it by NULL below
     for(col in list_cols){
-      print(col)
+      log_debug("Replacing any list(NULL) in {col} with NULL")
       p[[col]] = unlist(lapply(p[[col]], format_array))
     }
     return(p)
@@ -213,8 +215,8 @@ db.rebuild_price_table <- function(p, production=F, table='price'){
 
 db.upload_prices_to_posgres <- function(prices, rebuild=F, production=F, buffer_days=60,
                                         table='price'){
-
-  print(sprintf("=== Uploading prices (%s) ===", ifelse(production,"production","development")))
+  db_env <- ifelse(production,"production","development")
+  log_info("=== Uploading prices ({db_env}) ===")
 
   prices$updated_on <- lubridate::now()
 
@@ -293,7 +295,7 @@ db.upload_flows <- function(flows,
   names(filter) <- paste0("metadata.", names(filter))
   found <- fs$find(jsonlite::toJSON(filter,auto_unbox=T))
   if(nrow(found)>0){
-    print("Flows already exist. Replacing them")
+    log_info("Flows already exist. Replacing them")
     fs$remove(paste0("id:", found$id))
   }
 
@@ -317,7 +319,7 @@ db.remove_flows <- function(source){
   fs <- db.get_gridfs()
   found <- db.find_flows(source=source)
   if(nrow(found)>0) fs$remove(paste0("id:", found$id))
-  print(sprintf("%d row(s) removed", nrow(found)))
+  log_info("{nrow(found)} row(s) removed")
 }
 
 

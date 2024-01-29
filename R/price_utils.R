@@ -63,7 +63,7 @@ get_brent <- function() {
   )
 
   temp <- tempfile(fileext = ".xls")
-  download.file("https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls", temp)
+  download.file("https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls", temp, quiet = TRUE)
   brent_eia_xls <- readxl::read_xls(temp, sheet = "Data 1", skip = 3, col_names = c("date", "brent")) %>%
     mutate(date = as.Date(date)) %>%
     filter(date >= "2016-01-01") %>%
@@ -317,7 +317,7 @@ get_prices_monthly <- function() {
 }
 
 price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
-  message("Getting EUR per USD from European Central Bank")
+  log_info("Getting EUR per USD from European Central Bank")
   get_from_european_central_bank <- function(date_from, date_to) {
     read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
@@ -344,10 +344,10 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 }
 
 price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
-  message("Getting CNY per USD from European Central Bank (CYN -> EUR -> USD)")
+  log_info("Getting CNY per USD from European Central Bank (CYN -> EUR -> USD)")
 
   get_from_european_central_bank <- function(date_from, date_to) {
-    message("  Getting EUR per USD from European Central Bank")
+    log_info("  Getting EUR per USD from European Central Bank")
     eur_per_usd <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -356,7 +356,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
       filter(date_from <= date & date <= date_to) %>%
       select(date, eur_per_usd)
 
-    message("  Getting CYN per EUR from European Central Bank")
+    log_info("  Getting CYN per EUR from European Central Bank")
     cyn_per_eur <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.CNY.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -394,8 +394,6 @@ get_urals <- function() {
 
 get_ural_brent_spread <- function() {
   url <- "https://ir-service.appspot.com/share/nesteoil/English/price_monitor3_dg.html?name=Urals-Brent"
-  library(rvest)
-  library(tidyverse)
 
   webpage <- read_html(url)
   results <- webpage %>%

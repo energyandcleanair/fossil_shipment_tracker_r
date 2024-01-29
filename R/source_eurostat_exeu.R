@@ -7,7 +7,7 @@ eurostat_exeu.get_flows <- function(use_cache=T){
 
   f <- system.file("extdata", "DS-1262527_1_Data_20220316.RDS", package="russiacounter")
   f <- "inst/extdata/DS-1262527_1_Data_20220424.RDS"
-  print(sprintf("Reading %s",f))
+  log_info("Reading {f}")
   if(!file.exists(f)){
     stop(sprintf("Can't find file %s",f))
   }
