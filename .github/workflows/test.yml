@@ -1,5 +1,5 @@
 # Deploy production
-name: russia-engine-r-deploy-production
+name: russia-engine-r-test
 
 on: [pull_request, push]
 
