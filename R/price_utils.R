@@ -175,7 +175,7 @@ get_global_coal <- function() {
     select(date, global_coal)
 
   if (max(result$date) <= lubridate::today() - 7) {
-    warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
+    log_warn("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
   }
 
   result %>%
