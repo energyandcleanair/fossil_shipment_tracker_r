@@ -438,7 +438,7 @@ utils.add_forecast <- function(flows){
                start=c(lubridate::year(min(df$date)),
                        lubridate::month(min(df$date))))
 
-    end_date <- today() + months(1)
+    end_date <- lubridate::today() + lubridate::days(30)
     n_months <- lubridate::interval(max(df$date), end_date) %/% months(1)
     # components_dfts <- decompose(dfts)
     # plot(components_dfts)
@@ -454,6 +454,7 @@ utils.add_forecast <- function(flows){
         # Cap at latest observed value! Very conservative
         mutate(value_tonne = pmax(pmin(value_tonne, tail(df$value_tonne,1)),0))
     }, error=function(error){
+      log_warn("Failed to forecast")
       # If failed, we just assume constant value
       return(tibble(
         date=seq.Date(max(df$date) + months(1), end_date, by='month'),

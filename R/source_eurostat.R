@@ -61,6 +61,7 @@ eurostat.get_flows <- function(use_cache=T){
 
 eurostat.get_overland_flows <- function(date_from='2015-01-01', split_in_days=T){
 
+  log_level(REQUEST, "Fetching Eurostat overland flows from {date_from}")
   flows_raw <- read_csv(sprintf('https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-058213/M.EU+AT+BE+BG+CY+CZ+DE+DK+EE+ES+FI+FR+GR+HR+HU+IE+IT+LT+LU+LV+MT+NL+PL+PT+RO+SE+SI+SK.RU.2701+2704+2705+2706+2709+2710+2711+271111+271121.1+2.1+2+3+4+5+7+8+9+0.QUANTITY_IN_TONS/?format=SDMX-CSV&startPeriod=%s&endPeriod=%s&lang=en&label=both',
                                 strftime(as.Date(date_from),'%Y-%m'),
                                 strftime(lubridate::today(),'%Y-%m')
