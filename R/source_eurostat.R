@@ -93,7 +93,10 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
       flow,
       transport = transport_mode,
       unit = indicators,
-      value_tonne = OBS_VALUE
+      value_tonne = case_when(
+        !is.numeric(OBS_VALUE) ~ as.numeric(OBS_VALUE),
+        .default = OBS_VALUE
+      )
     ) %>%
     mutate_at(c("reporter", "partner", "commodity_code"), to_code) %>%
     mutate_at(c("flow", "transport"), to_label) %>%
