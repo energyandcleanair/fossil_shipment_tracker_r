@@ -129,8 +129,13 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
       oil_pipeline = "pipeline_oil",
       oil_rail_road = "crude_oil_rail_road"
     )) %>%
+    rowwise() %>%
+    filter(!is.na(value_tonne)) %>%
+    ungroup() %>%
     group_by(departure_iso2, destination_iso2 = reporter, commodity, date) %>%
-    summarise(c("value_tonne"), sum, na.rm = T) %>%
+    summarise(
+      value_tonne = sum(value_tonne)
+    ) %>%
     ungroup()
 
   # Fill with zeros until last date
