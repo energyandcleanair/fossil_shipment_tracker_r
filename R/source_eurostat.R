@@ -72,11 +72,54 @@ eurostat.get_flows <- function(use_cache = T) {
 
 eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days = T) {
   log_level(REQUEST, "Fetching Eurostat overland flows from {date_from}")
-  flows_raw <- read_csv(sprintf(
-    "https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-058213/M.EU+AT+BE+BG+CY+CZ+DE+DK+EE+ES+FI+FR+GR+HR+HU+IE+IT+LT+LU+LV+MT+NL+PL+PT+RO+SE+SI+SK.RU.2701+2704+2705+2706+2709+2710+2711+271111+271121.1+2.1+2+3+4+5+7+8+9+0.QUANTITY_IN_TONS/?format=SDMX-CSV&startPeriod=%s&endPeriod=%s&lang=en&label=both",
-    strftime(as.Date(date_from), "%Y-%m"),
-    strftime(lubridate::today(), "%Y-%m")
-  ))
+  frequency <- "M"
+  dest_countries <- paste(
+    "EU", "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+    sep = "+"
+  )
+  origin_countries <- paste(
+    "RU",
+    sep = "+"
+  )
+  commodities <- paste(
+    "2701", "2704", "2705", "2706", "2709", "2710", "2711", "271111", "271121",
+    sep = "+"
+  )
+  flow_directions <- paste(
+    "1", # imports
+    "2", # exports
+    sep = "+"
+  )
+  transport_modes <- paste(
+    "1", "2", "3", "4", "5", "7", "8", "9", "0",
+    sep = "+"
+  )
+  indicator <- "QUANTITY_IN_TONS"
+
+  date_from_formatted <- strftime(as.Date(date_from), "%Y-%m")
+  date_to_formatted <- strftime(lubridate::today(), "%Y-%m")
+
+  url <- glue(
+    "https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-058213/",
+    "{frequency}.",
+    "{dest_countries}.",
+    "{origin_countries}.",
+    "{commodities}.",
+    "{flow_directions}.",
+    "{transport_modes}.",
+    "{indicator}/",
+    "?format=SDMX-CSV",
+    "&startPeriod={date_from_formatted}",
+    "&endPeriod={date_to_formatted}",
+    "&lang=en",
+    "&label=both"
+  )
+
+  log_debug("Using URL {url}")
+
+  flows_raw <- read_csv(url)
+
+  log_level(DEBUG, "Overland flows has columns {paste(names(flows_raw), sep=',', collapse=',')}")
 
   to_code <- function(x) {
     sub("\\:.*", "", x)
@@ -85,6 +128,9 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
     sub(".*\\:", "", x)
   }
   flows <- flows_raw %>%
+    mutate(
+      value_tonne = ifelse(is.numeric(OBS_VALUE), OBS_VALUE, as.numeric(gsub(",", "", OBS_VALUE)))
+    ) %>%
     select(
       date = TIME_PERIOD,
       reporter,
@@ -93,10 +139,7 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
       flow,
       transport = transport_mode,
       unit = indicators,
-      value_tonne = case_when(
-        !is.numeric(OBS_VALUE) ~ as.numeric(OBS_VALUE),
-        .default = OBS_VALUE
-      )
+      value_tonne
     ) %>%
     mutate_at(c("reporter", "partner", "commodity_code"), to_code) %>%
     mutate_at(c("flow", "transport"), to_label) %>%
