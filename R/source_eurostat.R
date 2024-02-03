@@ -128,6 +128,7 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
     sub(".*\\:", "", x)
   }
   flows <- flows_raw %>%
+    rowwise() %>%
     mutate(
       value_tonne = ifelse(is.numeric(OBS_VALUE), OBS_VALUE, as.numeric(gsub(",", "", OBS_VALUE)))
     ) %>%
@@ -148,17 +149,16 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
       flow == "IMPORT",
       grepl("TONS", unit)
     ) %>%
-    mutate(commodity = recode(commodity_code, !!!hs_commodities))
-
-  # Recode transport
-  flows$transport[grep("Fixed", flows$transport)] <- "pipeline"
-  flows$transport[grep("Sea|water", flows$transport)] <- "seaborne"
-  flows$transport[grep("Rail|Road", flows$transport)] <- "rail_road"
-  flows$date <- as.Date(paste0(flows$date, "-01"))
-  # We ignore others (#TODO investigate a bit further Inland Waterway)
-  flows$transport[!grepl("pipeline|seaborne|rail_road", flows$transport)] <- "other"
-
-  flows <- flows %>%
+    mutate(
+      commodity = recode(commodity_code, !!!hs_commodities),
+      transport = case_when(
+        grepl("Fixed", transport) ~ "pipeline",
+        grepl("Sea|water", transport) ~ "seaborne",
+        grepl("Rail|Road", transport) ~ "rail_road",
+        .default = "other"
+      )
+    ) %>%
+    mutate(date = as.Date(paste0(date, "-01"))) %>%
     filter(
       grepl("^natural_gas|gas_all|^coal|oil|oil_products|lng|^coke", commodity),
       !is.na(value_tonne)
