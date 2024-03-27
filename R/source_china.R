@@ -1,5 +1,5 @@
 china.get_google_sheets_url <- function(){
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?output=csv"
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQunCwQmOpGXSLWiToq6zZDLi3VFqknU2fyDrRCtURFCT2QS1oer4H9i_eCXnyZfw/pub?gid=289134323&single=true&output=csv"
 }
 
 china.get_flows <- function(){
