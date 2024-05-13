@@ -42,9 +42,9 @@ Imports:
     rvest,
     sweep
 Remotes:
-    energyandcleanair/rcrea,
-    energyandcleanair/entsog,
-    ropensci/comtradr
+    github::energyandcleanair/rcrea,
+    github::energyandcleanair/entsog,
+    github::ropensci/comtradr
 RoxygenNote: 7.2.3
 Suggests: 
     testthat (>= 3.0.0)
