@@ -13,10 +13,13 @@ china.get_flows <- function() {
 
 china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
                                         fill_gaps_and_future = T) {
+  log_info("Get flows natural gas China")
+
   # China pipeline gas 3.9 bcm in 2020; 5 bcm over 161 days in 2021-22 - assume 10 bcmpa
   # http://www.xinhuanet.com/english/2021-08/10/c_1310119621.htm
   # https://news.cgtn.com/news/2022-01-18/China-Russia-pipeline-delivers-15b-cubic-meters-of-natural-gas--16V6fC0jWQo/index.html
 
+  log_info("Building base natural gas assumptions")
   original <- tibble(
     commodity = "natural_gas",
     value_m3 = c(10e9 / 365),
@@ -28,13 +31,13 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
       destination_iso2 = "CN"
     )
 
-
+  log_info("Fetching China pipeline gas data")
   # Read customs data -------------------------------------------------------
   path <- china.get_google_sheets_url()
-  skip <- 1
+  n_lines_to_skip <- 1
 
   log_level(REQUEST, "Fetch customs data for China from spreadsheet")
-  customs <- read_csv(path, skip = skip) %>%
+  customs <- read_csv(path, skip = n_lines_to_skip) %>%
     select(
       date = Name,
       value_kg = `Volume of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`,
@@ -63,7 +66,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
   # meaning that the price is fixed for three months based on a six-month average with a three-month delay
   # : i.e., the gas price for October–December is determined by averaging the oil price in January–June.
 
-
+  log_info("Fetching monthly price indicators")
   prices <- get_prices_monthly()
 
   # Add a six month rolling average of Brent
@@ -73,10 +76,11 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
     mutate(brent_6m = zoo::rollmean(brent, 6, align = "right", fill = NA)) %>%
     mutate(brent_6m_lag3 = lag(brent_6m, 3))
 
+  log_info("Fetching exchange rates")
   cny_per_usd <- price.cny_per_usd(monthly = T)
   eur_per_usd <- price.eur_per_usd(monthly = T)
 
-
+  log_info("Build data for model for China pipeline gas prices")
   data <- customs %>%
     # Fill dates so that we can have longer price time series
     tidyr::complete(date = seq.Date(min(date(date)), ceiling_date(today(), "month"), by = "month")) %>%
@@ -100,16 +104,20 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
   # summary(model)
   #
   # USD version
+
+  log_info("Build model for China pipeline gas prices")
   model <- lm(
     price_usd_per_kg ~ brent_6m_lag3 + lag(cny_per_usd, 1),
     data %>% filter(value_kg > 0)
   )
-  summary(model)
+  log_info("Checking model")
   r2 <- summary(model)$r.squared
   if (r2 < 0.8) stop("Something wrong with China gas pricing model")
 
+  log_info("Predicting China pipeline gas prices in USD")
   data$price_usd_per_kg_predicted <- predict(model, data)
 
+  log_info("Calculating volumes")
   data <- data %>%
     mutate(
       value_kg_predicted = value_usd / price_usd_per_kg_predicted,
@@ -174,6 +182,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
     ggsave(file.path(diagnostics_folder, "china_pipeline_gas_volume_bcm.jpg"), width = 8, height = 4)
   }
 
+  log_info("Converting to daily model")
   # Make it daily
   sum_before <- sum(data$value_tonne, na.rm = T)
   result <- data %>%
@@ -199,12 +208,14 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
     ) %>%
     select(-c(month, days_in_month))
 
+  log_info("Checking that the total volumes before and after are the same")
   # Never too safe
   sum_after <- sum(result$value_tonne, na.rm = T)
   if (round(sum_before) != round(sum_after)) stop("Wrong join")
   # if(any(is.na(result$eur_per_tonne))) stop("Missing price")
 
   if (fill_gaps_and_future) {
+    log_info("Filling gaps and future")
     result <- result %>%
       fill_gaps_and_future()
   }
