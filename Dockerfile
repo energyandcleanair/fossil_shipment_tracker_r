@@ -25,7 +25,6 @@ COPY DESCRIPTION ./
 # We install rnoaa from github because the CRAN version is archived.
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     GITHUB_PAT=$(cat /run/secrets/GITHUB_TOKEN) \
-    Rscript -e "remotes::install_github('ropensci/rnoaa')" && \
     Rscript -e "remotes::install_deps(dependencies = TRUE)"
 
 COPY . ./

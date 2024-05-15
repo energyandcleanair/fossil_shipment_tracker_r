@@ -1,3 +1,7 @@
+..Rcheck
+.github
+.vscode
+
 .env
 cache
 diagnostics
