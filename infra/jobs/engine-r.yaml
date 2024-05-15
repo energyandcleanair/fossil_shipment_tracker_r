@@ -44,6 +44,11 @@ spec:
                 secretKeyRef:
                   key: latest
                   name: EXCHANGERATEHOST_ACCESS_KEY
+            - name: RUSSIA_FOSSIL_TRACKER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: API_KEY
             resources:
               limits:
                 cpu: 1000m
