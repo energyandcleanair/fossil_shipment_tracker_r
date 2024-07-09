@@ -40,8 +40,8 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
   customs <- read_csv(path, skip = n_lines_to_skip) %>%
     select(
       date = Name,
-      value_kg = `China: Value of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`,
-      value_usd = `China: Volume of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`
+      value_kg = `China: Volume of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`,
+      value_usd = `China: Value of Imports: Pipeline Carried Natural Gas (Gaseous State): Russian Federation`
     ) %>%
     filter(
       grepl("^20", date),
