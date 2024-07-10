@@ -49,8 +49,8 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
     ) %>%
     mutate(
       date = floor_date(lubridate::parse_date_time(gsub("/", "-", date), orders = c("ymd", "ym")), "month"),
-      value_kg = as.numeric(value_kg),
-      value_usd = as.numeric(value_usd),
+      value_kg = as.numeric(gsub(",", "", value_kg)),
+      value_usd = as.numeric(gsub(",", "", value_usd)),
       price_usd_per_kg = case_when(
         value_usd > 0 & value_kg > 0 ~ value_usd / value_kg,
         T ~ NA
