@@ -293,7 +293,7 @@ china.get_flows_pipeline_oil <- function(use_google_sheets = T) {
   total <- read_csv(path, skip = skip) %>%
     select(
       date = Name,
-      value_kg = `Volume of Imports: Crude Oil: Russian Federation`
+      value_kg = `China: Volume of Imports: Crude Oil: Russian Federation`
     ) %>%
     filter(grepl("^20", date)) %>%
     mutate(
