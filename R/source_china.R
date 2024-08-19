@@ -34,7 +34,7 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
   log_info("Fetching China pipeline gas data")
   # Read customs data -------------------------------------------------------
   path <- china.get_google_sheets_url()
-  n_lines_to_skip <- 1
+  n_lines_to_skip <- 2
 
   log_level(REQUEST, "Fetch customs data for China from spreadsheet")
   customs <- read_csv(path, skip = n_lines_to_skip) %>%
