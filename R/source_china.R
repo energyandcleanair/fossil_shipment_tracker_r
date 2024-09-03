@@ -284,7 +284,7 @@ china.get_flows_pipeline_oil <- function(use_google_sheets = T) {
   if (use_google_sheets) {
     # China Wind url:
     path <- china.get_google_sheets_url()
-    skip <- 1
+    skip <- 2
   } else {
     path <- system.file("extdata", "china/china_imports_wind.csv", package = "russiacounter")
     skip <- 1
