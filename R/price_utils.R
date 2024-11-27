@@ -21,7 +21,7 @@ force_utc <- function(df) {
 get_brent <- function() {
   brent_datahub1 <- tryCatch(
     {
-      read_csv("https://datahub.io/core/oil-prices/r/brent-daily.csv", show_col_type = F) %>%
+      read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
         select(date = Date, brent = Price) %>%
         filter(date >= "2016-01-01") %>%
         arrange(desc(date))
@@ -33,7 +33,7 @@ get_brent <- function() {
 
   brent_datahub2 <- tryCatch(
     {
-      read_csv("https://datahub.io/core/oil-prices/r/brent-day.csv", show_col_type = F) %>%
+      read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
         select(date = Date, brent = Price) %>%
         filter(date >= "2016-01-01") %>%
         arrange(desc(date))
