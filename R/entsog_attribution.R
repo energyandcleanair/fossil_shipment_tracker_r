@@ -17,10 +17,27 @@ process_iterative <- function(flows_for_whole_period) {
 process_iterative_for_day <- function(flows_for_day) {
   options(dplyr.summarise.inform = FALSE)
 
+  # Assert expected columns
+  expected_columns <- c("from_country", "to_country", "value", "date", "from_method", "to_method")
+  if (!all(expected_columns %in% names(flows_for_day))) {
+    stop(glue("Expected columns {columns} not found"))
+  }
+
   if (("date" %in% names(flows_for_day)) && (length(unique(flows_for_day$date)) > 1)) {
     stop("This function should only work on one date at a time.
        Please aggregate if need be.")
   }
+
+  date <- unique(flows_for_day$date)
+
+  log_info("Processing flows for date {date}")
+
+  flows_for_day <- flows_for_day %>%
+    mutate(
+      from = to_matrix_key(from_country, from_method),
+      to = to_matrix_key(to_country, to_method)
+    ) %>%
+    select(from, to, value)
 
   # The flow_matrix contains the net imports for each country to each
   # other country. The row of a matrix is the importer, the column of the
@@ -32,8 +49,17 @@ process_iterative_for_day <- function(flows_for_day) {
     distribute_until_stable() %>%
     verify_matrix(original = flow_matrix) %>%
     remove_production() %>%
-    convert_to_data_frame()
-
+    convert_to_data_frame() %>%
+    mutate(
+      date = date,
+      from_values = purrr::map(from, from_matrix_key),
+      to_values = purrr::map(to, from_matrix_key),
+      from_country = purrr::map_chr(from_values, "country"),
+      from_method = purrr::map_chr(from_values, "method"),
+      to_country = purrr::map_chr(to_values, "country"),
+      to_method = purrr::map_chr(to_values, "method")
+    ) %>%
+    select(from_country, to_country, from_method, to_method, value)
   return(distributed_flows_for_day)
 }
 
@@ -42,8 +68,8 @@ convert_to_data_frame <- function(flow_matrix) {
 
   return(
     bind_cols(country = sort(all_countries), as.data.frame(flow_matrix)) %>%
-      gather(key = "from_country", value = "value", -country) %>%
-      rename(to_country = country)
+      gather(key = "from", value = "value", -country) %>%
+      rename(to = country)
   )
 }
 
@@ -72,12 +98,19 @@ add_heuristics <- function(flows) {
   return(
     flows %>%
       # Ukraine considered as a pure transit country
-      set_transit_country(origin_country = "RU", transit_country = "UA") %>%
+      set_transit_country(
+        origin_key = to_matrix_key("RU", "pipeline"),
+        transit_key = to_matrix_key("UA", "pipeline")
+      ) %>%
       # Bulgaria as transit from TR (i.e RU) to RO,RS,MK
       bypass_country(
-        origin_iso2 = "RU",
-        transit_iso2 = "BG",
-        destination_iso2s = c("RO", "RS", "MK")
+        origin_key = to_matrix_key("RU", "pipeline"),
+        transit_key = to_matrix_key("BG", "pipeline"),
+        destination_keys = c(
+          to_matrix_key("RO", "pipeline"),
+          to_matrix_key("RS", "pipeline"),
+          to_matrix_key("MK", "pipeline")
+        )
       )
   )
 }
@@ -95,34 +128,31 @@ distribute_until_stable <- function(initial_matrix) {
   return(current_matrix)
 }
 
-set_transit_country <- function(flows, origin_country, transit_country) {
+set_transit_country <- function(flows, origin_key, transit_key) {
   flows %>%
     mutate(
       value = case_when(
-        (from_country == origin_country) & (to_country == transit_country) ~ 0,
+        (from == origin_key) & (to == transit_key) ~ 0,
         .default = value
       ),
-      from_country = case_when(
-        from_country == transit_country ~ origin_country,
-        .default = from_country
+      from = case_when(
+        from == transit_key ~ origin_key,
+        .default = from
       ),
       to_country = case_when(
-        to_country == transit_country ~ origin_country,
-        .default = to_country
+        to == transit_key ~ origin_key,
+        .default = to
       )
     )
 }
 
-bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) {
-  if (length(unique(flows$date)) > 1) {
-    stop("Only works for a single date")
-  }
-  if (length(origin_iso2) != 1 | length(transit_iso2) != 1) {
+bypass_country <- function(flows, origin_key, transit_key, destination_keys) {
+  if (length(origin_key) != 1 | length(transit_key) != 1) {
     stop("Wrong arguments in bypass")
   }
 
-  flows_in_filter <- flows$from_country %in% origin_iso2 & flows$to_country %in% transit_iso2
-  flows_out_filter <- flows$from_country %in% transit_iso2 & flows$to_country %in% destination_iso2s
+  flows_in_filter <- flows$from %in% origin_key & flows$to %in% transit_key
+  flows_out_filter <- flows$from %in% transit_key & flows$to %in% destination_keys
   flows_in <- flows[flows_in_filter, ]
   flows_out <- flows[flows_out_filter, ]
 
@@ -144,7 +174,7 @@ bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) 
 
   # Create new flows
   new_flows <- flows[flows_out_filter, ]
-  new_flows$from_country <- origin_iso2
+  new_flows$from <- origin_key
   new_flows$value <- new_flows$value * ratio
 
   # Update old ones
@@ -155,7 +185,7 @@ bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) 
 
   # Group just in case other flows existed
   flows <- flows %>%
-    group_by(from_country, to_country, date) %>%
+    group_by(from, to) %>%
     summarise(value = sum(value, na.rm = T)) %>%
     ungroup()
 
@@ -166,31 +196,31 @@ bypass_country <- function(flows, origin_iso2, transit_iso2, destination_iso2s) 
   return(flows)
 }
 
-# Ensure all countries are both in from_country and to_country
+# Ensure all countries are both in from and to
 # so as to have a square matrix
 consolidate <- function(flow_matrix) {
-  all_countries <- unique(c(flow_matrix$from_country, flow_matrix$to_country))
+  all_countries <- unique(c(flow_matrix$from, flow_matrix$to))
   if (is.null(flow_matrix)) {
     stop("d is null")
   }
   flow_matrix %>%
     full_join(
       tidyr::crossing(
-        from_country = all_countries,
-        to_country = all_countries
+        from = all_countries,
+        to = all_countries
       ),
-      by = c("to_country", "from_country")
+      by = c("to", "from")
     ) %>%
     mutate(value = replace_na(value, 0))
 }
 
 to_flow_mat <- function(d) {
   flows <- d %>%
-    group_by(country = to_country, partner = from_country) %>%
+    group_by(country = to, partner = from) %>%
     summarise(import = sum(value, na.rm = T)) %>%
     left_join(
       d %>%
-        group_by(country = from_country, partner = to_country) %>%
+        group_by(country = from, partner = to) %>%
         summarise(export = sum(value, na.rm = T)),
       by = c("country", "partner")
     ) %>%
@@ -224,12 +254,12 @@ netize <- function(flow_matrix) {
       flow_matrix %>%
         ungroup() %>%
         select(
-          from_country = to_country,
-          to_country = from_country,
+          from = to,
+          to = from,
           value_opposite = value
         ) %>%
-        filter(from_country != to_country), # We keep production
-      by = c("to_country", "from_country")
+        filter(from != to), # We keep production
+      by = c("to", "from")
     ) %>%
     mutate(value_opposite = tidyr::replace_na(value_opposite, 0)) %>%
     mutate(value = pmax(0, value - value_opposite)) %>%
@@ -266,8 +296,8 @@ distribute <- function(flow_matrix) {
 
       providers_imports <- flow_matrix[provider, ]
       # Ukraine special case: Ukraine cannot reimport gas from Russia
-      if ((importer == "UA")) {
-        providers_imports["RU"] <- 0
+      if ((importer == ua_pipeline)) {
+        providers_imports[ru_pipeline] <- 0
       }
 
 
@@ -323,3 +353,17 @@ get_production_for_country <- function(flow_mat, country) {
 is_matrix_square <- function(mat) {
   dim(mat)[1] == dim(mat)[2]
 }
+
+to_matrix_key <- function(country, method) {
+  glue("{country}_{method}")
+}
+
+from_matrix_key <- function(key) {
+  split <- strsplit(key, "_")[[1]]
+  names(split) <- c("country", "method")
+  return(split)
+}
+
+
+ua_pipeline <- to_matrix_key("UA", "pipeline")
+ru_pipeline <- to_matrix_key("RU", "pipeline")

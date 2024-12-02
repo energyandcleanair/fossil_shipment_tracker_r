@@ -18,12 +18,12 @@ expect_flows_close <- function(actual, expected) {
     arrange(from_country, to_country) %>%
     mutate(value = round(value, 3)) %>%
     filter(value != 0)
-  exected_clean <- expected %>%
+  expected_clean <- expected %>%
     arrange(from_country, to_country) %>%
     mutate(value = round(value, 3)) %>%
     filter(value != 0)
 
-  expect_equal(actual_clean, exected_clean)
+  expect_equal(actual_clean, expected_clean)
 }
 
 arbitrary_date <- as.Date("2020-01-01")
@@ -39,18 +39,22 @@ test_that("creates the expected flows for basic model", {
     from_country = c("GB", "FR", "DE", "FR"),
     to_country = c("FR", "ES", "FR", "BE"),
     value = c(8, 3, 4, 6),
-    date = rep(arbitrary_date, 4)
+    date = rep(arbitrary_date, 4),
+    from_method = rep("pipeline", 4),
+    to_method = rep("pipeline", 4)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("GB", "DE", "GB", "GB", "DE", "DE"),
     to_country = c("FR", "FR", "ES", "BE", "ES", "BE"),
     value = c(2, 1, 2, 4, 1, 2),
+    from_method = rep("pipeline", 6),
+    to_method = rep("pipeline", 6)
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -67,18 +71,22 @@ test_that("production doesn't affect flows and is removed", {
     from_country = c("GB", "FR", "DE", "FR", "FR"),
     to_country = c("FR", "ES", "FR", "BE", "FR"),
     value = c(8, 3, 4, 6, 1),
-    date = rep(arbitrary_date, 5)
+    date = rep(arbitrary_date, 5),
+    from_method = rep("pipeline", 5),
+    to_method = rep("pipeline", 5)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("GB", "DE", "GB", "GB", "DE", "DE"),
     to_country = c("FR", "FR", "ES", "BE", "ES", "BE"),
     value = c(2, 1, 2, 4, 1, 2),
+    from_method = rep("pipeline", 6),
+    to_method = rep("pipeline", 6)
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -95,18 +103,22 @@ test_that("Ukraine doesn't import from Russia and transits through", {
     from_country = c("RU", "UA", "UA"),
     to_country = c("UA", "SK", "PL"),
     value = c(3, 3, 2),
-    date = rep(arbitrary_date, 3)
+    date = rep(arbitrary_date, 3),
+    from_method = rep("pipeline", 3),
+    to_method = rep("pipeline", 3)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("RU", "RU"),
     to_country = c("SK", "PL"),
     value = c(3, 2),
+    from_method = rep("pipeline", 2),
+    to_method = rep("pipeline", 2)
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -121,18 +133,22 @@ test_that("Ukraine can't reimport from Russia", {
     from_country = c("RU", "PL"),
     to_country = c("PL", "UA"),
     value = c(6, 3),
-    date = rep(arbitrary_date, 2)
+    date = rep(arbitrary_date, 2),
+    from_method = rep("pipeline", 2),
+    to_method = rep("pipeline", 2)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("RU"),
     to_country = c("PL"),
-    value = c(3),
+    value = c(6),
+    from_method = rep("pipeline", 1),
+    to_method = rep("pipeline", 1)
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -149,26 +165,32 @@ test_that("a loop takes from where gas is 'made' (made is not the same as produc
       from_country = c("PL", "SK", "DE"),
       to_country = c("SK", "DE", "PL"),
       value = c(3, 1, 2),
-      date = rep(arbitrary_date, 3)
+      date = rep(arbitrary_date, 3),
+      from_method = rep("pipeline", 3),
+      to_method = rep("pipeline", 3)
     ),
     tibble(
       from_country = c("SK", "DE", "PL"),
       to_country = c("DE", "PL", "SK"),
       value = c(1, 2, 3),
-      date = rep(arbitrary_date, 3)
+      date = rep(arbitrary_date, 3),
+      from_method = rep("pipeline", 3),
+      to_method = rep("pipeline", 3)
     ),
     tibble(
       from_country = c("DE", "PL", "SK"),
       to_country = c("PL", "SK", "DE"),
       value = c(2, 3, 1),
-      date = rep(arbitrary_date, 3)
+      date = rep(arbitrary_date, 3),
+      from_method = rep("pipeline", 3),
+      to_method = rep("pipeline", 3)
     )
   )
 
   for (initial_flows in initial_flows_different_orders) {
     actual_flows <- process_iterative_for_day(initial_flows) %>%
       filter(value != 0) %>%
-      select(from_country, to_country, value) %>%
+      select(from_country, to_country, value, from_method, to_method) %>%
       as_tibble()
 
     # DE has to "make" 1 to send 2 to PL (which sends it onto SK)
@@ -178,6 +200,8 @@ test_that("a loop takes from where gas is 'made' (made is not the same as produc
       from_country = c("PL", "DE"),
       to_country = c("SK", "SK"),
       value = c(1, 1),
+      from_method = rep("pipeline", 2),
+      to_method = rep("pipeline", 2)
     )
 
     expect_flows_close(actual_flows, expected_flows)
@@ -194,12 +218,14 @@ test_that("a loop with nothing 'made' transmits nothing)", {
     from_country = c("PL", "SK", "DE"),
     to_country = c("SK", "DE", "PL"),
     value = c(3, 3, 3),
-    date = rep(arbitrary_date, 3)
+    date = rep(arbitrary_date, 3),
+    from_method = rep("pipeline", 3),
+    to_method = rep("pipeline", 3)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   # DE has to "make" 1 to send 2 to PL (which sends it onto SK)
@@ -209,6 +235,8 @@ test_that("a loop with nothing 'made' transmits nothing)", {
     from_country = c(),
     to_country = c(),
     value = c(),
+    from_method = c(),
+    to_method = c()
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -223,18 +251,22 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; use other sou
     from_country = c("GR", "RU", "BG", "BG", "BG"),
     to_country = c("BG", "BG", "RO", "RS", "MK"),
     value = c(3, 3, 1, 1, 1),
-    date = rep(arbitrary_date, 5)
+    date = rep(arbitrary_date, 5),
+    from_method = rep("pipeline", 5),
+    to_method = rep("pipeline", 5)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("GR", "RU", "RU", "RU"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(3, 1, 1, 1),
+    from_method = rep("pipeline", 4),
+    to_method = rep("pipeline", 4)
   )
 
   expect_flows_close(actual_flows, expected_flows)
@@ -250,18 +282,51 @@ test_that("we bypass Bulgaria to Romania, Serbia, North Macedonia; leave extra i
     from_country = c("RU", "BG", "BG", "BG"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(6, 1, 1, 1),
-    date = rep(arbitrary_date, 4)
+    date = rep(arbitrary_date, 4),
+    from_method = rep("pipeline", 4),
+    to_method = rep("pipeline", 4)
   )
 
   actual_flows <- process_iterative_for_day(initial_flows) %>%
     filter(value != 0) %>%
-    select(from_country, to_country, value) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
     as_tibble()
 
   expected_flows <- tibble(
     from_country = c("RU", "RU", "RU", "RU"),
     to_country = c("BG", "RO", "RS", "MK"),
     value = c(3, 1, 1, 1),
+    from_method = rep("pipeline", 4),
+    to_method = rep("pipeline", 4)
+  )
+
+  expect_flows_close(actual_flows, expected_flows)
+})
+
+test_that("different method of transport at entry is kept", {
+  # Graph of flows:
+  #      RU(LNG) ->3-> BG(pipeline) ->6-> FR(pipeline)
+  # RU(pipeline) ->3-/
+  initial_flows <- tibble(
+    from_country = c("RU", "RU", "BG"),
+    to_country = c("BG", "BG", "FR"),
+    value = c(3, 3, 6),
+    date = rep(arbitrary_date, 3),
+    from_method = c("lng", "pipeline", "pipeline"),
+    to_method = rep("pipeline", 3)
+  )
+
+  actual_flows <- process_iterative_for_day(initial_flows) %>%
+    filter(value != 0) %>%
+    select(from_country, to_country, value, from_method, to_method) %>%
+    as_tibble()
+
+  expected_flows <- tibble(
+    from_country = c("RU", "RU"),
+    to_country = c("FR", "FR"),
+    value = c(3, 3),
+    from_method = c("lng", "pipeline"),
+    to_method = rep("pipeline", 1)
   )
 
   expect_flows_close(actual_flows, expected_flows)

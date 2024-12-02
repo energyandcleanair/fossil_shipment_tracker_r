@@ -19,16 +19,19 @@ update_counter <- function(rebuild_prices = F) {
   }
 
   log_level(STAGE, "Updating other european overland flows")
-  flows_overland_eu <- overland_eu.get_flows()
+  flows_overland_eu <- overland_eu.get_flows() %>%
+    mutate(initial_origin_insertion_method = "pipeline")
   db.upload_flows_to_postgres(flows_overland_eu, production = T)
 
   log_level(STAGE, "Updating China flows")
   flows_china <- china.get_flows() %>%
-    mutate(value_mwh = NA_real_)
+    mutate(value_mwh = NA_real_) %>%
+    mutate(initial_origin_insertion_method = "pipeline")
   db.upload_flows_to_postgres(flows_china, production = T)
 
   log_level(STAGE, "Updating India flows")
   flows_turkey <- turkey.get_flows() %>%
-    mutate(value_mwh = NA_real_)
+    mutate(value_mwh = NA_real_) %>%
+    mutate(initial_origin_insertion_method = "pipeline")
   db.upload_flows_to_postgres(flows_turkey, production = T)
 }
