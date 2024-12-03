@@ -101,7 +101,16 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
   log_level(UPLOAD, "Uploading flows to postgres ({db_env})")
 
   p <- pipeline_flows %>%
-    select(commodity, departure_iso2, destination_iso2, date, value_tonne, value_mwh, value_m3)
+    select(
+      commodity,
+      departure_iso2,
+      destination_iso2,
+      date,
+      value_tonne,
+      value_mwh,
+      value_m3,
+      initial_origin_insertion_method
+    )
 
   p$updated_on <- lubridate::now()
 
