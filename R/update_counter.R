@@ -14,7 +14,7 @@ update_counter <- function(rebuild_prices = F) {
   log_level(STAGE, "Updating european pipeline gas")
   flows_entsog <- entsog_new.get_flows(date_from = lubridate::today() - 21, use_cache = F) %>%
     mutate(
-      initial_origin_insertion_method = "pipeline",
+      entry_mode = "pipeline",
       process = "gas_model"
     )
   ok <- T & (sum(flows_entsog$value_tonne) >= as.integer(max(flows_entsog$date) - min(flows_entsog$date)) * 5e5)
@@ -25,7 +25,7 @@ update_counter <- function(rebuild_prices = F) {
   log_level(STAGE, "Updating other european overland flows")
   flows_overland_eu <- overland_eu.get_flows() %>%
     mutate(
-      initial_origin_insertion_method = NA,
+      entry_mode = NA,
       process = "overland_eu"
     )
   db.upload_flows_to_postgres(flows_overland_eu, production = T)
@@ -34,7 +34,7 @@ update_counter <- function(rebuild_prices = F) {
   flows_china <- china.get_flows() %>%
     mutate(
       value_mwh = NA_real_,
-      initial_origin_insertion_method = NA,
+      entry_mode = NA,
       process = "china"
     )
   db.upload_flows_to_postgres(flows_china, production = T)
@@ -43,7 +43,7 @@ update_counter <- function(rebuild_prices = F) {
   flows_turkey <- turkey.get_flows() %>%
     mutate(
       value_mwh = NA_real_,
-      initial_origin_insertion_method = NA,
+      entry_mode = NA,
       process = "turkey"
     )
   db.upload_flows_to_postgres(flows_turkey, production = T)

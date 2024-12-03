@@ -109,7 +109,7 @@ db.upload_flows_to_postgres <- function(pipeline_flows, production=F){
       value_tonne,
       value_mwh,
       value_m3,
-      initial_origin_insertion_method
+      entry_mode
     )
 
   p$updated_on <- lubridate::now()
