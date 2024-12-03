@@ -41,4 +41,4 @@ RUN mkdir -p "${BASE_DIR}/diagnostics"
 COPY run.R ${BASE_DIR}/
 
 
-ENTRYPOINT [ "Rscript", "run.R" ]
+ENTRYPOINT [ "Rscript", "run/run.R" ]
