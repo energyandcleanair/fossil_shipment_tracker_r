@@ -15,7 +15,8 @@ RUN apt-get update && \
     python3 \
     python-is-python3 \
     libpq5 \
-    libpq-dev
+    libpq-dev \
+    libmagick++-dev
 
 # Install package dependencies
 RUN Rscript -e "install.packages('remotes')"
