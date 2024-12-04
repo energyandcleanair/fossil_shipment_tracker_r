@@ -24,27 +24,33 @@ entsog_new._replace_lng_with_origin <- function(overland_flows, ..., date_from, 
   lng_csv_arg_for_api <- paste(lng_importers, collapse = ",")
 
   api_key <- Sys.getenv("RUSSIA_FOSSIL_TRACKER_API_KEY")
+  
+  years <- seq(lubridate::year(date_from), lubridate::year(date_to))
 
   rolling_period <- 30
 
-  date_from_with_extra <- as.character(as.Date(date_from) - lubridate::days(rolling_period))
-
-  # Get seaborne imports of LNG to the the countries excluding transhipments.
-  seaborne_imports <- read_csv(
-    glue(
-      "https://api.russiafossiltracker.com/v1/kpler_trade",
-      "?api_key={api_key}",
-      "&format=csv",
-      "&commodity=lng",
-      "&destination_date_from={date_from_with_extra}",
-      "&destination_date_to={date_to}",
-      "&destination_iso2={lng_csv_arg_for_api}",
-      "&exclude_sts=true",
-      "&aggregate_by=destination_iso2,origin_iso2,destination_date,",
-      "&rolling_days=30",
-      "&check_complete=false"
+  # Get seaborne imports of LNG to the countries excluding transhipments, chunked by year.
+  seaborne_imports <- lapply(years, function(year) {
+    date_from_ <- max(as.Date(date_from), as.Date(paste0(year, "-01-01"))) - lubridate::days(rolling_period)
+    date_to_ <- min(as.Date(date_to), as.Date(paste0(year, "-12-31")))
+    log_info(glue("Getting seaborne imports of LNG to EU lng ports from {date_from_} to {date_to_}"))
+    read_csv(
+      glue(
+        "https://api.russiafossiltracker.com/v1/kpler_trade",
+        "?api_key={api_key}",
+        "&format=csv",
+        "&commodity=lng",
+        "&destination_date_from={date_from_}",
+        "&destination_date_to={date_to_}",
+        "&destination_iso2={lng_csv_arg_for_api}",
+        "&exclude_sts=true",
+        "&aggregate_by=destination_iso2,origin_iso2,destination_date,",
+        "&rolling_days={rolling_period}",
+        "&check_complete=false"
+      )
     )
-  )
+  }) %>%
+    bind_rows()
 
   # We want the proportion of the value of the LNG imports by origin at each
   # destination for each day.
@@ -63,24 +69,6 @@ entsog_new._replace_lng_with_origin <- function(overland_flows, ..., date_from, 
     select(
       destination_iso2, origin_iso2, destination_date, proportion
     )
-
-  # # Check if any destination_iso2 and destination_date combinations are missing in the seaborne_imports_proportion
-  # missing_combinations <- overland_flows %>%
-  #   filter(commodity_origin_iso2 == "lng") %>%
-  #   left_join(
-  #     seaborne_imports_proportion,
-  #     by = c(
-  #       "commodity_destination_iso2" = "destination_iso2",
-  #       "date" = "destination_date"
-  #     )
-  #   ) %>%
-  #   filter(is.na(proportion)) %>%
-  #   select(commodity_destination_iso2, date) %>%
-  #   distinct()
-
-  # if (nrow(missing_combinations) > 0) {
-  #   stop(glue("The following destination_iso2 and destination_date combinations are missing in the seaborne_imports_proportion: {missing_combinations}."))
-  # }
 
   # We want to replace the row for each LNG import in the overland_flows with
   # the proportion of the value of the LNG imports by origin at the destination
