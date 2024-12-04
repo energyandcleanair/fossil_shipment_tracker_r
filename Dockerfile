@@ -39,7 +39,8 @@ WORKDIR ${BASE_DIR}
 
 RUN mkdir -p "${BASE_DIR}/diagnostics"
 
-COPY run.R ${BASE_DIR}/
+COPY run ${BASE_DIR}/run/
 
 
-ENTRYPOINT [ "Rscript", "run/run.R" ]
+ENTRYPOINT [ "Rscript" ]
+CMD [ "run/run.R" ]
