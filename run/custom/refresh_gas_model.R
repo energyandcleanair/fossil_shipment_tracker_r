@@ -12,7 +12,7 @@ log_appender(appender_console)
 
 log_level(STAGE, "Updating european pipeline gas")
 flows_entsog <- entsog_new.get_flows(
-    date_from = lubridate::today() - 21,
+    date_from = "2016-01-01",
     use_cache = F
 )
 ok <- (
