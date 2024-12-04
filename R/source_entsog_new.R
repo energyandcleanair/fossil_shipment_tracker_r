@@ -31,7 +31,10 @@ entsog_new._replace_lng_with_origin <- function(overland_flows, ..., date_from, 
 
   # Get seaborne imports of LNG to the countries excluding transhipments, chunked by year.
   seaborne_imports <- lapply(years, function(year) {
-    date_from_ <- max(as.Date(date_from), as.Date(paste0(year, "-01-01"))) - lubridate::days(rolling_period)
+    # As we're doing a rolling period, we need to request the data from the
+    # rolling period. We add an extra day because the API is inclusive of the
+    # date_from and date_to.
+    date_from_ <- max(as.Date(date_from), as.Date(paste0(year, "-01-01"))) - lubridate::days(rolling_period) + 1
     date_to_ <- min(as.Date(date_to), as.Date(paste0(year, "-12-31")))
     log_info(glue("Getting seaborne imports of LNG to EU lng ports from {date_from_} to {date_to_}"))
     read_csv(
