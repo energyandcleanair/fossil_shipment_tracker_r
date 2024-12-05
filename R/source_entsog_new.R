@@ -24,7 +24,7 @@ entsog_new._replace_lng_with_origin <- function(overland_flows, ..., date_from, 
   lng_csv_arg_for_api <- paste(lng_importers, collapse = ",")
 
   api_key <- Sys.getenv("RUSSIA_FOSSIL_TRACKER_API_KEY")
-  
+
   years <- seq(lubridate::year(date_from), lubridate::year(date_to))
 
   rolling_period <- 30
@@ -187,14 +187,14 @@ entsog_new.get_flows <- function(date_from = "2021-11-01", date_to = NULL, use_c
     rename(
       departure_iso2 = from_country,
       destination_iso2 = to_country,
-      initial_origin_insertion_method = from_method,
+      entry_mode = from_method,
     ) %>%
     # Exclude to_method lng
     filter(to_method != "lng") %>%
     select(
       departure_iso2,
       destination_iso2,
-      initial_origin_insertion_method,
+      entry_mode,
       date,
       value_m3,
       value_tonne,
