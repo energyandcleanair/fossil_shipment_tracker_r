@@ -14,7 +14,10 @@ log_level(STAGE, "Updating european pipeline gas")
 flows_entsog <- entsog_new.get_flows(
     date_from = "2021-01-01",
     use_cache = F
-)
+) %>%
+    mutate(
+        process = "gas_model"
+    )
 ok <- (
     sum(
         flows_entsog$value_tonne
