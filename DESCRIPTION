@@ -44,7 +44,8 @@ Imports:
 Remotes:
     github::energyandcleanair/rcrea,
     github::energyandcleanair/entsog,
-    github::ropensci/comtradr
+    github::ropensci/comtradr,
+    github::ropensci/rnoaa
 RoxygenNote: 7.2.3
 Suggests: 
     testthat (>= 3.0.0)

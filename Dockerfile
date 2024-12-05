@@ -1,9 +1,9 @@
 FROM rocker/r-ver:4
 
 # Set up environemnt
-ENV BASE_DIR "/app"
+ENV BASE_DIR="/app"
 
-ENV APP_DIR "${BASE_DIR}/russiacounter"
+ENV APP_DIR="${BASE_DIR}/russiacounter"
 WORKDIR ${APP_DIR}
 
 ENV R_LIBS_USER "${BASE_DIR}/packages"
@@ -19,17 +19,15 @@ RUN apt-get update && \
     libmagick++-dev
 
 # Install package dependencies
-RUN Rscript -e "install.packages('remotes')"
+RUN Rscript -e "install.packages('pak')"
 
 COPY DESCRIPTION ./
 
-# We install rnoaa from github because the CRAN version is archived.
 RUN --mount=type=secret,id=GITHUB_TOKEN \
-    GITHUB_PAT=$(cat /run/secrets/GITHUB_TOKEN) \
-    Rscript -e "remotes::install_deps(dependencies = TRUE)"
+    R -e "pak::local_install_deps()"
 
 COPY . ./
-RUN Rscript -e "remotes::install_local('.')" && \
+RUN Rscript -e "pak::local_install('.')" && \
     Rscript -e "stopifnot('russiacounter' %in% installed.packages())"
 
 # Install script dependencies
