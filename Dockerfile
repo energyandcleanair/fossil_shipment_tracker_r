@@ -31,7 +31,7 @@ RUN Rscript -e "pak::local_install('.')" && \
     Rscript -e "stopifnot('russiacounter' %in% installed.packages())"
 
 # Install script dependencies
-RUN R -e "install.packages('argparse')"
+RUN R -e "pak::pkg_install('argparse')"
 
 WORKDIR ${BASE_DIR}
 
