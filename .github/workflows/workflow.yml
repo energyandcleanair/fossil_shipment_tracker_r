@@ -70,8 +70,8 @@ jobs:
       - name: Tag built image as latest
         run: |
           gcloud container images add-tag \
-          europe-west1-docker.pkg.dev/$PROJECT_ID/tracker/engine-r:${{ github.sha }} \
-          europe-west1-docker.pkg.dev/$PROJECT_ID/tracker/engine-r:latest
+          europe-west1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/tracker/engine-r:${{ github.sha }} \
+          europe-west1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/tracker/engine-r:latest
       - name: Deploy latest job specs
         id: deploy-job-spec
         run: |
