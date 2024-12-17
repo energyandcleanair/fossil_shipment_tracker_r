@@ -24,7 +24,7 @@ update_counter <- function(rebuild_prices = F) {
   log_level(STAGE, "Updating other european overland flows")
   flows_overland_eu <- overland_eu.get_flows() %>%
     mutate(
-      entry_mode = NA,
+      entry_mode = "N/A",
       process = "overland_eu"
     )
   db.upload_flows_to_postgres(flows_overland_eu, production = T)
@@ -33,7 +33,7 @@ update_counter <- function(rebuild_prices = F) {
   flows_china <- china.get_flows() %>%
     mutate(
       value_mwh = NA_real_,
-      entry_mode = NA,
+      entry_mode = "N/A",
       process = "china"
     )
   db.upload_flows_to_postgres(flows_china, production = T)
@@ -42,7 +42,7 @@ update_counter <- function(rebuild_prices = F) {
   flows_turkey <- turkey.get_flows() %>%
     mutate(
       value_mwh = NA_real_,
-      entry_mode = NA,
+      entry_mode = "N/A",
       process = "turkey"
     )
   db.upload_flows_to_postgres(flows_turkey, production = T)
