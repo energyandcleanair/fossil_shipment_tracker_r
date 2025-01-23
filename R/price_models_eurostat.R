@@ -92,12 +92,11 @@ price_models_eurostat.build <- function(production = F, refresh_trade = T, diagn
     left_join(prices_monthly %>%
       mutate(date = as.Date(date)))
 
-
   trade_with_predictions <- trade %>%
     group_by(commodity) %>%
     group_map(function(df, group) {
       start_year <- 2015 # ifelse(group$commodity=='natural_gas', 2016, ifelse(group$commodity=='lng', 2018, 2015))
-      independents <- case_when(T ~ "brent + lag(brent, 1) + refining_light + refining_medium + refining_heavy + lag(refining_light,1)  + lag(refining_medium,1)  + lag(refining_heavy,1)")
+      independents <- case_when(T ~ "I(brent * eur_per_usd) + I(lag(brent) * lag(eur_per_usd))")
 
       df <- df %>%
         arrange(date) %>%
@@ -127,7 +126,7 @@ price_models_eurostat.build <- function(production = F, refresh_trade = T, diagn
       geom_line() +
       scale_y_continuous(limits = c(0, NA))
 
-    ggsave(file.path(diagnostic_folder, "pricing_model_eurostat.png"), plot = plt)
+    ggsave(file.path(diagnostic_folder, "pricing_model_eurostat.png"), plot = plt, width = 12, height = 8)
 
     plt <- trade_with_predictions %>%
       select(-c(model)) %>%
@@ -138,7 +137,7 @@ price_models_eurostat.build <- function(production = F, refresh_trade = T, diagn
       geom_point() +
       geom_abline() +
       geom_smooth()
-    ggsave(file.path(diagnostic_folder, "pricing_model_eurostat_diagnostics.png"), plot = plt)
+    ggsave(file.path(diagnostic_folder, "pricing_model_eurostat_diagnostics.png"), plot = plt, width = 12, height = 8)
   }
 
   suffix <- ifelse(production, "", "_development")
