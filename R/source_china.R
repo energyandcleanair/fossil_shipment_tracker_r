@@ -67,7 +67,8 @@ china.get_flows_natural_gas <- function(diagnostics_folder = "diagnostics",
   # : i.e., the gas price for October–December is determined by averaging the oil price in January–June.
 
   log_info("Fetching monthly price indicators")
-  prices <- get_prices_monthly()
+  prices <- get_prices_monthly() %>%
+    select(-eur_per_usd)
 
   # Add a six month rolling average of Brent
 

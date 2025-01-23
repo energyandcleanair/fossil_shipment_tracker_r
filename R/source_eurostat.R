@@ -94,13 +94,13 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
     "1", "2", "3", "4", "5", "7", "8", "9", "0",
     sep = "+"
   )
-  indicator <- "QUANTITY_IN_TONS"
+  indicator <- "QUANTITY_KG"
 
   date_from_formatted <- strftime(as.Date(date_from), "%Y-%m")
   date_to_formatted <- strftime(lubridate::today(), "%Y-%m")
 
   url <- glue(
-    "https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-058213/",
+    "https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-059334/",
     "{frequency}.",
     "{dest_countries}.",
     "{origin_countries}.",
@@ -130,7 +130,7 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
   flows <- flows_raw %>%
     rowwise() %>%
     mutate(
-      value_tonne = ifelse(is.numeric(OBS_VALUE), OBS_VALUE, as.numeric(gsub(",", "", OBS_VALUE)))
+      value_tonne = ifelse(is.numeric(OBS_VALUE), OBS_VALUE, as.numeric(gsub(",", "", OBS_VALUE))) / 1e3
     ) %>%
     select(
       date = TIME_PERIOD,
@@ -147,7 +147,7 @@ eurostat.get_overland_flows <- function(date_from = "2015-01-01", split_in_days 
     mutate(partner = ifelse(partner == "RU", "Russia", "World")) %>%
     filter(
       flow == "IMPORT",
-      grepl("TONS", unit)
+      grepl("QUANTITY_KG", unit)
     ) %>%
     mutate(
       commodity = recode(commodity_code, !!!hs_commodities),
