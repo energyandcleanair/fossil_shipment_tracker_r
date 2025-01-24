@@ -17,12 +17,10 @@ price_models.get_predicted <- function(production = F, add_urals_espo = T, price
     # Not really predicted...
     p_espo <- get_espo() %>%
       mutate(commodity = "crude_oil_espo") %>%
-      filter(!is.na(eur_per_tonne)) %>%
       fill_gaps_and_future()
 
     p_urals <- get_urals() %>%
       mutate(commodity = "crude_oil_urals") %>%
-      filter(!is.na(eur_per_tonne)) %>%
       fill_gaps_and_future()
 
     predicted <- bind_rows(

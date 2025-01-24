@@ -19,8 +19,10 @@ force_utc <- function(df) {
 }
 
 get_brent <- function() {
+  log_info("Getting prices for Brent")
   brent_datahub1 <- tryCatch(
     {
+      log_level(REQUEST, "Getting Brent prices from datahub")
       read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
         select(date = Date, brent = Price) %>%
         filter(date >= "2016-01-01") %>%
@@ -33,6 +35,7 @@ get_brent <- function() {
 
   brent_datahub2 <- tryCatch(
     {
+      log_level(REQUEST, "Getting Brent prices from datahub")
       read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
         select(date = Date, brent = Price) %>%
         filter(date >= "2016-01-01") %>%
@@ -45,6 +48,7 @@ get_brent <- function() {
 
   brent_eia <- tryCatch(
     {
+      log_level(REQUEST, "Getting Brent prices from EIA")
       eia::eia_series(
         id = "PET.RBRTE.D",
         start = lubridate::year(max(brent_datahub$date)),
@@ -63,6 +67,7 @@ get_brent <- function() {
   )
 
   temp <- tempfile(fileext = ".xls")
+  log_level(REQUEST, "Getting Brent prices from EIA")
   download.file("https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls", temp, quiet = TRUE)
   brent_eia_xls <- readxl::read_xls(temp, sheet = "Data 1", skip = 3, col_names = c("date", "brent")) %>%
     mutate(date = as.Date(date)) %>%
@@ -95,28 +100,19 @@ get_brent <- function() {
 
 
 get_ttf <- function() {
-  # quantmod::getSymbols("TTF=F", from = '2016-01-01', warnings = FALSE, auto.assign = F) %>%
-  #   as.data.frame() %>%
-  #   mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-  #   tibble() %>%
-  #   rename(ttf = contains('Close')) %>%
-  #   select(date, ttf) %>%
-  #   fill_gaps_and_future()
-
-
-  # url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1776269924&single=true&output=csv"
-  # historical <- read_csv(url, show_col_type=F) %>%
-  #   mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
-  #          ttf = as.numeric(Price)) %>%
-  #   select(date, ttf)
-
-  oilprice.get_prices("ttf") %>%
+  log_info("Getting prices for TTF")
+  oilprice.get_price_for_oil("ttf", end_date = today()) %>%
+    select(
+      date,
+      ttf = value_dpb,
+    ) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
     force_utc() # missing 14 days
 }
 
 get_ara <- function() {
+  log_info("Getting prices for ARA")
   ara_historical <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package = "russiacounter")) %>%
     mutate(
       date = strptime(Date, "%b %d, %Y", tz = "UTC"),
@@ -126,6 +122,7 @@ get_ara <- function() {
 
   url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310593&historicalSpan=3"
 
+  log_level(REQUEST, "Getting ARA prices from ICE")
   ara_new <- jsonlite::fromJSON(url)$bars %>%
     as.data.frame() %>%
     `names<-`(c("date", "ara")) %>%
@@ -148,7 +145,9 @@ get_ara <- function() {
 }
 
 get_newcastle <- function() {
+  log_info("Getting prices for Newcastle")
   url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310550&historicalSpan=3"
+  log_level(REQUEST, "Getting Newcastle prices from ICE")
   newcastle <- jsonlite::fromJSON(url)$bars
 
   as.data.frame(newcastle) %>%
@@ -164,9 +163,11 @@ get_newcastle <- function() {
 
 
 get_global_coal <- function() {
+  log_info("Getting prices for global coal")
   # tidyquant::tq_get("PCOALAUUSDM", get='economic.data', from='2015-01-01') %>%
   #   select(date, global_coal=price)
   url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=0&single=true&output=csv"
+  log_level(REQUEST, "Getting global coal prices from Google Sheets")
   result <- read_csv(url) %>%
     mutate(
       date = strptime(Date, "%m/%d/%Y", tz = "UTC"),
@@ -183,25 +184,8 @@ get_global_coal <- function() {
     force_utc()
 }
 
-
-# get_asia_lng <- function(){
-#   # tidyquant::tq_get("PNGASJPUSDM", get='economic.data', from='2015-01-01') %>%
-#   #   select(date, asia_lng=price)
-#   # url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=1027875093&single=true&output=csv"
-#   # result <- read_csv(url) %>%
-#   #   mutate(date = strptime(Date, "%m/%d/%Y", tz="UTC"),
-#   #          asia_lng = as.numeric(Price)) %>%
-#   #   select(date, asia_lng)
-#   #
-#   # if(max(result$date) <= lubridate::today() - 7){
-#   #   warning("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
-#   # }
-#   oilprice.get_prices("jkm") %>%
-#     fill_gaps_and_future()
-# }
-
-
 get_jkm <- function() {
+  log_info("Getting prices for JKM")
   # url <- "https://assets.ino.com/data/history/?s=NYMEX_QJKM.K22&b=&f=json"
   # jkm <- jsonlite::fromJSON(url)
   # as.data.frame(jkm) %>%
@@ -209,7 +193,11 @@ get_jkm <- function() {
   #   tibble() %>%
   #   mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
   #   select(date, jkm=close) %>%
-  oilprice.get_prices("jkm") %>%
+  oilprice.get_price_for_oil("jkm", end_date = today()) %>%
+    select(
+      date,
+      jkm = value_dpb
+    ) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
     force_utc()
@@ -268,6 +256,7 @@ get_prices_monthly <- function() {
 }
 
 price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
+  log_info("Getting EUR per USD")
   get_from_european_central_bank <- function(date_from, date_to) {
     log_level(REQUEST, "Getting EUR per USD from European Central Bank")
     read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
@@ -295,6 +284,7 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 }
 
 price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
+  log_info("Getting CNY per USD")
   get_from_european_central_bank <- function(date_from, date_to) {
     log_level(REQUEST, "Getting EUR per USD from European Central Bank")
     eur_per_usd <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
@@ -337,192 +327,163 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 }
 
 get_urals <- function() {
-  oilprice.get_prices("urals") %>%
+  log_info("Getting prices for Urals")
+  # This should return a tibble of date, eur_per tonne
+
+  prices <- oilprice.get_price_for_oil("urals", end_date = lubridate::today() + lubridate::days(7)) %>%
+    fill_gaps_and_future() %>%
+    force_utc() %>%
+    transmute(
+      date = lubridate::as_date(date),
+      usd_per_bbl = value_dpb
+    )
+
+  eur_per_usd <- price.eur_per_usd(
+    date_from = min(prices$date),
+    date_to = max(prices$date)
+  ) %>%
+    mutate(
+      # to dttm
+      date = lubridate::as_date(date)
+    ) %>%
     fill_gaps_and_future()
-}
-
-get_ural_brent_spread <- function() {
-  url <- "https://ir-service.appspot.com/share/nesteoil/English/price_monitor3_dg.html?name=Urals-Brent"
-
-  webpage <- read_html(url)
-  results <- webpage %>%
-    html_nodes("script") %>%
-    lapply(function(x) html_text(x, trim = TRUE))
-  result <- results[[which(stringr::str_detect(results, "google.visualization.DataTable"))]]
-
-  a <- gsub(".*rows: \\[ ", "", result)
-  b <- gsub(";.*", "", a)
-  c <- gsub("\\}, \\{c: ", "", b)
-  d <- gsub("\\{c: ", "", c)
-  e <- gsub("} ] }.*", "", d)
-  rows <- stringr::str_split(e, "\\]\\[")[[1]]
-  rows_numbers <- str_extract_all(rows, "[-]?[\\d|\\.]+", simplify = T) %>%
-    apply(c(1, 2), as.numeric)
-  dates <- lubridate::make_date(rows_numbers[, 1], rows_numbers[, 2] + 1, rows_numbers[, 3])
-  values_usd_per_bbl <- rows_numbers[, 4]
-
-  # eur_per_usd <- price.eur_per_usd(date_from=min(dates), date_to=max(dates))
-  # tonne_per_bbl <- 0.138
-  result <- tibble(date = dates, usd_per_bbl = values_usd_per_bbl) %>%
-    select(date, usd_per_bbl)
-
-  # Fill with last 7 days average
-  completion <- tidyr::crossing(
-    date = seq.Date(max(result$date) + lubridate::days(1), max(result$date, lubridate::today(tz = "UTC")) + lubridate::days(7), by = "day"),
-    usd_per_bbl = result %>% arrange(date) %>% tail(7) %>% pull(usd_per_bbl) %>% mean()
-  )
-
-  result <- bind_rows(
-    result %>% arrange(date),
-    completion
-  )
-
-  return(result)
-
-  # left_join(eur_per_usd) %>%
-  # mutate(reduction_eur_per_tonne=-values_usd_per_bbl * eur_per_usd / tonne_per_bbl,
-  #        commodity="crude_oil") %>%
-  # select(commodity, date, reduction_eur_per_tonne)
-}
-
-
-get_espo_brent_spread <- function() {
-  date_to <- lubridate::today() + lubridate::days(7)
-  get_at_date <- function(target_date) {
-    espo_discount <- tibble(
-      date = c(
-        "1990-01-01", "2022-02-24", "2022-03-11", "2022-03-17",
-        "2022-04-11", "2022-05-04", "2022-05-29", "2022-06-24", "2022-07-08", "2022-08-08", as.character(date_to)
-      ),
-      discount = c(0, 0, 20, 26, 30, 30, 39, 37, 25, 25, 20)
-    )
-    approx(as_date(espo_discount$date), espo_discount$discount, as_date(target_date))$y
-  }
-  dates <- seq.Date(as.Date("2020-01-01"), date_to, by = "day")
-  # eur_per_usd <- price.eur_per_usd(date_from=min(dates), date_to=max(dates))
-  # tonne_per_bbl <- 0.138
-  tibble(date = dates, usd_per_bbl = -get_at_date(date)) %>%
-    select(date, usd_per_bbl) %>%
-    arrange(desc(date))
-
-
-  # left_join(eur_per_usd) %>%
-  # mutate(reduction_eur_per_tonne=-values_usd_per_bbl * eur_per_usd / tonne_per_bbl,
-  #        commodity="crude_oil") %>%
-  # select(commodity, date, reduction_eur_per_tonne)
-}
-
-get_urals <- function(brent = NULL, eur_per_usd = NULL) {
-  if (is.null(brent)) {
-    brent <- get_brent()
-  }
-
-  if (is.null(eur_per_usd)) {
-    eur_per_usd <- price.eur_per_usd(
-      date_from = min(lubridate::date(brent$date)),
-      date_to = min(lubridate::date(max(brent$date)), lubridate::today())
-    )
-  }
-
-  spread_ural <- russiacounter::get_ural_brent_spread() %>%
-    select(date, add_brent = usd_per_bbl) %>%
-    tidyr::complete(date = seq.Date(min(date), max(date), by = "day")) %>%
-    fill(add_brent)
 
   tonne_per_bbl <- 0.138
 
-  brent %>%
-    left_join(spread_ural, by = join_by(date)) %>%
-    arrange(desc(date)) %>%
-    mutate(usd_per_bbl = brent + add_brent) %>%
-    left_join(eur_per_usd, by = join_by(date)) %>%
-    mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
-    select(date, eur_per_tonne) %>%
-    mutate(commodity = "crude_oil")
+  return(
+    prices %>%
+      left_join(eur_per_usd, by = join_by(date)) %>%
+      mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+      select(date, eur_per_tonne) %>%
+      mutate(commodity = "crude_oil_urals")
+  )
 }
 
-get_espo <- function(brent = NULL, eur_per_usd = NULL) {
-  if (is.null(brent)) {
-    brent <- get_brent()
-  }
+get_espo <- function() {
+  log_info("Getting prices for Espo")
 
-  if (is.null(eur_per_usd)) {
-    eur_per_usd <- price.eur_per_usd(
-      date_from = min(lubridate::date(brent$date)),
-      date_to = min(lubridate::date(max(brent$date)), lubridate::today())
+  # The data for espo stops beyond mid-2024. We can estimate it based on the difference
+  # between the most recently available espo and sokol prices.
+
+  espo <- local({
+    espo <- oilprice.get_price_for_oil("espo", end_date = lubridate::today() + lubridate::days(7)) %>%
+      fill_gaps_and_future() %>%
+      force_utc() %>%
+      transmute(
+        date = lubridate::as_date(date),
+        usd_per_bbl = value_dpb,
+        origin = origin
+      )
+    sokol <- oilprice.get_price_for_oil("sokol", end_date = lubridate::today() + lubridate::days(7)) %>%
+      fill_gaps_and_future() %>%
+      force_utc() %>%
+      transmute(
+        date = lubridate::as_date(date),
+        usd_per_bbl = value_dpb,
+        origin = origin
+      )
+    urals <- oilprice.get_price_for_oil("urals", end_date = lubridate::today() + lubridate::days(7)) %>%
+      fill_gaps_and_future() %>%
+      force_utc() %>%
+      transmute(
+        date = lubridate::as_date(date),
+        usd_per_bbl = value_dpb,
+        origin = origin
+      )
+
+    # Get last date for original value espo
+    last_espo <- espo %>%
+      filter(origin == "original") %>%
+      summarise(date = max(date)) %>%
+      pull()
+
+    # Get 30 days before that
+    last_espo_minus_30 <- last_espo - lubridate::days(30)
+
+    # Get the average difference between espo and sokol between last_espo_minus_30 and last_espo
+    diff <- espo %>%
+      filter(date >= last_espo_minus_30 & date <= last_espo) %>%
+      left_join(
+        sokol %>%
+          filter(date >= last_espo_minus_30 & date <= last_espo),
+        by = join_by(date),
+        suffix = c(".espo", ".sokol")
+      ) %>%
+      mutate(diff = usd_per_bbl.espo - usd_per_bbl.sokol) %>%
+      summarise(diff = mean(diff, na.rm = T)) %>%
+      pull()
+
+    # Estimate espo prices from sokol prices after last_espo
+    estimated_espo_from_sokol <- sokol %>%
+      filter(date > last_espo) %>%
+      mutate(
+        usd_per_bbl = usd_per_bbl + diff,
+        origin = "estimated"
+      )
+
+    first_espo <- espo %>%
+      filter(origin == "original") %>%
+      summarise(date = min(date)) %>%
+      pull()
+
+    first_espo_plus_30 <- first_espo + lubridate::days(30)
+
+    if (first_espo_plus_30 > as_date("2022-01-01")) {
+      stop("First espo date must be before the start of 2022")
+    }
+
+    # Get the average difference between espo and urals between first_espo and first_espo_plus_30
+    diff_from_urals <- espo %>%
+      filter(date >= first_espo & date <= first_espo_plus_30) %>%
+      left_join(
+        urals %>%
+          filter(date >= first_espo & date <= first_espo_plus_30),
+        by = join_by(date),
+        suffix = c(".espo", ".urals")
+      ) %>%
+      mutate(diff = usd_per_bbl.espo - usd_per_bbl.urals) %>%
+      summarise(diff = mean(diff, na.rm = T)) %>%
+      pull()
+
+    # Estimate espo prices from urals prices before first_espo
+    estimated_espo_from_urals <- urals %>%
+      filter(date < first_espo) %>%
+      mutate(
+        usd_per_bbl = usd_per_bbl + diff_from_urals,
+        origin = "estimated"
+      )
+
+    return(
+      bind_rows(
+        estimated_espo_from_urals,
+        espo %>% filter(date <= last_espo & date >= first_espo),
+        estimated_espo_from_sokol
+      ) %>%
+        select(date, usd_per_bbl) %>%
+        arrange(desc(date)) %>%
+        fill_gaps_and_future()
     )
-  }
+  })
 
-  spread_espo <- get_espo_brent_spread() %>%
-    select(date, add_brent = usd_per_bbl) %>%
-    arrange(date) %>%
-    tidyr::complete(date = seq.Date(min(date), max(date), by = "day")) %>%
-    fill(add_brent)
+  eur_per_usd <- price.eur_per_usd(
+    date_from = min(espo$date),
+    date_to = max(espo$date)
+  ) %>%
+    mutate(
+      # to dttm
+      date = lubridate::as_date(date)
+    ) %>%
+    fill_gaps_and_future()
 
   tonne_per_bbl <- 0.138
 
-  brent %>%
-    left_join(spread_espo, by = join_by(date)) %>%
-    arrange(desc(date)) %>%
-    mutate(usd_per_bbl = brent + add_brent) %>%
-    left_join(eur_per_usd, by = join_by(date)) %>%
-    mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
-    select(date, eur_per_tonne) %>%
-    mutate(commodity = "crude_oil")
+  # Combine original and estimated espo prices
+  return(
+    espo %>%
+      left_join(eur_per_usd, by = join_by(date)) %>%
+      mutate(eur_per_tonne = usd_per_bbl * eur_per_usd / tonne_per_bbl) %>%
+      mutate(commodity = "crude_oil_espo") %>%
+      select(commodity, date, eur_per_tonne) %>%
+      arrange(desc(date))
+  )
 }
-#'
-#' price.ttf <- function(date_from="2016-01-01"){
-#'   p <- quantmod::getSymbols("TTF=F",
-#'                             from = date_from,
-#'                             warnings = FALSE,
-#'                             auto.assign = F)
-#'   tibble(date=index(p),
-#'          price=as.numeric(coredata(p$`TTF=F.Adjusted`)[]),
-#'          unit="EUR/MWh")
-#' }
-#'
-#'
-#' price.brent<- function(date_from="2020-01-01"){
-#'   p <- tidyquant::tq_get("BZ=F", from=date_from)
-#'   p %>%
-#'     select(date, value=adjusted) %>%
-#'     mutate(unit="USD/bbl") %>%
-#'     drop_na()
-#' }
-#'
-#'
-#'
-#'
-#' price.natural_gas_based_on_brent<- function(date_from="2018-01-01"){
-#'   # oil price of $69/barrel = $280 / 1000 m3 for gas; contracts are tied to oil
-#'   # https://www.reuters.com/markets/europe/russias-oil-gas-revenue-windfall-2022-01-21/
-#'   eur_per_usd <- price.eur_per_usd(date_from=date_from)
-#'
-#'   tidyquant::tq_get("BZ=F", from=date_from) %>%
-#'     select(date, value=adjusted) %>% #USD/bbl
-#'     left_join(eur_per_usd) %>%
-#'     mutate(value=value* 280 / 69 /1000 / gcv_MWh_per_m3 * eur_per_usd) %>%
-#'     mutate(unit="EUR/MWh") %>%
-#'     select(-c(eur_per_usd)) %>%
-#'     rcrea::utils.running_average(30) %>%
-#'     mutate(commodity="natural_gas")
-#'
-#' }
-#'
-#'
-#' #' Price based on Comtrade data, which is given both in kg and USD
-#' #'
-#' #' @return
-#' #' @export
-#' #'
-#' #' @examples
-#' price.comtrade <- function(){
-#'   flows <- comtrade.get_flows(use_cache=F)
-#'
-#'   flows %>%
-#'     filter(unit=="MWh/month") %>%
-#'     mutate(value_usd_per_mwh=value_usd/value) %>%
-#'     ggplot() +
-#'     geom_line(aes(date, value_usd_per_mwh, col=commodity)) +
-#'     facet_wrap(~country, scales="free")
-#' }
