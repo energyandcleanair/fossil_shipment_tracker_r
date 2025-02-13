@@ -40,7 +40,8 @@ Imports:
     entsog,
     logger,
     rvest,
-    sweep
+    sweep,
+    stringr,
 Remotes:
     github::energyandcleanair/rcrea,
     github::energyandcleanair/entsog,
