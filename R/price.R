@@ -142,14 +142,25 @@ price.check_prices <- function(prices) {
 
   # Print out any of the issues
   if (nrow(bad_prices) > 0) {
-    log_warn("Expected all prices to be good but some were bad:")
-    print(bad_prices %>% group_by(scenario, commodity) %>% summarise(n = n()))
-    # Take a sample and print it out, if there's more than 10
-    if (nrow(bad_prices) > 10) {
-      print(bad_prices %>% sample_n(10))
+    log_warn("Expected all prices to be good but some were bad")
+
+    bad_price_count <- nrow(bad_prices)
+    bad_price_details <- bad_prices %>%
+      group_by(scenario, commodity) %>%
+      summarise(n = n()) %>%
+      arrange(desc(n))
+
+    log_warn(glue("There were {bad_price_count} bad prices"))
+    log_warn(bad_price_details)
+
+    bad_price_examples <- if (nrow(bad_prices) > 10) {
+      bad_prices %>%
+        sample_n(10)
     } else {
-      print(bad_prices)
+      bad_prices
     }
+    log_warn(glue("Example bad prices:"))
+    log_warn(bad_price_examples)
   }
   if (length(missing_columns) > 0) {
     log_warn(glue("Expected to find columns but were missing: {missing_columns}"))
