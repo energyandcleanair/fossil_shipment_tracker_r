@@ -62,7 +62,7 @@ update_counter <- function(rebuild_prices = F) {
         stage$code()
       },
       error = function(e) {
-        failed_stages <- c(failed_stages, stage$name)
+        failed_stages <<- c(failed_stages, stage$name)
         log_level(STAGE, paste("Failed:", stage$name, "with error:", e$message))
       }
     )
