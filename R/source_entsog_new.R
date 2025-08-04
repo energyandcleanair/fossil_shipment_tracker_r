@@ -122,7 +122,11 @@ entsog_new._replace_lng_with_origin <- function(overland_flows, ..., date_from, 
   return(recombined_flows)
 }
 
-entsog_new.get_flows <- function(date_from = "2021-11-01", date_to = NULL, use_cache = T) {
+entsog_new.get_flows <- function(
+    date_from = "2021-11-01",
+    date_to = NULL,
+    predict_future_days = 7,
+    use_cache = T) {
   if (is.null(date_to)) {
     date_to <- as.character(lubridate::today() + lubridate::days(1))
   }
@@ -202,5 +206,48 @@ entsog_new.get_flows <- function(date_from = "2021-11-01", date_to = NULL, use_c
       commodity
     )
 
-  return(flows_sourced)
+  log_info("Appending forecast days")
+
+  with_appended_days <- append_forecast_days(
+    flows_sourced,
+    predict_future_days
+  ) %>%
+    arrange(
+      departure_iso2, destination_iso2, entry_mode, date
+    )
+
+  message()
+
+  return(with_appended_days)
+}
+
+append_forecast_days <- function(flows_df, predict_future_days) {
+  if (is.null(predict_future_days) || predict_future_days <= 0) {
+    return(flows_df)
+  }
+
+  log_info("Generating forecast for future days based on trailing 7-day mean")
+
+  future_dates <- seq(
+    max(flows_df$date) + 1,
+    by = "day",
+    length.out = predict_future_days
+  )
+
+  last_7_days <- flows_df %>%
+    group_by(departure_iso2, destination_iso2, entry_mode, commodity) %>%
+    filter(date >= max(date) - 6) %>%
+    summarise(
+      value_m3 = mean(value_m3, na.rm = TRUE),
+      value_tonne = mean(value_tonne, na.rm = TRUE),
+      value_mwh = mean(value_mwh, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  forecast_flows <- tidyr::crossing(
+    last_7_days,
+    date = future_dates
+  )
+
+  bind_rows(flows_df, forecast_flows)
 }
