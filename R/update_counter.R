@@ -17,7 +17,7 @@ update_counter <- function(rebuild_prices = F) {
     list(name = "Updating european pipeline gas", code = function() {
       flows_entsog <- entsog_new.get_flows(
         date_from = lubridate::today() - 21,
-        date_to = lubridate::today() - 2,
+        date_to = lubridate::today() - 4,
         predict_future_days = 7,
         use_cache = FALSE
       ) %>%
