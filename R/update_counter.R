@@ -26,7 +26,7 @@ update_counter <- function(rebuild_prices = F) {
         )
       ok <- T & (sum(flows_entsog$value_tonne) >= as.integer(max(flows_entsog$date) - min(flows_entsog$date)) * 5e5)
       if (ok) {
-        db.upload_flows_to_postgres(flows_entsog, production = T)
+        db.upload_flows_to_postgres(flows_entsog)
       }
     }),
     list(name = "Updating other european overland flows", code = function() {
@@ -35,7 +35,7 @@ update_counter <- function(rebuild_prices = F) {
           entry_mode = "N/A",
           process = "overland_eu"
         )
-      db.upload_flows_to_postgres(flows_overland_eu, production = T)
+      db.upload_flows_to_postgres(flows_overland_eu)
     }),
     list(name = "Updating China flows", code = function() {
       flows_china <- china.get_flows() %>%
@@ -44,7 +44,7 @@ update_counter <- function(rebuild_prices = F) {
           entry_mode = "N/A",
           process = "china"
         )
-      db.upload_flows_to_postgres(flows_china, production = T)
+      db.upload_flows_to_postgres(flows_china)
     }),
     list(name = "Updating India flows", code = function() {
       flows_turkey <- turkey.get_flows() %>%
@@ -53,7 +53,7 @@ update_counter <- function(rebuild_prices = F) {
           entry_mode = "N/A",
           process = "turkey"
         )
-      db.upload_flows_to_postgres(flows_turkey, production = T)
+      db.upload_flows_to_postgres(flows_turkey)
     })
   )
 

@@ -152,16 +152,18 @@ price_models_eurostat.build_url <- function(countries, commodities, date_from) {
   # concatenate commodity codes with "+" separator
   commodity_str <- paste0(commodities, collapse = "+")
 
+  extra_partner <- "EXT_EU27_2020"
+
   # construct the URL string
   url <- paste0(
     "https://ec.europa.eu/eurostat/api/comext/dissemination/sdmx/2.1/data/DS-045409/M.EU27_2020+",
     country_str,
-    ".EU27_2020_EXTRA.",
+    ".",
+    extra_partner,
+    ".",
     commodity_str,
     ".1+2.VALUE_IN_EUROS+QUANTITY_IN_100KG/?format=SDMX-CSV&startPeriod=",
     date_from,
-    # "&endPeriod=",
-    # end_date,
     "&lang=en&label=both"
   )
   return(url)

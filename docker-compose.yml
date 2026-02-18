@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  rebuild-models:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app/russiacounter
+    command: run/rebuild_models.R
+    volumes:
+      - ./data:/app/russiacounter/data
+      - ./diagnostics:/app/russiacounter/diagnostics
+      - ./cache:/app/russiacounter/cache

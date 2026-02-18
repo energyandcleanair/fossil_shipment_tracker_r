@@ -14,11 +14,8 @@ spec:
           containers:
           - image: europe-west1-docker.pkg.dev/fossil-shipment-tracker/tracker/engine-r
             env:
-            - name: FOSSIL_DB_DEVELOPMENT
-              valueFrom:
-                secretKeyRef:
-                  key: latest
-                  name: DB_URL_DEVELOPMENT
+            - name: ENVIRONMENT
+              value: production
             - name: FOSSIL_DB_PRODUCTION
               valueFrom:
                 secretKeyRef:

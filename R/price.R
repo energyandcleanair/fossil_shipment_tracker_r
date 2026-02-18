@@ -6,10 +6,10 @@ price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
 
   if (ok) {
     log_info("Uploading prices to database")
-    db.upload_prices_to_posgres(prices,
-      production = production,
-      buffer_days = buffer_days,
-      rebuild = rebuild
+    db.upload_prices_to_posgres(
+      prices,
+      rebuild = rebuild,
+      buffer_days = buffer_days
     )
   } else {
     log_warn("Prices are not valid, not uploading to database")
@@ -18,7 +18,7 @@ price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
   log_info("Get scenario names")
   scenario_names <- price.get_scenario_names()
   log_info("Uploading scenario names to database")
-  db.upload_scenario_names(scenario_names, production = production)
+  db.upload_scenario_names(scenario_names)
 
   if (!ok) {
     stop("Prices were not valid")

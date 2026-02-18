@@ -1,6 +1,10 @@
 # Using devtools, reinstall the russiacounter package from the local directory
 devtools::load_all(".")
 
-brent_to_eur <- price_models_eurostat.build(
+price_models_eurostat.build(
+    production = T
+)
+
+price_models_comtrade.build(
     production = T
 )

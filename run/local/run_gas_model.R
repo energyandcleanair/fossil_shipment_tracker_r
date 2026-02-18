@@ -9,11 +9,12 @@ log_layout(layout_simple)
 log_formatter(formatter_glue)
 log_threshold(DEBUG)
 log_appender(appender_console)
-
+devtools::load_all(".")
 
 log_level(STAGE, "Updating european pipeline gas")
 flows_entsog <- entsog_new.get_flows(
-    date_from = "2021-01-01",
+    date_from = "2025-07-14",
+    date_to = lubridate::today() - 4,
     use_cache = F
 ) %>%
     mutate(

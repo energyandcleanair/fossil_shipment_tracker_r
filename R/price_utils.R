@@ -113,50 +113,15 @@ get_ttf <- function() {
 
 get_ara <- function() {
   log_info("Getting prices for ARA")
-  ara_historical <- readr::read_csv(system.file("extdata", "Rotterdam_Coal_Futures_Historical_Data.csv", package = "russiacounter")) %>%
-    mutate(
-      date = strptime(Date, "%b %d, %Y", tz = "UTC"),
-      ara = as.numeric(Price)
-    ) %>%
-    select(date, ara)
+  ara <- db.pg_select("SELECT date, value AS ara FROM ms__bi_coal ORDER BY date")
 
-  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310593&historicalSpan=3"
+  if (nrow(ara) == 0) {
+    stop("ms__bi_coal returned no rows")
+  }
 
-  log_level(REQUEST, "Getting ARA prices from ICE")
-  ara_new <- jsonlite::fromJSON(url)$bars %>%
-    as.data.frame() %>%
-    `names<-`(c("date", "ara")) %>%
-    tibble() %>%
-    mutate(
-      date = strptime(date, "%a %b %d %H:%M:%S %Y", tz = "UTC"),
-      ara = as.numeric(ara)
-    ) %>%
-    arrange(desc(date))
-
-  ara <- bind_rows(
-    ara_historical,
-    ara_new %>% filter(date >= max(ara_historical$date))
-  )
-
-  # Fill gaps and next 7 days
   ara %>%
-    fill_gaps_and_future() %>%
-    force_utc()
-}
-
-get_newcastle <- function() {
-  log_info("Getting prices for Newcastle")
-  url <- "https://www.theice.com/marketdata/DelayedMarkets.shtml?getHistoricalChartDataAsJson=&marketId=5310550&historicalSpan=3"
-  log_level(REQUEST, "Getting Newcastle prices from ICE")
-  newcastle <- jsonlite::fromJSON(url)$bars
-
-  as.data.frame(newcastle) %>%
-    `names<-`(c("date", "newcastle")) %>%
-    tibble() %>%
-    mutate(
-      date = strptime(date, "%a %b %d %H:%M:%S %Y", tz = "UTC"),
-      newcastle = as.numeric(newcastle)
-    ) %>%
+    mutate(date = lubridate::as_datetime(date, tz = "UTC")) %>%
+    arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc()
 }

@@ -313,13 +313,6 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade = T
   gas_codes <- c("2711", "271121", "271111", "271119")
   coal_codes <- c("2701", "2704", "2705", "2706")
 
-  # Adding more granular data for kpler
-  # fueloils_codes <- c("27101951", "27101962", "27101966", "27101967")
-  # kerosene_codes <- c("27101921", "27101925")
-  # diesel_codes <- c("27101931", "27101935", "27101943", "27101946", "27101947",
-  #                   "27101948", "27102011", "27102016", "27102019")
-  # gasoline_codes <- c("271012")
-
   if (refresh_comtrade) {
     imp <- utils.collect_comtrade(
       partners = "Russian Federation",
@@ -376,12 +369,6 @@ price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade = T
     df$commodity[grepl("gases", df$commodity) & (df$cmd_code %in% gas_codes)] <- "natural_gas"
     df$commodity[df$cmd_code == "271111"] <- "lng"
     df$commodity[df$cmd_code == "271119"] <- "lpg"
-
-    # df$commodity[df$cmd_code %in% fueloils_codes] <- "fuel_oils"
-    # df$commodity[df$cmd_code %in% kerosene_codes] <- "kerosene"
-    # df$commodity[df$cmd_code %in% diesel_codes] <- "diesel"
-    # df$commodity[df$cmd_code %in% gasoline_codes] <- "gasoline"
-
 
     df <- df %>%
       filter(grepl(
