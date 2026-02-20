@@ -81,15 +81,6 @@ get_brent <- function() {
     arrange(desc(date))
   unlink(temp)
 
-
-  #   brent_yahoo <- quantmod::getSymbols("BZ=F", from = '2022-12-01', warnings = FALSE, auto.assign = F) %>%
-  #     as.data.frame() %>%
-  #     mutate(date = gsub("X","",gsub("\\.","-",rownames(.))) %>% ymd) %>%
-  #     tibble() %>%
-  #     rename(brent = contains('Close')) %>%
-  #     filter(!is.na(date)) %>%
-  #     select(date, brent)
-
   bind_rows(
     brent_datahub1,
     brent_datahub2,
@@ -157,13 +148,6 @@ get_global_coal <- function() {
 
 get_jkm <- function() {
   log_info("Getting prices for JKM")
-  # url <- "https://assets.ino.com/data/history/?s=NYMEX_QJKM.K22&b=&f=json"
-  # jkm <- jsonlite::fromJSON(url)
-  # as.data.frame(jkm) %>%
-  #   `names<-`(c("date", "open", "high", "low", "close", "volume")) %>%
-  #   tibble() %>%
-  #   mutate(date=as.POSIXct(date/1000, origin="1970-01-01")) %>%
-  #   select(date, jkm=close) %>%
   oilprice.get_price_for_oil("jkm", end_date = today()) %>%
     select(
       date,
