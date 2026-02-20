@@ -9,5 +9,6 @@ services:
     command: run/rebuild_models.R
     volumes:
       - ./data:/app/russiacounter/data
+      - ./inst:/app/russiacounter/inst
       - ./diagnostics:/app/russiacounter/diagnostics
       - ./cache:/app/russiacounter/cache

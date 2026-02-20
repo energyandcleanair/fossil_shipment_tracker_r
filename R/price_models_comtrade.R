@@ -1,4 +1,4 @@
-price_models_comtrade.build <- function(production = F, refresh_comtrade = T, diagnostic_folder = "diagnostics") {
+price_models_comtrade.build <- function(diagnostic_folder = "diagnostics") {
   # TODO Clean that up
   library(tidyverse)
   library(magrittr)
@@ -10,12 +10,18 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
   prices_monthly <- get_prices_monthly()
 
   # Collect trade data ----------------------------------------------------------
-  trade <- price_models_comtrade.get_trade(prices_monthly = prices_monthly, refresh_comtrade = refresh_comtrade)
+  trade <- price_models_comtrade.get_trade(prices_monthly = prices_monthly)
+
+  write_csv(trade, "diagnostics/comtrade_trade_data.csv")
+
 
   # Europe ------------------------------------------------------------------
-  # We take EU reporting to comtrade, as a whole, not the sume of EU countries
+  # We take EU reporting to comtrade, as a whole, not the sum of EU countries
   trade_eu <- trade %>%
     filter(country == "EU") %>%
+    {
+      if (nrow(.) == 0) stop("No data for EU") else .
+    } %>%
     group_by(commodity, date) %>%
     summarise(
       across(c(value_eur, value_kg), sum, na.rm = T),
@@ -25,21 +31,24 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
     mutate(date = as.Date(date))
 
   trade_with_predictions_eu <- trade_eu %>%
-    group_by(commod1ity) %>%
+    group_by(commodity) %>%
     group_map(function(df, group) {
-      start_year <- ifelse(group$commodity == "natural_gas", 2016, ifelse(group$commodity == "lng", 2018, 2015))
-      independents <- case_when(
-        group$commodity == "coal" ~ "ara",
-        group$commodity == "natural_gas" ~
-          "brent + ttf + lag(ttf)",
-        group$commodity == "lng" ~ "ttf + lag(ttf)",
-        grepl("oil", group$commodity) ~
-          "brent + lag(brent) + lag(brent, 3)",
-        group$commodity == "lpg" ~ "brent + ttf + lag(ttf)",
-        grepl("oil", group$commodity) ~
-          "brent + lag(brent) + lag(brent, 3) + 0",
-        T ~ "brent + lag(price_eur_per_tonne, 12)"
+      commodity <- group$commodity[[1]]
+      start_year <- case_when(
+        commodity == "lng" ~ 2018,
+        TRUE ~ 2016
       )
+      independents <- case_when(
+        commodity == "coal" ~ "ara",
+        commodity == "natural_gas" ~ "brent + ttf + lag(ttf)",
+        commodity == "lng" ~ "ttf + lag(ttf)",
+        commodity == "lpg" ~ "brent + ttf + lag(ttf)",
+        grepl("oil", commodity) ~ "brent + lag(brent) + lag(brent, 3)",
+        TRUE ~ "brent + lag(price_eur_per_tonne, 12)"
+      )
+      if (is.na(independents) || !nzchar(independents)) {
+        stop(sprintf("No independent variables for commodity: %s", commodity))
+      }
 
       df <- df %>%
         arrange(date) %>%
@@ -81,9 +90,8 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
     ggsave(file.path(diagnostic_folder, "pricing_model_eu_diagnostics.png"), plot = plt, width = 12, height = 8)
   }
 
-  suffix <- ifelse(production, "", "_development")
-  saveRDS(trade_with_predictions_eu, sprintf("inst/extdata/pricing_models_eu%s.RDS", suffix))
-  saveRDS(trade_with_predictions_eu, sprintf("data/pricing_models_eu%s.RDS", suffix))
+  saveRDS(trade_with_predictions_eu, sprintf("inst/extdata/pricing_models_eu.RDS"))
+  saveRDS(trade_with_predictions_eu, sprintf("data/pricing_models_eu.RDS"))
 
   # Non-Europe --------------------------------------------------------------
   small_transit_countries <- c("Armenia", "Belarus")
@@ -99,6 +107,8 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
     group_by(commodity) %>%
     mutate(share = value_eur / sum(value_eur)) %>%
     filter(n > 10, share > .025, last_date >= "2021-01-01")
+
+  write_csv(top_importers, "diagnostics/comtrade_top_importers.csv")
 
   trade_grouped <- top_importers %>%
     select(-value_eur) %>%
@@ -117,18 +127,20 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
   trade_with_predictions <- trade_grouped %>%
     group_by(commodity, country, iso2) %>%
     group_map(function(df, group) {
-      start_year <- ifelse(group$commodity %in% c("lng", "coal"), 2016, 2015) # Russia lng & coal prices in 2015 were silly
+      commodity <- group$commodity[[1]]
+      start_year <- ifelse(commodity %in% c("lng", "coal"), 2016, 2015) # Russia lng & coal prices in 2015 were silly
       max_deviation <- 10
       independents <- case_when(
-        group$commodity == "coal" ~ "ara + global_coal",
-        group$commodity == "natural_gas" ~
-          "brent + ttf + jkm",
-        group$commodity == "lng" ~ "ttf + jkm",
-        group$commodity == "lpg" ~ "brent + ttf + jkm",
-        grepl("oil", group$commodity) ~
-          "brent + lag(brent) + lag(brent, 3) + 0",
-        T ~ "brent"
+        commodity == "coal" ~ "ara + global_coal",
+        commodity == "natural_gas" ~ "brent + ttf + jkm",
+        commodity == "lng" ~ "ttf + jkm",
+        commodity == "lpg" ~ "brent + ttf + jkm",
+        grepl("oil", commodity) ~ "brent + lag(brent) + lag(brent, 3)",
+        TRUE ~ "brent"
       )
+      if (is.na(independents) || !nzchar(independents)) {
+        stop(sprintf("No independent variables for commodity: %s", commodity))
+      }
 
       df <- df %>%
         filter(price_eur_per_tonne / world_price_eur_per_tonne < max_deviation) %>%
@@ -137,65 +149,83 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
         arrange(date) %>%
         lm(as.formula(paste("price_eur_per_tonne ~", independents)), data = .) -> m
 
+      # Store price bounds for clamping (same as production)
+      price_ceiling_calc <- max(df$world_price_eur_per_tonne)
+      price_floor_calc <- min(df$world_price_eur_per_tonne)
+
+      # Use shared clamping function
+      predicted_prices <- price_models_comtrade.predict_clamped(m, df, price_ceiling_calc, price_floor_calc)
+
       tibble_row(
-        data = list(as.data.frame(df %>% mutate(predicted_price = predict(m, df)))),
+        data = list(as.data.frame(df %>% mutate(predicted_price = predicted_prices))),
         model = list(m),
         group,
-        price_ceiling = max(df$world_price_eur_per_tonne),
-        price_floor = min(df$world_price_eur_per_tonne),
+        price_ceiling = price_ceiling_calc,
+        price_floor = price_floor_calc,
       )
     }) %>%
     do.call(bind_rows, .)
 
-  trade_with_predictions %>%
-    select(-c(model)) %>%
-    tidyr::unnest(data) ->
-  trade_w_pred_df
+  local({
+    # Diagnostic plots
 
-  if (trade_w_pred_df %>%
-    filter(predicted_price < 0) %>%
-    nrow() > 0) {
-    stop("Some predicted prices are negative")
-  }
+    trade_w_pred_df <-
+      trade_with_predictions %>%
+      select(-c(model)) %>%
+      tidyr::unnest(data)
 
-  if (!is.null(diagnostic_folder)) {
-    plt <- trade_w_pred_df %>%
-      pivot_longer(matches("price")) %>%
-      filter(year(date) >= 2016) %>%
-      filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
-      ggplot(aes(date, value, col = name)) +
-      facet_grid(commodity ~ country, scales = "free_y") +
-      geom_line()
 
-    ggsave(file.path(diagnostic_folder, "pricing_model_row.png"), plot = plt, width = 16, height = 12)
+    if (!is.null(diagnostic_folder)) {
+      plt <- trade_w_pred_df %>%
+        pivot_longer(matches("price")) %>%
+        filter(year(date) >= 2016) %>%
+        filter(name %in% c("price_eur_per_tonne", "predicted_price")) %>%
+        ggplot(aes(date, value, col = name)) +
+        facet_grid(commodity ~ country, scales = "free_y") +
+        geom_line()
 
-    plt <- trade_w_pred_df %>%
-      filter(year(date) >= 2016) %>%
-      ggplot(aes(price_eur_per_tonne, predicted_price, col = country)) +
-      facet_wrap(~commodity, scales = "free") +
-      geom_point() +
-      geom_abline() +
-      geom_smooth()
-    ggsave(file.path(diagnostic_folder, "pricing_model_row_diagnostics.png"), plot = plt)
-  }
+      ggsave(file.path(diagnostic_folder, "pricing_model_row.png"), plot = plt, width = 16, height = 12)
+
+      plt <- trade_w_pred_df %>%
+        filter(year(date) >= 2016) %>%
+        ggplot(aes(price_eur_per_tonne, predicted_price, col = country)) +
+        facet_wrap(~commodity, scales = "free") +
+        geom_point() +
+        geom_abline() +
+        geom_smooth()
+      ggsave(file.path(diagnostic_folder, "pricing_model_row_diagnostics.png"), plot = plt)
+    }
+  })
 
   trade_with_predictions_non_eu <- trade_with_predictions %>%
-    filter(country != "EU")
+    filter(country != "EU") %>%
+    {
+      if (nrow(.) == 0) stop("No data for EU") else .
+    }
 
   saveRDS(
     trade_with_predictions_non_eu,
-    sprintf("inst/extdata/pricing_models_noneu%s.RDS", suffix)
+    sprintf("inst/extdata/pricing_models_noneu.RDS")
   )
   saveRDS(
     trade_with_predictions_non_eu,
-    sprintf("data/pricing_models_noneu%s.RDS", suffix)
+    sprintf("data/pricing_models_noneu.RDS")
   )
 
   trade_with_predictions %>%
     rowwise() %>%
     group_split() %>%
     lapply(function(df) {
-      tibble(df, date = prices_monthly$date, predicted_price = predict(df$model[[1]], prices_monthly))
+      tibble(
+        df,
+        date = prices_monthly$date,
+        predicted_price = price_models_comtrade.predict_clamped(
+          df$model[[1]],
+          prices_monthly,
+          df$price_ceiling,
+          df$price_floor
+        )
+      )
     }) %>%
     bind_rows() %>%
     filter(year(date) == 2022, month(date) >= 2) %>%
@@ -205,7 +235,13 @@ price_models_comtrade.build <- function(production = F, refresh_comtrade = T, di
     write_csv("data/predicted_export_prices.csv")
 }
 
-price_models_comtrade.get_predicted <- function(production = F, prices_daily_30day = NULL) {
+# Helper function: predict and clamp to bounds (consistent across model generation and prediction)
+price_models_comtrade.predict_clamped <- function(model, data, price_ceiling, price_floor) {
+  predicted <- predict(model, data)
+  pmax(pmin(predicted, price_ceiling), price_floor)
+}
+
+price_models_comtrade.get_predicted <- function(prices_daily_30day = NULL) {
   if (is.null(prices_daily_30day)) {
     prices_daily_30day <- get_prices_daily(running_days = 30)
   }
@@ -215,14 +251,8 @@ price_models_comtrade.get_predicted <- function(production = F, prices_daily_30d
     filter(!is.na(date)) %>%
     mutate(date = as.Date(date))
 
-  if (production) {
-    suffix <- ""
-  } else {
-    suffix <- "_development"
-  }
-
-  models_eu <- readRDS(system.file("extdata", sprintf("pricing_models_eu%s.RDS", suffix), package = "russiacounter"))
-  models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu%s.RDS", suffix), package = "russiacounter"))
+  models_eu <- readRDS(system.file("extdata", sprintf("pricing_models_eu.RDS"), package = "russiacounter"))
+  models_noneu <- readRDS(system.file("extdata", sprintf("pricing_models_noneu.RDS"), package = "russiacounter"))
 
   prices_eu <- models_eu %>%
     mutate(new_data = list(prices_daily_30day)) %>%
@@ -233,8 +263,7 @@ price_models_comtrade.get_predicted <- function(production = F, prices_daily_30d
       if (is.null(model)) {
         return(NULL)
       }
-      new_data$price_eur_per_tonne <- predict(model, new_data)
-      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
+      new_data$price_eur_per_tonne <- price_models_comtrade.predict_clamped(model, new_data, df$price_ceiling, df$price_floor)
       new_data$price_ceiling <- df$price_ceiling
       tibble(group, new_data)
     }) %>%
@@ -253,8 +282,7 @@ price_models_comtrade.get_predicted <- function(production = F, prices_daily_30d
       if (is.null(model)) {
         return(NULL)
       }
-      new_data$price_eur_per_tonne <- predict(model, new_data)
-      new_data$price_eur_per_tonne <- pmax(pmin(new_data$price_eur_per_tonne, df$price_ceiling), df$price_floor)
+      new_data$price_eur_per_tonne <- price_models_comtrade.predict_clamped(model, new_data, df$price_ceiling, df$price_floor)
       new_data$price_ceiling <- df$price_ceiling
       tibble(group, new_data)
     }) %>%
@@ -308,111 +336,115 @@ price_models_comtrade.get_predicted <- function(production = F, prices_daily_30d
   return(p_formatted)
 }
 
-price_models_comtrade.get_trade <- function(prices_monthly, refresh_comtrade = T) {
-  oil_codes <- c("2709", "2710")
-  gas_codes <- c("2711", "271121", "271111", "271119")
-  coal_codes <- c("2701", "2704", "2705", "2706")
+price_models_comtrade.get_trade <- function(prices_monthly) {
+  crude_codes <- c("2709")
+  product_codes <- c("2710")
+  gas_codes <- c("2711", "271121")
+  lng_codes <- c("271111")
+  lpg_codes <- c("271119")
+  coal_codes <- c("2701", "2704", "2706")
 
-  if (refresh_comtrade) {
-    imp <- utils.collect_comtrade(
-      partners = "Russian Federation",
-      reporters = c("all", "EUR"),
-      trade_flow = "import",
-      years = seq(2016, lubridate::year(lubridate::today())),
-      codes = c(coal_codes, oil_codes, gas_codes),
-      frequency = "monthly",
-      stop_if_no_row = F
-    )
-    saveRDS(imp, "cache/imp_for_building_models.RDS")
+  all_codes <- c(
+    crude_codes,
+    product_codes,
+    gas_codes,
+    lng_codes,
+    lpg_codes,
+    coal_codes
+  )
 
-    exp <- utils.collect_comtrade(
-      partners = "all",
-      reporters = "Russian Federation",
-      trade_flow = "export",
-      years = seq(2015, 2019), # No record for 2020, and 2021
-      codes = c(coal_codes, oil_codes, gas_codes),
-      frequency = "monthly",
-      stop_if_no_row = F
-    )
-    saveRDS(exp, "cache/exp_for_building_models.RDS")
-  } else {
-    imp <- readRDS("cache/imp_for_building_models.RDS")
-    exp <- readRDS("cache/exp_for_building_models.RDS")
+  # Query data from comtrade_hs_trade_record table
+  # Format commodity codes as comma-separated string for SQL IN clause
+  codes_str <- paste0("'", paste(all_codes, collapse = "','"), "'")
+
+  sql_query <- sprintf(
+    "SELECT
+      reporter_iso2,
+      partner_iso2,
+      commodity_code,
+      flow_direction,
+      period as period_date,
+      value_usd,
+      value_kg,
+      value_kg_estimated
+    FROM comtrade_hs_trade_record
+    WHERE partner_iso2 = 'RU'
+      AND flow_direction = 'Import'
+      AND commodity_code IN (%s)
+      AND EXTRACT(YEAR FROM period) >= 2016",
+    codes_str
+  )
+
+  log_info("Querying comtrade data from database")
+  imp <- db.pg_select(sql_query)
+
+  if (nrow(imp) == 0) {
+    stop("No trade data available in the database")
   }
 
-  clean_comtrade <- function(df, is_import) {
+  clean_comtrade <- function(df) {
     df <- df %>%
       rename(
-        value_kg = net_wgt,
-        value_usd = primary_value,
-        commodity = cmd_desc,
-        reporter_iso3 = reporter_iso,
-        partner_iso3 = partner_iso
+        value_kg = value_kg,
+        value_usd = value_usd,
+        commodity_code = commodity_code,
+        reporter_iso2 = reporter_iso2
       ) %>%
-      filter(!is.na(period)) %>%
+      filter(!is.na(period_date)) %>%
       mutate(
-        across(is.logical, as.character),
-        across(matches("_kg|_usd|year|period|flag"), as.numeric),
-        across(matches("code|level"), as.character)
-      ) %>%
-      mutate(
-        date = ymd(paste0(period, "01")),
-        price_usd_per_tonne = value_usd / (value_kg / 1000)
+        date = as.Date(period_date),
+        price_usd_per_tonne = ifelse(value_kg > 0, value_usd / (value_kg / 1000), NA_real_)
       ) %>%
       full_join(prices_monthly, by = "date") %>%
       mutate(date = as.Date(date))
 
-    df$commodity[grepl("crude$", df$commodity) & (df$cmd_code %in% oil_codes)] <- "crude_oil"
-    df$commodity[grepl("not crude", df$commodity) & (df$cmd_code %in% oil_codes)] <- "oil_products"
-    df$commodity[grepl("^Coal.*ovoids", df$commodity) & (df$cmd_code %in% coal_codes)] <- "coal"
-    df$commodity[grepl("Coal gas", df$commodity) & (df$cmd_code %in% gas_codes)] <- "coal_gas"
-    df$commodity[grepl("gases", df$commodity) & (df$cmd_code %in% gas_codes)] <- "natural_gas"
-    df$commodity[df$cmd_code == "271111"] <- "lng"
-    df$commodity[df$cmd_code == "271119"] <- "lpg"
+    # Map commodity codes to commodity names
+    df$commodity <- NA_character_
+    df$commodity[df$commodity_code %in% crude_codes] <- "crude_oil"
+    df$commodity[df$commodity_code %in% product_codes] <- "oil_products"
+    df$commodity[df$commodity_code %in% coal_codes] <- "coal"
+    df$commodity[df$commodity_code %in% gas_codes] <- "natural_gas"
+    df$commodity[df$commodity_code %in% lng_codes] <- "lng"
+    df$commodity[df$commodity_code %in% lpg_codes] <- "lpg"
 
     df <- df %>%
-      filter(grepl(
-        "coal$|crude_oil|oil_products|lng|natural_gas|lpg",
-        commodity
-      ))
+      filter(!is.na(commodity))
 
-    group_cols <- if (is_import) {
-      c("reporter_iso3")
-    } else {
-      c("partner_iso3")
-    }
     df <- df %>%
-      group_by(across(c("commodity", "date", group_cols))) %>%
-      summarise_at(c("value_usd", "value_kg"), sum, na.rm = T) %>%
-      ungroup() %>%
-      mutate(price_usd_per_tonne = value_usd / (value_kg / 1000))
+      group_by(commodity, date, reporter_iso2) %>%
+      summarise(
+        value_usd = sum(value_usd, na.rm = T),
+        value_kg = sum(value_kg, na.rm = T),
+        .groups = "drop"
+      ) %>%
+      mutate(price_usd_per_tonne = ifelse(value_kg > 0, value_usd / (value_kg / 1000), NA_real_))
 
-    if (is_import) {
-      df$reporter_iso2 <- countrycode::countrycode(df$reporter_iso3, "iso3c", "iso2c", custom_match = c("EUR" = "EU"))
-      df$reporter <- countrycode::countrycode(df$reporter_iso3, "iso3c", "country.name", custom_match = c("EUR" = "EU"))
-      df$reporter_iso3 <- NULL
-    } else {
-      df$partner_iso2 <- countrycode::countrycode(df$partner_iso3, "iso3c", "iso2c")
-      df$partner <- countrycode::countrycode(df$partner_iso3, "iso3c", "country.name")
-      df$partner_iso3 <- NULL
-    }
+    # Get country names
+    df$reporter <- countrycode::countrycode(df$reporter_iso2, "iso2c", "country.name", custom_match = c("EU" = "EU"))
+
+    # Handle cases where countrycode returns "not found" for custom matches
+    df$reporter[df$reporter_iso2 == "EU"] <- "EU"
+
     return(df)
   }
 
-  imp_cleaned <- clean_comtrade(imp, is_import = T) %>% rename(country = reporter, iso2 = reporter_iso2)
-  exp_cleaned <- clean_comtrade(exp, is_import = F) %>% rename(country = partner, iso2 = partner_iso2)
+  log_info("Cleaning trade data")
+  imp_cleaned <- clean_comtrade(imp) %>% rename(country = reporter, iso2 = reporter_iso2)
 
   eu_iso2s <- utils.get_eu_iso2s()
 
   # Combine: take source with max flow for that month
-  trade <- bind_rows(imp_cleaned, exp_cleaned) %>%
+  trade <- imp_cleaned %>%
     group_by(commodity, date, country) %>%
     dplyr::slice_max(value_usd, n = 1) %>%
     ungroup() %>%
     left_join(prices_monthly)
 
+  earliest_trade_date <- min(trade$date, na.rm = T)
+
+  log_info(glue::glue("Getting eur/usd exchange rate for {earliest_trade_date}"))
   eur_usd <- price.eur_per_usd(
-    date_from = min(trade$date),
+    date_from = earliest_trade_date,
     monthly = T
   )
   trade <- trade %>%

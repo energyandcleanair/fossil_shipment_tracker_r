@@ -12,7 +12,7 @@ update_counter <- function(rebuild_prices = F) {
 
   stages <- list(
     list(name = "Updating prices", code = function() {
-      price.update_prices(production = T, buffer_days = 60, rebuild = rebuild_prices)
+      price.update_prices(buffer_days = 60, rebuild = rebuild_prices)
     }),
     list(name = "Updating european pipeline gas", code = function() {
       flows_entsog <- entsog_new.get_flows(

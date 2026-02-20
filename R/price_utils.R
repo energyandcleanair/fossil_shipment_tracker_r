@@ -1,4 +1,7 @@
 fill_past <- function(result, date_from) {
+  if (nrow(result) == 0) {
+    stop("Cannot fill past on empty data. Input dataframe has 0 rows.")
+  }
   result %>%
     ungroup() %>%
     tidyr::complete(date = seq(as.Date(date_from), lubridate::date(min(date)), by = "day")) %>%
@@ -7,6 +10,9 @@ fill_past <- function(result, date_from) {
 }
 
 fill_gaps_and_future <- function(result) {
+  if (nrow(result) == 0) {
+    stop("Cannot fill gaps on empty data. Input dataframe has 0 rows.")
+  }
   result %>%
     ungroup() %>%
     tidyr::complete(date = seq(lubridate::date(min(date)), max(lubridate::date(max(date)), Sys.Date()) + lubridate::days(14), by = "day")) %>%
@@ -190,23 +196,23 @@ get_prices_daily <- function(running_days = 0) {
 get_prices_monthly <- function() {
   ttf_monthly <- get_ttf() %>%
     group_by(date = date %>% "day<-"(1)) %>%
-    summarise(across(ttf, mean, na.rm = T))
+    summarise(ttf = mean(ttf, na.rm = TRUE))
 
   brent_monthly <- get_brent() %>%
     group_by(date = date %>% "day<-"(1)) %>%
-    summarise(across(brent, mean, na.rm = T))
+    summarise(brent = mean(brent, na.rm = TRUE))
 
   ara_monthly <- get_ara() %>%
     group_by(date = date %>% "day<-"(1)) %>%
-    summarise(across(ara, mean, na.rm = T))
+    summarise(ara = mean(ara, na.rm = TRUE))
 
   jkm_monthly <- get_jkm() %>%
     group_by(date = date %>% "day<-"(1)) %>%
-    summarise(across(jkm, mean, na.rm = T))
+    summarise(jkm = mean(jkm, na.rm = TRUE))
 
   global_coal_monthly <- get_global_coal() %>%
     group_by(date = date %>% "day<-"(1)) %>%
-    summarise(across(global_coal, mean, na.rm = T))
+    summarise(global_coal = mean(global_coal, na.rm = TRUE))
 
   eur_to_usd <- price.eur_per_usd(monthly = T) %>%
     select(date, eur_per_usd)
@@ -223,7 +229,7 @@ get_prices_monthly <- function() {
 price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
   log_info("Getting EUR per USD")
   get_from_european_central_bank <- function(date_from, date_to) {
-    log_level(REQUEST, "Getting EUR per USD from European Central Bank")
+    log_level(REQUEST, glue::glue("Getting EUR per USD from European Central Bank for {date_from} to {date_to}"))
     read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -235,7 +241,11 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 
   eur_per_usd <- get_from_european_central_bank(date_from, date_to)
 
-  # Fill values
+  # Fill values - fail if no data
+  if (nrow(eur_per_usd) == 0) {
+    stop(glue::glue("No EUR per USD data returned from European Central Bank for {date_from} to {date_to}"))
+  }
+
   eur_per_usd <- eur_per_usd %>%
     tidyr::complete(date = seq.Date(min(.$date), max(.$date, date(date_to)), by = "day")) %>%
     tidyr::fill(eur_per_usd)
@@ -251,7 +261,7 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
   log_info("Getting CNY per USD")
   get_from_european_central_bank <- function(date_from, date_to) {
-    log_level(REQUEST, "Getting EUR per USD from European Central Bank")
+    log_level(REQUEST, glue::glue("Getting EUR per USD from European Central Bank for {date_from} to {date_to}"))
     eur_per_usd <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -260,7 +270,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
       filter(date_from <= date & date <= date_to) %>%
       select(date, eur_per_usd)
 
-    log_level(REQUEST, "Getting CYN per EUR from European Central Bank")
+    log_level(REQUEST, glue::glue("Getting CNY per EUR from European Central Bank for {date_from} to {date_to}"))
     cyn_per_eur <- read_csv("https://data-api.ecb.europa.eu/service/data/EXR/D.CNY.EUR.SP00.A?format=csvdata", show_col_types = FALSE) %>%
       mutate(
         date = lubridate::ymd(TIME_PERIOD),
@@ -278,7 +288,11 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
   }
   cny_per_usd <- get_from_european_central_bank(date_from, date_to)
 
-  # Fill values
+  # Fill values - fail if no data
+  if (nrow(cny_per_usd) == 0) {
+    stop(glue::glue("No CNY per USD data returned from European Central Bank for {date_from} to {date_to}"))
+  }
+
   cny_per_usd <- cny_per_usd %>%
     tidyr::complete(date = seq.Date(min(.$date), max(.$date, as.Date(date_to)), by = "day")) %>%
     tidyr::fill(cny_per_usd)
@@ -302,6 +316,11 @@ get_urals <- function() {
       date = lubridate::as_date(date),
       usd_per_bbl = value_dpb
     )
+
+  # If no prices available, fail
+  if (nrow(prices) == 0) {
+    stop("No Urals prices available from oilprice.com")
+  }
 
   eur_per_usd <- price.eur_per_usd(
     date_from = min(prices$date),
@@ -429,6 +448,11 @@ get_espo <- function() {
         fill_gaps_and_future()
     )
   })
+
+  # If no espo data available, fail
+  if (nrow(espo) == 0) {
+    stop("No Espo prices available from oilprice.com")
+  }
 
   eur_per_usd <- price.eur_per_usd(
     date_from = min(espo$date),

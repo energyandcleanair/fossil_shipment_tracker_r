@@ -1,16 +1,9 @@
-price_models_eurostat.get_predicted <- function(production = F) {
+price_models_eurostat.get_predicted <- function() {
   prices_daily <- get_prices_daily(running_days = 30) %>%
     arrange(desc(date)) %>%
     filter(!is.na(date))
 
-  # Note: models where trained with datetime, so need to keep it as datetime
-  if (production) {
-    suffix <- ""
-  } else {
-    suffix <- "_development"
-  }
-
-  models <- readRDS(system.file("extdata", sprintf("pricing_models_eurostat%s.RDS", suffix), package = "russiacounter"))
+  models <- readRDS(system.file("extdata", sprintf("pricing_models_eurostat.RDS"), package = "russiacounter"))
 
   prices <- models %>%
     mutate(new_data = list(prices_daily)) %>%
@@ -73,7 +66,7 @@ price_models_eurostat.get_predicted <- function(production = F) {
 }
 
 
-price_models_eurostat.build <- function(production = F, refresh_trade = T, diagnostic_folder = "diagnostics") {
+price_models_eurostat.build <- function(diagnostic_folder = "diagnostics") {
   # TODO Clean that up
   library(tidyverse)
   library(magrittr)
@@ -140,9 +133,8 @@ price_models_eurostat.build <- function(production = F, refresh_trade = T, diagn
     ggsave(file.path(diagnostic_folder, "pricing_model_eurostat_diagnostics.png"), plot = plt, width = 12, height = 8)
   }
 
-  suffix <- ifelse(production, "", "_development")
-  saveRDS(trade_with_predictions, sprintf("inst/extdata/pricing_models_eurostat%s.RDS", suffix))
-  saveRDS(trade_with_predictions, sprintf("data/pricing_models_eurostat%s.RDS", suffix))
+  saveRDS(trade_with_predictions, sprintf("inst/extdata/pricing_models_eurostat.RDS"))
+  saveRDS(trade_with_predictions, sprintf("data/pricing_models_eurostat.RDS"))
 }
 
 price_models_eurostat.build_url <- function(countries, commodities, date_from) {

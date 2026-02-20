@@ -9,10 +9,18 @@ log_formatter(formatter_glue)
 log_threshold(DEBUG)
 log_appender(appender_console)
 
-russiacounter::price_models_eurostat.build(
-    production = T
+
+tryCatch(
+  {
+    russiacounter::price_models_eurostat.build()
+
+    russiacounter::price_models_comtrade.build()
+  },
+  error = function(e) {
+    tryCatch(rlang::last_trace(), error = function(err) NULL)
+    log_error("Error building price models: {e$message}")
+    stop(e)
+  }
 )
 
-russiacounter::price_models_comtrade.build(
-    production = T
-)
+log_info("Finished rebuilding price models")

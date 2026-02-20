@@ -1,6 +1,6 @@
-price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
+price.update_prices <- function(buffer_days = 60, rebuild = F) {
   log_info("Fetch get all prices")
-  prices <- price.get_prices(production = production)
+  prices <- price.get_prices()
   log_info("Validate prices")
   ok <- price.check_prices(prices)
 
@@ -25,7 +25,7 @@ price.update_prices <- function(production = F, buffer_days = 60, rebuild = F) {
   }
 }
 
-price.get_prices <- function(production = F) {
+price.get_prices <- function() {
   # This function gets all prices in one dataframe,
   # those 'default' ones, the ones specific to port,
   # and the capped one by ship_owner / insurer / destination
@@ -35,7 +35,6 @@ price.get_prices <- function(production = F) {
   prices_daily_30day <- get_prices_daily(running_days = 30)
   log_info("Get predicted prices")
   predicted_prices <- price_models.get_predicted(
-    production = production,
     add_urals_espo = T,
     prices_daily_30day = prices_daily_30day
   )

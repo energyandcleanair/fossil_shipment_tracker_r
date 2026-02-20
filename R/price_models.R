@@ -1,13 +1,13 @@
-price_models.build_models <- function(production = F, refresh_trade = T, diagnostic_folder = "diagnostics") {
-  price_models_comtrade.build(production = production, refresh_comtrade = refresh_trade, diagnostic_folder = diagnostic_folder)
-  price_models_eurostat.build(production = production, diagnostic_folder = diagnostic_folder)
+price_models.build_models <- function(diagnostic_folder = "diagnostics") {
+  price_models_comtrade.build(diagnostic_folder = diagnostic_folder)
+  price_models_eurostat.build(diagnostic_folder = diagnostic_folder)
 }
 
-price_models.get_predicted <- function(production = F, add_urals_espo = T, prices_daily_30day = NULL) {
+price_models.get_predicted <- function(add_urals_espo = T, prices_daily_30day = NULL) {
   log_info("Get predicted prices for comtrade")
-  comtrade <- price_models_comtrade.get_predicted(production = production, prices_daily_30day = prices_daily_30day)
+  comtrade <- price_models_comtrade.get_predicted(prices_daily_30day = prices_daily_30day)
   log_info("Get predicted prices for eurostat")
-  eurostat <- price_models_eurostat.get_predicted(production = production)
+  eurostat <- price_models_eurostat.get_predicted()
 
   predicted <- bind_rows(comtrade, eurostat)
 
