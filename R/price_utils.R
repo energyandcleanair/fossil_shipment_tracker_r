@@ -97,15 +97,19 @@ get_brent <- function() {
 
 
 get_ttf <- function() {
-  log_info("Getting prices for TTF")
-  oilprice.get_price_for_oil("ttf", end_date = today()) %>%
-    select(
-      date,
-      ttf = value_dpb,
-    ) %>%
+  log_info("Getting prices for TTF from database")
+  ttf <- db.pg_select("SELECT date, value AS ttf FROM ms__oilprice_ttf ORDER BY date")
+
+  if (nrow(ttf) == 0) {
+    stop("ms__oilprice_ttf returned no rows")
+  }
+
+  ttf %>%
+    mutate(date = lubridate::as_datetime(date)) %>%
+    arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
-    force_utc() # missing 14 days
+    force_utc()
 }
 
 get_ara <- function() {
@@ -147,12 +151,16 @@ get_global_coal <- function() {
 }
 
 get_jkm <- function() {
-  log_info("Getting prices for JKM")
-  oilprice.get_price_for_oil("jkm", end_date = today()) %>%
-    select(
-      date,
-      jkm = value_dpb
-    ) %>%
+  log_info("Getting prices for JKM from database")
+  jkm <- db.pg_select("SELECT date, value AS jkm FROM ms__oilprice_jkm ORDER BY date")
+
+  if (nrow(jkm) == 0) {
+    stop("ms__oilprice_jkm returned no rows")
+  }
+
+  jkm %>%
+    mutate(date = lubridate::as_datetime(date)) %>%
+    arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
     force_utc()
@@ -290,20 +298,22 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 }
 
 get_urals <- function() {
-  log_info("Getting prices for Urals")
+  log_info("Getting prices for Urals from database")
   # This should return a tibble of date, eur_per tonne
 
-  prices <- oilprice.get_price_for_oil("urals", end_date = lubridate::today() + lubridate::days(7)) %>%
+  prices <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_urals ORDER BY date") %>%
+    mutate(date = lubridate::as_datetime(date)) %>%
+    arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc() %>%
     transmute(
       date = lubridate::as_date(date),
-      usd_per_bbl = value_dpb
+      usd_per_bbl = usd_per_bbl
     )
 
   # If no prices available, fail
   if (nrow(prices) == 0) {
-    stop("No Urals prices available from oilprice.com")
+    stop("No Urals prices available from database (ms__oilprice_urals)")
   }
 
   eur_per_usd <- price.eur_per_usd(
@@ -328,35 +338,43 @@ get_urals <- function() {
 }
 
 get_espo <- function() {
-  log_info("Getting prices for Espo")
+  log_info("Getting prices for Espo from database")
 
   # The data for espo stops beyond mid-2024. We can estimate it based on the difference
   # between the most recently available espo and sokol prices.
 
   espo <- local({
-    espo <- oilprice.get_price_for_oil("espo", end_date = lubridate::today() + lubridate::days(7)) %>%
+    espo <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_espo ORDER BY date") %>%
+      mutate(date = lubridate::as_datetime(date)) %>%
+      arrange(desc(date)) %>%
       fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
-        usd_per_bbl = value_dpb,
-        origin = origin
+        usd_per_bbl = usd_per_bbl,
+        origin = "original"
       )
-    sokol <- oilprice.get_price_for_oil("sokol", end_date = lubridate::today() + lubridate::days(7)) %>%
+    
+    sokol <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_sokol ORDER BY date") %>%
+      mutate(date = lubridate::as_datetime(date)) %>%
+      arrange(desc(date)) %>%
       fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
-        usd_per_bbl = value_dpb,
-        origin = origin
+        usd_per_bbl = usd_per_bbl,
+        origin = "original"
       )
-    urals <- oilprice.get_price_for_oil("urals", end_date = lubridate::today() + lubridate::days(7)) %>%
+    
+    urals <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_urals ORDER BY date") %>%
+      mutate(date = lubridate::as_datetime(date)) %>%
+      arrange(desc(date)) %>%
       fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
-        usd_per_bbl = value_dpb,
-        origin = origin
+        usd_per_bbl = usd_per_bbl,
+        origin = "original"
       )
 
     # Get last date for original value espo
@@ -384,7 +402,8 @@ get_espo <- function() {
     # Estimate espo prices from sokol prices after last_espo
     estimated_espo_from_sokol <- sokol %>%
       filter(date > last_espo) %>%
-      mutate(
+      transmute(
+        date = date,
         usd_per_bbl = usd_per_bbl + diff,
         origin = "estimated"
       )
@@ -416,7 +435,8 @@ get_espo <- function() {
     # Estimate espo prices from urals prices before first_espo
     estimated_espo_from_urals <- urals %>%
       filter(date < first_espo) %>%
-      mutate(
+      transmute(
+        date = date,
         usd_per_bbl = usd_per_bbl + diff_from_urals,
         origin = "estimated"
       )
@@ -435,7 +455,7 @@ get_espo <- function() {
 
   # If no espo data available, fail
   if (nrow(espo) == 0) {
-    stop("No Espo prices available from oilprice.com")
+    stop("No Espo prices available from database (ms__oilprice_espo)")
   }
 
   eur_per_usd <- price.eur_per_usd(
@@ -458,5 +478,7 @@ get_espo <- function() {
       mutate(commodity = "crude_oil_espo") %>%
       select(commodity, date, eur_per_tonne) %>%
       arrange(desc(date))
+  )
+}
   )
 }
