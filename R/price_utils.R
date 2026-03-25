@@ -354,7 +354,7 @@ get_espo <- function() {
         usd_per_bbl = usd_per_bbl,
         origin = "original"
       )
-    
+
     sokol <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_sokol ORDER BY date") %>%
       mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
@@ -365,7 +365,7 @@ get_espo <- function() {
         usd_per_bbl = usd_per_bbl,
         origin = "original"
       )
-    
+
     urals <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_urals ORDER BY date") %>%
       mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
@@ -478,7 +478,5 @@ get_espo <- function() {
       mutate(commodity = "crude_oil_espo") %>%
       select(commodity, date, eur_per_tonne) %>%
       arrange(desc(date))
-  )
-}
   )
 }

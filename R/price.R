@@ -90,6 +90,14 @@ price.apply_china_ng_fix <- function(prices) {
   log_info("Apply China NG fix")
 
   # Specific one for China gas pipeline, directly from customs, so that total number matches
+  # We do this because China gas pipeline prices are likely defined by 6-3-3 Brent averages.
+  # https://carnegieendowment.org/russia-eurasia/politika/2023/04/what-russias-first-gas-pipeline-to-china-reveals-about-a-planned-second-one
+  # > It is also obvious that the pricing for all the Chinese pipeline gas
+  # > contracts is in parallel, most likely as a result of using the so-called
+  # > 6-3-3 Brent average, meaning that the price is fixed for three months
+  # > based on a six-month average with a three-month delay: i.e., the gas price
+  # > for October–December is determined by averaging the oil price in
+  # > January–June.
   china_ng_prices <- china.get_natural_gas_prices()
 
   prices %>%

@@ -106,7 +106,7 @@ price_models_comtrade.build <- function(diagnostic_folder = "diagnostics") {
     ) %>%
     group_by(commodity) %>%
     mutate(share = value_eur / sum(value_eur)) %>%
-    filter(n > 10, share > .025, last_date >= "2021-01-01")
+    filter(n >= 18, share > .025, last_date >= "2021-01-01")
 
   write_csv(top_importers, "diagnostics/comtrade_top_importers.csv")
 
