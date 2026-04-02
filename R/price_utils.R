@@ -311,6 +311,22 @@ get_urals <- function() {
       usd_per_bbl = usd_per_bbl
     )
 
+  te_prices <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__te_urals ORDER BY date") %>%
+    mutate(date = lubridate::as_datetime(date)) %>%
+    arrange(desc(date)) %>%
+    fill_gaps_and_future() %>%
+    force_utc() %>%
+    transmute(
+      date = lubridate::as_date(date),
+      usd_per_bbl = usd_per_bbl
+    )
+
+  # Prefer oilprice.com data, but if it's missing for some dates, use TE data
+  prices <- prices %>%
+    full_join(te_prices, by = join_by(date), suffix = c("", "_te")) %>%
+    mutate(usd_per_bbl = coalesce(usd_per_bbl, usd_per_bbl_te)) %>%
+    select(date, usd_per_bbl)
+
   # If no prices available, fail
   if (nrow(prices) == 0) {
     stop("No Urals prices available from database (ms__oilprice_urals)")
@@ -344,38 +360,51 @@ get_espo <- function() {
   # between the most recently available espo and sokol prices.
 
   espo <- local({
-    espo <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_espo ORDER BY date") %>%
+    espo <- db.pg_select("SELECT date, value AS usd_per_bbl, data_type FROM ms__oilprice_espo ORDER BY date") %>%
+      dplyr::glimpse() %>%
       mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
-      fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
         usd_per_bbl = usd_per_bbl,
-        origin = "original"
+        origin = data_type
       )
 
-    sokol <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_sokol ORDER BY date") %>%
+    sokol <- db.pg_select("SELECT date, value AS usd_per_bbl, data_type FROM ms__oilprice_sokol ORDER BY date") %>%
       mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
-      fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
         usd_per_bbl = usd_per_bbl,
-        origin = "original"
+        origin = data_type
       )
 
-    urals <- db.pg_select("SELECT date, value AS usd_per_bbl FROM ms__oilprice_urals ORDER BY date") %>%
+    urals <- db.pg_select("SELECT date, value AS usd_per_bbl, data_type FROM ms__oilprice_urals ORDER BY date") %>%
       mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
-      fill_gaps_and_future() %>%
       force_utc() %>%
       transmute(
         date = lubridate::as_date(date),
         usd_per_bbl = usd_per_bbl,
-        origin = "original"
+        origin = data_type
       )
+
+    urals_te <- db.pg_select("SELECT date, value AS usd_per_bbl, data_type FROM ms__te_urals ORDER BY date") %>%
+      mutate(date = lubridate::as_datetime(date)) %>%
+      arrange(desc(date)) %>%
+      force_utc() %>%
+      transmute(
+        date = lubridate::as_date(date),
+        usd_per_bbl = usd_per_bbl,
+        origin = data_type
+      )
+
+    urals <- urals %>%
+      full_join(urals_te, by = join_by(date), suffix = c("", "_te")) %>%
+      mutate(usd_per_bbl = coalesce(usd_per_bbl, usd_per_bbl_te), origin = coalesce(origin, origin_te)) %>%
+      select(date, usd_per_bbl, origin)
 
     # Get last date for original value espo
     last_espo <- espo %>%

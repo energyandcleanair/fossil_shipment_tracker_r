@@ -12,3 +12,15 @@ services:
       - ./inst:/app/russiacounter/inst
       - ./diagnostics:/app/russiacounter/diagnostics
       - ./cache:/app/russiacounter/cache
+  
+  rebuild-price-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app/russiacounter
+    command: run/rebuild_price_db.R
+    volumes:
+      - ./data:/app/russiacounter/data
+      - ./inst:/app/russiacounter/inst
+      - ./diagnostics:/app/russiacounter/diagnostics
+      - ./cache:/app/russiacounter/cache

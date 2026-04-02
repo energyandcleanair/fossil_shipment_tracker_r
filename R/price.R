@@ -136,10 +136,14 @@ price.check_prices <- function(prices) {
   )
 
   bad_prices <- prices %>%
-    filter(
-      (is.na(eur_per_tonne) & (date >= "2020-01-01")) |
-        (eur_per_tonne < 0)
-    )
+    mutate(
+      failure_reason = dplyr::case_when(
+        is.na(eur_per_tonne) & (date >= "2020-01-01") ~ "missing eur_per_tonne on or after 2020-01-01",
+        eur_per_tonne < 0 ~ "negative eur_per_tonne",
+        TRUE ~ NA_character_
+      )
+    ) %>%
+    filter(!is.na(failure_reason))
 
   missing_scenario <- any(is.na(prices$scenario))
 
@@ -153,12 +157,16 @@ price.check_prices <- function(prices) {
 
     bad_price_count <- nrow(bad_prices)
     bad_price_details <- bad_prices %>%
-      group_by(scenario, commodity) %>%
-      summarise(n = n()) %>%
+      group_by(scenario, commodity, failure_reason) %>%
+      summarise(n = n(), .groups = "drop") %>%
       arrange(desc(n))
+    bad_price_details_text <- bad_price_details %>%
+      mutate(summary = glue("{scenario} / {commodity} / {failure_reason}: {n}")) %>%
+      pull(summary) %>%
+      paste(collapse = "; ")
 
     log_warn(glue("There were {bad_price_count} bad prices"))
-    log_warn(bad_price_details)
+    log_warn(glue("Bad price breakdown: {bad_price_details_text}"))
 
     bad_price_examples <- if (nrow(bad_prices) > 10) {
       bad_prices %>%
@@ -166,8 +174,9 @@ price.check_prices <- function(prices) {
     } else {
       bad_prices
     }
+    bad_price_examples_text <- paste(capture.output(print(bad_price_examples)), collapse = "\n")
     log_warn(glue("Example bad prices:"))
-    log_warn(bad_price_examples)
+    log_warn(glue("{bad_price_examples_text}"))
   }
   if (length(missing_columns) > 0) {
     log_warn(glue("Expected to find columns but were missing: {missing_columns}"))
