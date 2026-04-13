@@ -37,7 +37,6 @@ Imports:
     httr,
     glue,
     rcrea,
-    entsog,
     logger,
     rvest,
     sweep,
@@ -45,7 +44,6 @@ Imports:
     argparse,
 Remotes:
     github::energyandcleanair/rcrea,
-    github::energyandcleanair/entsog,
     github::ropensci/comtradr,
     github::ropensci/rnoaa
 RoxygenNote: 7.3.2
