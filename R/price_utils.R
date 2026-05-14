@@ -45,7 +45,7 @@ db.get_market_source_data <- function(source_name, date_from = NULL, date_to = N
 
   result <- db.pg_select(glue::glue("SELECT date, value, data_type FROM {table_name} ORDER BY date")) %>%
     mutate(
-      date = lubridate::as_date(date),
+      date,
       value = as.numeric(value),
       data_type = as.character(data_type)
     )
@@ -61,71 +61,15 @@ db.get_market_source_data <- function(source_name, date_from = NULL, date_to = N
 }
 
 get_brent <- function() {
-  log_info("Getting prices for Brent")
-  brent_datahub1 <- tryCatch(
-    {
-      log_level(REQUEST, "Getting Brent prices from datahub")
-      read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
-        select(date = Date, brent = Price) %>%
-        filter(date >= "2016-01-01") %>%
-        arrange(desc(date))
-    },
-    error = function(e) {
-      return(NULL)
-    }
-  )
+  log_info("Getting prices for Brent from database")
+  brent <- db.get_market_source_data("eia_brent") %>%
+    transmute(date, brent = value)
 
-  brent_datahub2 <- tryCatch(
-    {
-      log_level(REQUEST, "Getting Brent prices from datahub")
-      read_csv("https://datahub.io/core/oil-prices/_r/-/data/brent-daily.csv", show_col_type = F) %>%
-        select(date = Date, brent = Price) %>%
-        filter(date >= "2016-01-01") %>%
-        arrange(desc(date))
-    },
-    error = function(e) {
-      return(NULL)
-    }
-  )
+  if (nrow(brent) == 0) {
+    stop("ms__eia_brent returned no rows")
+  }
 
-  brent_eia <- tryCatch(
-    {
-      log_level(REQUEST, "Getting Brent prices from EIA")
-      eia::eia_series(
-        id = "PET.RBRTE.D",
-        start = lubridate::year(max(brent_datahub$date)),
-        end = NULL,
-        tidy = TRUE,
-        cache = TRUE,
-        key = Sys.getenv("EIA_KEY")
-      ) %>%
-        tidyr::unnest(data) %>%
-        select(date, brent = value) %>%
-        filter(date >= "2016-01-01")
-    },
-    error = function(e) {
-      return(NULL)
-    }
-  )
-
-  temp <- tempfile(fileext = ".xls")
-  log_level(REQUEST, "Getting Brent prices from EIA")
-  download.file("https://www.eia.gov/dnav/pet/hist_xls/RBRTEd.xls", temp, quiet = TRUE)
-  brent_eia_xls <- readxl::read_xls(temp, sheet = "Data 1", skip = 3, col_names = c("date", "brent")) %>%
-    mutate(date = as.Date(date)) %>%
-    filter(date >= "2016-01-01") %>%
-    arrange(desc(date))
-  unlink(temp)
-
-  bind_rows(
-    brent_datahub1,
-    brent_datahub2,
-    brent_eia,
-    brent_eia_xls
-  ) %>%
-    group_by(date) %>%
-    summarise_at("brent", mean, na.rm = T) %>%
-    filter(!is.na(brent)) %>%
+  brent %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc()
@@ -135,14 +79,16 @@ get_brent <- function() {
 get_ttf <- function() {
   log_info("Getting prices for TTF from database")
   ttf <- db.get_market_source_data("oilprice_ttf") %>%
-    transmute(date, ttf = value)
+    transmute(
+      date,
+      ttf = as.numeric(value)
+    )
 
   if (nrow(ttf) == 0) {
     stop("ms__oilprice_ttf returned no rows")
   }
 
   ttf %>%
-    mutate(date = lubridate::as_datetime(date)) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
@@ -159,7 +105,6 @@ get_ara <- function() {
   }
 
   ara %>%
-    mutate(date = lubridate::as_datetime(date, tz = "UTC")) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc()
@@ -167,20 +112,16 @@ get_ara <- function() {
 
 
 get_global_coal <- function() {
-  log_info("Getting prices for global coal")
-  # tidyquant::tq_get("PCOALAUUSDM", get='economic.data', from='2015-01-01') %>%
-  #   select(date, global_coal=price)
-  url <- "https://docs.google.com/spreadsheets/d/e/2PACX-1vTpPdsbpgUsmUU5MXDAH3Y0pg0HcR1_-fk-Flh_nPo0SRrUfOtno-l1627cgPIkvlMNlEjKTcF1dFF0/pub?gid=0&single=true&output=csv"
-  log_level(REQUEST, "Getting global coal prices from Google Sheets")
-  result <- read_csv(url) %>%
-    mutate(
-      date = strptime(Date, "%m/%d/%Y", tz = "UTC"),
-      global_coal = as.numeric(Price)
+  log_info("Getting prices for global coal from database")
+  result <- db.get_market_source_data("investing_com_coal") %>%
+    transmute(
+      date,
+      global_coal = as.numeric(value)
     ) %>%
     select(date, global_coal)
 
-  if (max(result$date) <= lubridate::today() - 7) {
-    log_warn("Need to update global coal data here: https://docs.google.com/spreadsheets/d/1nQWZJuuUXyKn-hfd7besOXLlcKjqR7PqMLn4fvfJpzA/edit#gid=1784009253")
+  if (nrow(result) == 0) {
+    stop("ms__raw__investing_com_coal returned no rows")
   }
 
   result %>%
@@ -198,7 +139,6 @@ get_jkm <- function() {
   }
 
   jkm %>%
-    mutate(date = lubridate::as_datetime(date)) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     fill_past(date_from = "2020-01-01") %>%
@@ -220,7 +160,7 @@ get_prices_daily <- function(running_days = 0) {
     full_join(jkm, by = join_by(date)) %>%
     full_join(global_coal_daily, by = join_by(date)) %>%
     full_join(eur_to_usd, by = join_by(date)) %>%
-    mutate(date = lubridate::date(date) %>% lubridate::force_tz("UTC")) %>%
+    mutate(date = date %>% lubridate::force_tz("UTC")) %>%
     rcrea::utils.running_average(running_days, vars_to_avg = c("ttf", "brent", "ara", "jkm", "global_coal", "eur_per_usd"))
 }
 
@@ -259,13 +199,11 @@ get_prices_monthly <- function() {
 
 price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
   log_info("Getting EUR per USD")
-  source_name <- "ecb_eur_usd"
-  table_name <- market_source_table_name(source_name)
   date_from <- as.Date(date_from)
   date_to <- as.Date(date_to)
 
   eur_per_usd <- db.get_market_source_data(
-    source_name = source_name,
+    source_name = "ecb_eur_usd",
     date_from = date_from,
     date_to = date_to
   ) %>%
@@ -273,7 +211,7 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 
   # Fill values - fail if no data
   if (nrow(eur_per_usd) == 0) {
-    stop(glue::glue("No EUR per USD data returned from database table {table_name} for {date_from} to {date_to}"))
+    stop(glue::glue("No EUR per USD data returned from database for {date_from} to {date_to}"))
   }
 
   if (monthly) {
@@ -286,17 +224,13 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
 
 price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::today(), monthly = F) {
   log_info("Getting CNY per USD")
-  eur_usd_source_name <- "ecb_eur_usd"
-  cny_eur_source_name <- "ecb_eur_cny"
-  eur_usd_table_name <- market_source_table_name(eur_usd_source_name)
-  cny_eur_table_name <- market_source_table_name(cny_eur_source_name)
   date_from <- as.Date(date_from)
   date_to <- as.Date(date_to)
 
   eur_per_usd <- price.eur_per_usd(date_from = date_from, date_to = date_to, monthly = F)
 
   cny_per_eur <- db.get_market_source_data(
-    source_name = cny_eur_source_name,
+    source_name = "ecb_cny_eur",
     date_from = date_from,
     date_to = date_to
   ) %>%
@@ -305,7 +239,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
   if (nrow(cny_per_eur) == 0) {
     stop(
       glue::glue(
-        "No CNY per USD data returned from database tables {eur_usd_table_name} and {cny_eur_table_name} for {date_from} to {date_to}"
+        "No CNY per USD data returned for {date_from} to {date_to}"
       )
     )
   }
@@ -338,23 +272,21 @@ get_urals <- function() {
 
   prices <- db.get_market_source_data("oilprice_urals") %>%
     transmute(date, usd_per_bbl = value) %>%
-    mutate(date = lubridate::as_datetime(date)) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc() %>%
     transmute(
-      date = lubridate::as_date(date),
+      date,
       usd_per_bbl = usd_per_bbl
     )
 
   te_prices <- db.get_market_source_data("te_urals") %>%
     transmute(date, usd_per_bbl = value) %>%
-    mutate(date = lubridate::as_datetime(date)) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc() %>%
     transmute(
-      date = lubridate::as_date(date),
+      date,
       usd_per_bbl = usd_per_bbl
     )
 
@@ -373,10 +305,6 @@ get_urals <- function() {
     date_from = min(prices$date),
     date_to = max(prices$date)
   ) %>%
-    mutate(
-      # to dttm
-      date = lubridate::as_date(date)
-    ) %>%
     fill_gaps_and_future()
 
   tonne_per_bbl <- 0.138
@@ -399,41 +327,37 @@ get_espo <- function() {
   espo <- local({
     espo <- db.get_market_source_data("oilprice_espo") %>%
       dplyr::glimpse() %>%
-      mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
       force_utc() %>%
       transmute(
-        date = lubridate::as_date(date),
+        date,
         usd_per_bbl = value,
         origin = data_type
       )
 
     sokol <- db.get_market_source_data("oilprice_sokol") %>%
-      mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
       force_utc() %>%
       transmute(
-        date = lubridate::as_date(date),
+        date,
         usd_per_bbl = value,
         origin = data_type
       )
 
     urals <- db.get_market_source_data("oilprice_urals") %>%
-      mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
       force_utc() %>%
       transmute(
-        date = lubridate::as_date(date),
+        date,
         usd_per_bbl = value,
         origin = data_type
       )
 
     urals_te <- db.get_market_source_data("te_urals") %>%
-      mutate(date = lubridate::as_datetime(date)) %>%
       arrange(desc(date)) %>%
       force_utc() %>%
       transmute(
-        date = lubridate::as_date(date),
+        date,
         usd_per_bbl = value,
         origin = data_type
       )
@@ -528,10 +452,6 @@ get_espo <- function() {
     date_from = min(espo$date),
     date_to = max(espo$date)
   ) %>%
-    mutate(
-      # to dttm
-      date = lubridate::as_date(date)
-    ) %>%
     fill_gaps_and_future()
 
   tonne_per_bbl <- 0.138
