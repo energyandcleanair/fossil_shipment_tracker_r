@@ -270,8 +270,7 @@ get_urals <- function() {
   log_info("Getting prices for Urals from database")
   # This should return a tibble of date, eur_per tonne
 
-  prices <- db.get_market_source_data("oilprice_urals") %>%
-    transmute(date, usd_per_bbl = value) %>%
+  prices <- db.get_market_source_data("derived__urals") %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc() %>%
@@ -279,27 +278,6 @@ get_urals <- function() {
       date,
       usd_per_bbl = usd_per_bbl
     )
-
-  te_prices <- db.get_market_source_data("te_urals") %>%
-    transmute(date, usd_per_bbl = value) %>%
-    arrange(desc(date)) %>%
-    fill_gaps_and_future() %>%
-    force_utc() %>%
-    transmute(
-      date,
-      usd_per_bbl = usd_per_bbl
-    )
-
-  # Prefer oilprice.com data, but if it's missing for some dates, use TE data
-  prices <- prices %>%
-    full_join(te_prices, by = join_by(date), suffix = c("", "_te")) %>%
-    mutate(usd_per_bbl = coalesce(usd_per_bbl, usd_per_bbl_te)) %>%
-    select(date, usd_per_bbl)
-
-  # If no prices available, fail
-  if (nrow(prices) == 0) {
-    stop("No Urals prices available from database (ms__oilprice_urals)")
-  }
 
   eur_per_usd <- price.eur_per_usd(
     date_from = min(prices$date),
