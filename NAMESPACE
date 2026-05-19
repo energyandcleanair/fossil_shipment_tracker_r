@@ -46,6 +46,7 @@ importFrom(dplyr, group_modify)
 importFrom(dplyr,"%>%")
 importFrom(dplyr,coalesce)
 importFrom(dplyr,transmute)
+importFrom(dplyr,sample_n)
 
 importFrom(forecast, forecast)
 

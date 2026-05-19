@@ -25,10 +25,10 @@ force_utc <- function(df) {
 }
 
 market_source_table_name <- function(source_name) {
-  if (!grepl("^[a-z0-9]+(_[a-z0-9]+)*$", source_name)) {
+  if (!grepl("^[a-z0-9]+(_+[a-z0-9]+)*$", source_name)) {
     stop(
       glue::glue(
-        "source_name must already be a valid market source table suffix using lowercase letters, digits, and single underscores: {source_name}"
+        "source_name must already be a valid market source table suffix using lowercase letters, digits, and underscores: {source_name}"
       )
     )
   }
@@ -203,11 +203,12 @@ price.eur_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
   date_to <- as.Date(date_to)
 
   eur_per_usd <- db.get_market_source_data(
+    # Returns USD per EUR
     source_name = "ecb_eur_usd",
     date_from = date_from,
     date_to = date_to
   ) %>%
-    transmute(date, eur_per_usd = value)
+    transmute(date, eur_per_usd = 1 / value)
 
   # Fill values - fail if no data
   if (nrow(eur_per_usd) == 0) {
@@ -230,7 +231,8 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
   eur_per_usd <- price.eur_per_usd(date_from = date_from, date_to = date_to, monthly = F)
 
   cny_per_eur <- db.get_market_source_data(
-    source_name = "ecb_cny_eur",
+    # Returns CNY per EUR
+    source_name = "ecb_eur_cny",
     date_from = date_from,
     date_to = date_to
   ) %>%
@@ -255,7 +257,7 @@ price.cny_per_usd <- function(date_from = "2015-01-01", date_to = lubridate::tod
   }
 
   if (any(is.na(cny_per_usd$cny_per_usd))) {
-    stop(glue::glue("Missing CNY per USD values after joining {eur_usd_table_name} and {cny_eur_table_name}"))
+    stop(glue::glue("Missing CNY per USD values after joining {eur_usd_table_name} and {eur_cny_table_name}"))
   }
 
   if (monthly) {
@@ -270,7 +272,8 @@ get_urals <- function() {
   log_info("Getting prices for Urals from database")
   # This should return a tibble of date, eur_per tonne
 
-  prices <- db.get_market_source_data("derived__urals") %>%
+  derived_prices <- db.get_market_source_data("derived__urals") %>%
+    rename(usd_per_bbl = value) %>%
     arrange(desc(date)) %>%
     fill_gaps_and_future() %>%
     force_utc() %>%
@@ -278,6 +281,18 @@ get_urals <- function() {
       date,
       usd_per_bbl = usd_per_bbl
     )
+  earliest_derived_date <- min(derived_prices$date)
+
+  historical_prices <- db.get_market_source_data("te_urals") %>%
+    transmute(date, usd_per_bbl = value)
+
+  prices <- derived_prices %>%
+    bind_rows(
+      historical_prices %>%
+        filter(date < earliest_derived_date)
+    ) %>%
+    arrange(desc(date)) %>%
+    fill_gaps_and_future()
 
   eur_per_usd <- price.eur_per_usd(
     date_from = min(prices$date),
