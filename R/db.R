@@ -130,8 +130,12 @@ db.rebuild_price_table <- function(p, table = "price") {
 }
 
 
-db.upload_prices_to_posgres <- function(prices, rebuild = F, buffer_days = 60,
-                                        table = "price") {
+db.upload_prices_to_posgres <- function(
+  prices,
+  rebuild = FALSE,
+  buffer_days = 120,
+  table = "price"
+) {
   log_level(UPLOAD, "Uploading prices")
 
   prices$updated_on <- lubridate::now()
