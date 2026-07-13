@@ -9,4 +9,4 @@ log_formatter(formatter_glue)
 log_threshold(DEBUG)
 log_appender(appender_console)
 
-price.update_prices(buffer_days = 60)
+price.update_prices(buffer_days = 60, rebuild = TRUE)
