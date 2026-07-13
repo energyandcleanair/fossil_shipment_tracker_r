@@ -1,15 +1,11 @@
+# fossil_shipment_tracker_r — Archived
 
-### Regenerate EUROSTAT pricing model
+This repository has been merged into the main monorepo:
 
-To regenerate the EUROSTAT pricing model:
-1. Go to the root directory of the `fossil_shipment_tracker_r` project in your terminal
-2. Run the script `scripts/rebuild_eurostat.R`
-   ```
-   ./scripts/rebuild_eurostat.R
-   ```
-3. Add, commit, and push the latest `pricing_models_eurostat.RDS` files:
-   ```
-   git add **/pricing_models_eurostat.RDS
-   git commit -m "Update eurostat model"
-   git push
-   ```
+**https://github.com/energyandcleanair/fossil_shipment_tracker**
+
+The R engine code now lives at [`r/`](https://github.com/energyandcleanair/fossil_shipment_tracker/tree/master/r) in that repository.
+
+CI and production deployment for `engine-r` are handled by [`.github/workflows/r-engine-workflow.yml`](https://github.com/energyandcleanair/fossil_shipment_tracker/blob/master/.github/workflows/r-engine-workflow.yml) in the monorepo.
+
+Please do not push to this repository. Open issues and PRs against the monorepo instead.
